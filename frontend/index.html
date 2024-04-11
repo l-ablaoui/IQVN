@@ -1,0 +1,88 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Image Loader</title>
+</head>
+<body>
+    <button id="loadImageButton">Load Image</button>
+    <br/>
+    
+    <button id="loadVideoButton">Load Video</button>
+    <input type="text" id="video-name"/>
+    <br/>
+    <input type="range" min="0" max="100" value="0" id="changeImage"/>
+    <div id="imageContainer">
+        <img src="" alt="" id="image-element">
+    </div>
+
+    <script>
+        const server_url = 'http://localhost:8000'
+        const loadImageButton = document.getElementById('loadImageButton');
+
+        const loadVideoButton = document.getElementById('loadVideoButton');
+        const changeImage = document.getElementById('changeImage');
+        const imageContainer = document.getElementById('imageContainer');
+
+        let video_images = [];
+
+        loadImageButton.addEventListener('click', async () => {
+            try {
+                const response = await fetch(`${server_url}/image/sample.png`);
+                const blob = await response.blob();
+
+                const imageUrl = URL.createObjectURL(blob);
+
+                const image = document.getElementById('image-element');
+                image.src = imageUrl;
+                image.width = 1024;
+                image.height = 768;
+                imageContainer.innerHTML = '';
+                imageContainer.appendChild(image);
+
+            } catch (error) {
+                console.error('Error loading image:', error);
+            }
+        });
+
+        loadVideoButton.addEventListener('click', async () => {
+            try {
+
+                let video_name = document.getElementById("video-name").value;
+                const response = await fetch(`${server_url}/video/${video_name}`);
+                const body = await response.json();
+                
+                changeImage.max = body['frames']-1;
+                
+                alert("Finished prediction! You can play with the slider");
+
+            } catch(error) {
+                console.error('Erro loading images:', error);
+            }
+        });
+
+        changeImage.addEventListener('input', async () => {
+            let video_name = document.getElementById("video-name").value;
+            let name_processed = video_name.split(".")[0];            
+
+            const response = await fetch(`${server_url}/image/${name_processed}/${changeImage.value}.png`);
+            const blob = await response.blob();
+
+            const imageUrl = URL.createObjectURL(blob);
+
+            const image = document.getElementById('image-element');
+            image.src = imageUrl
+            image.width = 1024;
+            image.height = 768;
+            imageContainer.innerHTML = '';
+            imageContainer.appendChild(image);
+    });
+
+
+
+
+
+    </script>
+</body>
+</html>

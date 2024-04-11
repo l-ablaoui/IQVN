@@ -1,0 +1,7 @@
+fastapi==0.68.0
+uvicorn==0.15.0
+aiofiles==23.2.1
+numpy==1.24.3
+opencv-python==4.9.0.80
+pandas==2.0.3
+torch==2.1.2

@@ -130,25 +130,6 @@
             .on("drag", async function(event, d) {
                 if( event.x >= 0 && volatile_xScale.invert(event.x) <= volatile_xScale.domain()[1] ) {
                     update_position(this, event.x, volatile_xScale);
-                    // d3.select(this)
-                    //     .attr("cx", Math.floor(event.x));
-
-                    
-                    // let name_processed = video_name.split(".")[0];           
-                    
-                    // let index = Math.floor(volatile_xScale.invert(event.x));
-
-                    // const response = await fetch(`${server_url}/image/${name_processed}/${index}.png`);
-                    // const blob = await response.blob();
-
-                    // const imageUrl = URL.createObjectURL(blob);
-
-                    // const image = document.getElementById('image-element');
-                    // image.src = imageUrl
-                    // image.width = 640;
-                    // image.height = 420;
-                    // imageContainer.innerHTML = '';
-                    // imageContainer.appendChild(image);
 
                 } else if(scores != null) {
 
@@ -160,24 +141,9 @@
                             break;
                         }
                     }
+
+                    update_position(this, volatile_xScale(index), volatile_xScale);
                     
-                    d3.select(this)
-                        .attr("cx", volatile_xScale(index));
-
-                    let name_processed = video_name.split(".")[0];      
-                    const response = await fetch(`${server_url}/image/${name_processed}/${index}.png`);
-                    const blob = await response.blob();
-
-                    const imageUrl = URL.createObjectURL(blob);
-
-                    const image = document.getElementById('image-element');
-                    image.src = imageUrl
-                    image.width = 640;
-                    image.height = 420;
-                    imageContainer.innerHTML = '';
-                    imageContainer.appendChild(image);
-
-
                 }
             });
 

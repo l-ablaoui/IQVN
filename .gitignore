@@ -1,0 +1,7 @@
+backend/videos/**/*.mp4
+backend/videos/*.mp4
+backend/videos/**/*.png
+backend/videos/*.png
+backend/videos/**/*.npy
+backend/__pycache__/*
+__pycache__/*

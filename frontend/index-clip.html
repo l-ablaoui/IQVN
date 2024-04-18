@@ -1,0 +1,248 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>D3.js Visualization</title>
+    <script src="https://d3js.org/d3.v7.min.js"></script>
+    <style>
+        .axis path,
+        .axis line {
+            fill: none;
+            stroke: black;
+            shape-rendering: crispEdges;
+        }
+        .line {
+            fill: none;
+            stroke-width: 2px;
+            opacity: 0.7;
+        }
+        .grid-line {
+            stroke: lightgray;
+            opacity: 0.3;
+            stroke-dasharray: 3, 3;
+        }
+    </style>
+</head>
+<body>
+
+    <label>Query:</label>
+    <input type="text" id="queryInput"/>
+    <input type="button" id="searchButton" value="Search"/>
+
+
+    <br/>
+    <svg width="900" height="150">
+        <g transform="translate(100, 100)">
+            <!-- Create the curve -->
+            <path class="line"></path>
+            <!-- Create the axis -->
+            <g class="axis"></g>
+        </g>
+    </svg>
+    
+    <br/>
+    <div id="imageContainer">
+        <img src="" alt="" id="image-element">
+    </div>
+
+
+    <script>
+        // Sample data
+        const data = [[0, 0.1], [1, 0.2], [2, 0], [3, 0.4], [4, 0.3], [5, 0.5], [6, 0.6], [7, 0.4], [8, 0.8], [9, 0.7], [10, 0.6], [11, 0.5], [12, 0.4], [13, 0.3], [14, 0.2], [15, 0.1], [16, 0.2], [17, 0.3], [18, 0.4], [19, 0.5], [20, 0.6], [21, 0.7], [22, 0.8], [23, 0.9], [24, 0.8], [25, 0.7], [26, 0.6], [27, 0.5], [28, 0.4], [29, 0.3], [30, 0.2], [31, 0.1], [32, 0.2], [33, 0.3], [34, 0.4], [35, 0.5], [36, 0.6], [37, 0.7], [38, 0.8], [39, 0.9], [40, 0.8], [41, 0.7], [42, 0.6], [43, 0.5], [44, 0.4], [45, 0.3], [46, 0.2], [47, 0.1], [48, 0.2], [49, 0.3], [50, 0.4], [51, 0.5], [52, 0.6], [53, 0.7], [54, 0.8], [55, 0.9], [56, 0.8], [57, 0.7], [58, 0.6], [59, 0.5], [60, 0.4], [61, 0.3], [62, 0.2], [63, 0.1], [64, 0.2], [65, 0.3], [66, 0.4], [67, 0.5], [68, 0.6], [69, 0.7], [70, 0.8], [71, 0.9], [72, 0.8], [73, 0.7], [74, 0.6], [75, 0.5], [76, 0.4], [77, 0.3], [78, 0.2], [79, 0.1], [80, 0.2], [81, 0.3], [82, 0.4], [83, 0.5], [84, 0.6], [85, 0.7], [86, 0.8], [87, 0.9], [88, 0.8], [89, 0.7], [90, 0.6], [91, 0.5], [92, 0.4], [93, 0.3], [94, 0.2], [95, 0.1], [96, 0.2], [97, 0.3], [98, 0.4], [99, 0.3]];
+
+        const video_name = "dynamic-scene-graph2.mp4";
+
+        // Set the dimensions and margins of the plot
+        const width = 800;
+        const height = 70;
+        let scores = null;
+        
+        // Create a scale for the x-axis
+        const xScale = d3.scaleLinear()
+            .domain([0, 100]) // Range from 0 to 100
+            .range([0, width]); // Actual width of the axis
+        
+        // Create a scale for the y-axis
+        const yScale = d3.scaleLinear()
+            .domain([0, 1]) // Range from 0 to 1
+            .range([height, 0]); // Actual height of the axis
+
+        // Create a line generator
+        const line = d3.line()
+            .x(d => xScale(d[0]))
+            .y(d => yScale(d[1]))
+            .curve(d3.curveCardinal);
+
+        // Create the x-axis
+        const xAxis = d3.axisBottom(xScale)        
+            .ticks(10); // Adjust the number of ticks as needed
+            
+
+        // Create the y-axis
+        const yAxis = d3.axisLeft(yScale)
+            .ticks(5);
+
+        // Append the axis to the SVG
+        d3.select("g.axis")
+            .call(xAxis)
+            .select(".domain").remove(); // Remove the x-axis line
+
+        d3.select("g.axis")
+            .append("g")   
+            .attr("transform",`translate(0, -${height})`)
+            .attr("class", "axisy")         
+            .call(yAxis);
+
+        // Append the curve
+        d3.select("g.axisy")
+            .append("path")
+            .datum(data)
+            .attr("class", "line")
+            .attr("d", line);
+
+        let volatile_xScale = xScale;
+
+
+        const drag = d3.drag()
+            .on("drag", async function(event, d) {
+                if( event.x >= 0 && volatile_xScale.invert(event.x) <= volatile_xScale.domain()[1] ) {
+                    d3.select(this)
+                        .attr("cx", Math.floor(event.x));
+
+                    
+                    let name_processed = video_name.split(".")[0];           
+                    
+                    let index = Math.floor(volatile_xScale.invert(event.x));
+
+                    const response = await fetch(`${server_url}/image/${name_processed}/${index}.png`);
+                    const blob = await response.blob();
+
+                    const imageUrl = URL.createObjectURL(blob);
+
+                    const image = document.getElementById('image-element');
+                    image.src = imageUrl
+                    image.width = 640;
+                    image.height = 420;
+                    imageContainer.innerHTML = '';
+                    imageContainer.appendChild(image);
+
+                } else if(scores != null) {
+                    alert("I will find the highest score!");
+
+                    let index = -1;
+                    let max_value = d3.max(scores['scores'], d=>d[1]);
+                    for(let i = 0; i < scores['scores'].length; ++i) {
+                        if(max_value == scores['scores'][i][1]) {
+                            index = i;
+                            break;
+                        }
+                    }
+                    
+                    d3.select(this)
+                        .attr("cx", volatile_xScale(index));
+
+                    let name_processed = video_name.split(".")[0];      
+                    const response = await fetch(`${server_url}/image/${name_processed}/${index}.png`);
+                    const blob = await response.blob();
+
+                    const imageUrl = URL.createObjectURL(blob);
+
+                    const image = document.getElementById('image-element');
+                    image.src = imageUrl
+                    image.width = 640;
+                    image.height = 420;
+                    imageContainer.innerHTML = '';
+                    imageContainer.appendChild(image);
+
+
+                }
+            });
+
+        const circle = d3.select("g.axis")
+            .append("circle")
+            .attr("cx", xScale(0))
+            .attr("cy", 0)
+            .attr("r", 5)
+            .attr("id", "circle.drag")
+            .attr("fill", "red")
+            .call(drag);
+
+        // Append the grid lines
+        d3.select("g.axisy")
+            .selectAll("g.tick")
+            .append("line")
+            .attr("class", "grid-line")
+            .attr("x1", 0)
+            .attr("y1", 0)
+            .attr("x2", width)
+            .attr("y2", 0);
+
+
+        const server_url = 'http://localhost:8000'
+        const searchButton = document.getElementById("searchButton");
+        searchButton.addEventListener('click', async () => {
+
+            try {
+                let inputValue = document.getElementById("queryInput").value;
+
+                const response = await fetch(`${server_url}/search?query=${inputValue}`);
+                const body = await response.json();
+
+                scores = body;
+                let min_value = d3.min(body['scores'], d => d[1]);
+                let max_value = d3.max(body['scores'], d => d[1]);
+
+                console.log(min_value, max_value);
+
+                const new_yScale = d3.scaleLinear()
+                    .domain([min_value, max_value]) // Range from 0 to 1
+                    .range([height, 0]); // Actual height of the axis
+
+                const new_yAxis = d3.axisLeft(new_yScale)
+                    .ticks(5);
+
+                const new_xScale = d3.scaleLinear()
+                    .domain([0, body['scores'].length]) // Range from 0 to 100
+                    .range([0, width]); // Actual width of the axis
+
+
+                volatile_xScale = new_xScale;
+                
+                const new_xAxis = d3.axisBottom(new_xScale)        
+                    .ticks(10); // Adjust the number of ticks as needed
+                                    
+                d3.select("g.axis")
+                    .transition()
+                    .duration(2000)
+                    .call(new_xAxis);
+                
+
+                d3.select("g.axisy")
+                    .select(".line")
+                    .datum(body['scores'])
+                    .transition()
+                    .duration(2000)
+                    .attr("d", d3.line()
+                        .x(function(d) { return new_xScale(d[0]); })
+                        .y(function(d) { return new_yScale(d[1]); })
+                        // .curve(d3.curveCardinal)
+                        );
+
+                d3.select("g.axis")
+                    .select('.axisy')   
+                    .transition()
+                    .duration(2000)     
+                    .call(new_yAxis);
+
+
+                console.log(body);
+            } catch (error) {
+                console.error('Error loading search results:', error);
+            }
+
+
+        });
+    </script>
+</body>
+</html>

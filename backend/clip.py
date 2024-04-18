@@ -4,6 +4,8 @@ import numpy as np
 
 from transformers import CLIPModel, CLIPProcessor
 
+from tqdm import tqdm
+
 class ImageClassification:
     def __init__ (self, video_path = "", clip_checkpoint = "openai/clip-vit-base-patch32"):
         #input video path
@@ -39,13 +41,16 @@ class ImageClassification:
     
     def get_video_features(self):
         vid = self.load_video()
+        frameCount = int(vid.get(cv2.CAP_PROP_FRAME_COUNT))
 
         embeddings = []
-        while True:
-            okay, frame = vid.read()
-            if not okay:
-                break
-            embeddings.append(self.get_image_features(frame))
+        with tqdm(total=frameCount, desc="computing image embeddings: ") as pbar:
+            while vid.isOpened:
+                okay, frame = vid.read()
+                if not okay:
+                    break
+                embeddings.append(self.get_image_features(frame))
+                pbar.update(1)
         
         vid.release()
         return np.array(embeddings).squeeze(1)

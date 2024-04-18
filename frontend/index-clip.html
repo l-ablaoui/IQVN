@@ -105,12 +105,12 @@
 
         let update_position = async function(circle, x, scale) {
             d3.select(circle)
-                .attr("cx", Math.floor(x));
+                .attr("cx", Math.round(x));
 
             
             let name_processed = video_name.split(".")[0];           
             
-            let index = Math.floor(scale.invert(x));
+            let index = Math.round(scale.invert(x));
 
             const response = await fetch(`${server_url}/image/${name_processed}/${index}.png`);
             const blob = await response.blob();

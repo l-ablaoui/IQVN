@@ -103,29 +103,33 @@
 
         let volatile_xScale = xScale;
 
+        let update_position = async function(circle, x, scale) {
+            d3.select(circle)
+                .attr("cx", Math.round(x));
+
+            
+            let name_processed = video_name.split(".")[0];           
+            
+            let index = Math.round(scale.invert(x));
+
+            const response = await fetch(`${server_url}/image/${name_processed}/${index}.png`);
+            const blob = await response.blob();
+
+            const imageUrl = URL.createObjectURL(blob);
+
+            const image = document.getElementById('image-element');
+            image.src = imageUrl
+            image.width = 640;
+            image.height = 420;
+            imageContainer.innerHTML = '';
+            imageContainer.appendChild(image);
+        }
+
 
         const drag = d3.drag()
             .on("drag", async function(event, d) {
                 if( event.x >= 0 && volatile_xScale.invert(event.x) <= volatile_xScale.domain()[1] ) {
-                    d3.select(this)
-                        .attr("cx", Math.floor(event.x));
-
-                    
-                    let name_processed = video_name.split(".")[0];           
-                    
-                    let index = Math.floor(volatile_xScale.invert(event.x));
-
-                    const response = await fetch(`${server_url}/image/${name_processed}/${index}.png`);
-                    const blob = await response.blob();
-
-                    const imageUrl = URL.createObjectURL(blob);
-
-                    const image = document.getElementById('image-element');
-                    image.src = imageUrl
-                    image.width = 640;
-                    image.height = 420;
-                    imageContainer.innerHTML = '';
-                    imageContainer.appendChild(image);
+                    update_position(this, event.x, volatile_xScale);
 
                 } else if(scores != null) {
 
@@ -137,24 +141,9 @@
                             break;
                         }
                     }
+
+                    update_position(this, volatile_xScale(index), volatile_xScale);
                     
-                    d3.select(this)
-                        .attr("cx", volatile_xScale(index));
-
-                    let name_processed = video_name.split(".")[0];      
-                    const response = await fetch(`${server_url}/image/${name_processed}/${index}.png`);
-                    const blob = await response.blob();
-
-                    const imageUrl = URL.createObjectURL(blob);
-
-                    const image = document.getElementById('image-element');
-                    image.src = imageUrl
-                    image.width = 640;
-                    image.height = 420;
-                    imageContainer.innerHTML = '';
-                    imageContainer.appendChild(image);
-
-
                 }
             });
 
@@ -163,9 +152,22 @@
             .attr("cx", xScale(0))
             .attr("cy", 0)
             .attr("r", 5)
-            .attr("id", "circle.drag")
+            .attr("id", "circle_drag")
             .attr("fill", "red")
-            .call(drag);
+            .call(drag)
+            .on("keydown", function(event) {
+                let x = +(d3.select(this).attr("cx"));
+                if( event.code == "ArrowRight" ) {
+                    x += 1;
+                } else if( event.code == "ArrowLeft" ) {
+                    x -= 1;
+                }
+
+                if( x >= 0 && volatile_xScale.invert(x) <= volatile_xScale.domain()[1] ) 
+                    update_position(this, x, volatile_xScale);
+                else
+                    console.log(`${x} is out of bounds`);
+            }).on("focus", function(){});
 
         // Append the grid lines
         d3.select("g.axisy")

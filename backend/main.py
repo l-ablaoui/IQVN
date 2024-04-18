@@ -16,6 +16,10 @@ from sklearn.metrics.pairwise import cosine_similarity
 
 from tqdm import tqdm
 
+
+os.environ['HTTP_PROXY'] = 'http://proxy.recherche.enac.fr:3128'
+os.environ['HTTPS_PROXY'] = 'http://proxy.recherche.enac.fr:3128'
+
 app = FastAPI()
 
 app.add_middleware(
@@ -29,29 +33,17 @@ app.add_middleware(
 IMAGES_DIR = "images"
 VIDEOS_DIR = "videos"
 
-DEVICE = "cuda" if torch.cuda.is_available() else "cpu"
 MODEL_NAME = "openai/clip-vit-base-patch16"
 SAMPLE_VIDEO_PATH = "videos/dynamic-scene-graph2.mp4"
 
-processor = CLIPProcessor.from_pretrained(MODEL_NAME)
-model = CLIPModel.from_pretrained(MODEL_NAME).to(DEVICE)
-
-
+from clip import ImageClassification
 
 def compute_cosine_similarity(video_path, query_text):    
-    tokenizer = processor.tokenizer
-    print("device:", DEVICE)
-    # Tokenize query text
-    query_tokens = tokenizer(query_text, return_tensors="pt", padding=True, truncation=True).to(DEVICE)
-    query_embedding = model.get_text_features(**query_tokens).to(DEVICE)
-    print("query_embedding:", query_embedding.shape)
-
+    classifier = ImageClassification(video_path, MODEL_NAME)
     output_path = video_path.replace(".mp4", "")
     print("output_path:", output_path)
 
     similarity_scores = []
-
-
 
     tic = time.time()
     if os.path.exists(f"{output_path}/embedding_0.npy"):
@@ -65,51 +57,16 @@ def compute_cosine_similarity(video_path, query_text):
             similarity_scores.append([index, similarity.item()])
 
             index += 1
-
-        
+            
     else:
         print("predicting...")
+        classifier(text=query_text)
         if not os.path.exists(output_path):
             os.mkdir(output_path)
         
-        cap = cv2.VideoCapture(video_path)
-
-        width = int(cap.get(cv2.CAP_PROP_FRAME_WIDTH))
-        height = int(cap.get(cv2.CAP_PROP_FRAME_HEIGHT))
-        
-        with torch.no_grad():
-            index = 0
-            while cap.isOpened():
-                ret, frame = cap.read()
-                if not ret:
-                    break
-
-                # Resize frame to match CLIP model input size (224x224)
-                
-
-                frame_to_save = cv2.resize(frame, (width, height))
-
-                cv2.imwrite(output_path+f"/{index}.png", frame_to_save)
-
-                frame = cv2.resize(frame, (224, 224))
-
-                # Convert frame to tensor and normalize
-                frame = torch.tensor(frame).permute(2, 0, 1).unsqueeze(0).float() / 255.0
-                frame = frame.to(DEVICE)
-
-                # Get frame embedding
-                frame_features = model.get_image_features(pixel_values=frame)
-                np.save(output_path+f"/embedding_{index}.npy", frame_features.cpu())
-                # frame_embedding = frame_features[:, 0]  
-
-                # print(frame_embedding.shape, query_embedding.shape, frame_features.shape)
-                # Compute cosine similarity with query text embedding
-                similarity = cosine_similarity(frame_features.cpu(), query_embedding.cpu())
-                similarity_scores.append([index, similarity.item()])
-
-                index += 1
-
-        cap.release()
+        scores = classifier.scores
+        for i in range(scores.shape[0]):
+            np.save(output_path+f"/embedding_{index}.npy", scores[i, :])
 
     toc = time.time() 
     print(f"done in {(toc-tic):.2f} seconds...")

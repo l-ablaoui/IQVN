@@ -5,13 +5,12 @@ from fastapi.middleware.cors import CORSMiddleware
 
 import glob
 from od_model import OD
+from clip import ImageClassification
 
+import cv2
 import time
 import numpy as np
-import cv2
-import torch
 from torchvision.io import read_video
-from transformers import CLIPProcessor, CLIPModel
 from sklearn.metrics.pairwise import cosine_similarity
 
 from tqdm import tqdm
@@ -29,87 +28,73 @@ app.add_middleware(
 IMAGES_DIR = "images"
 VIDEOS_DIR = "videos"
 
-DEVICE = "cuda" if torch.cuda.is_available() else "cpu"
 MODEL_NAME = "openai/clip-vit-base-patch16"
-SAMPLE_VIDEO_PATH = "videos/dynamic-scene-graph2.mp4"
+SAMPLE_VIDEO_PATH = "videos/goal.mp4"
 
-processor = CLIPProcessor.from_pretrained(MODEL_NAME)
-model = CLIPModel.from_pretrained(MODEL_NAME).to(DEVICE)
+def video2images(video_path):
+    output_path = video_path.replace(".mp4", "")
+    cap = cv2.VideoCapture(video_path)
 
+    if not cap.isOpened():
+        print(">>>>> loading video problem")
+        return
 
+    width = int(cap.get(cv2.CAP_PROP_FRAME_WIDTH))
+    height = int(cap.get(cv2.CAP_PROP_FRAME_HEIGHT))
+    total_count = int(cap.get(cv2.CAP_PROP_FRAME_COUNT))
+
+    frameCount = 0
+    with tqdm(total=total_count, desc="saving original frames: ") as pbar:
+        while cap.isOpened():
+            okay, frame = cap.read()
+            if not okay:
+                break
+
+            frame_to_save = cv2.resize(frame, (width, height))
+            cv2.imwrite(output_path+f"/{frameCount}.png", frame_to_save)
+            frameCount += 1
+            pbar.update(1)
+
+    cap.release()
+        
 
 def compute_cosine_similarity(video_path, query_text):    
-    tokenizer = processor.tokenizer
-    print("device:", DEVICE)
-    # Tokenize query text
-    query_tokens = tokenizer(query_text, return_tensors="pt", padding=True, truncation=True).to(DEVICE)
-    query_embedding = model.get_text_features(**query_tokens).to(DEVICE)
-    print("query_embedding:", query_embedding.shape)
-
     output_path = video_path.replace(".mp4", "")
+    if not os.path.exists(output_path):
+        os.mkdir(output_path)
+
+    if not os.path.exists(f"{output_path}/0.png"):
+        video2images(video_path)
+
+    #Getting video embeddings and computing cosine similarity
+    classifier = ImageClassification(video_path, MODEL_NAME)
+
     print("output_path:", output_path)
 
     similarity_scores = []
 
-
-
     tic = time.time()
-    if os.path.exists(f"{output_path}/embedding_0.npy"):
-        index = 0
-        while True:
-            if not os.path.exists(f"{output_path}/embedding_{index}.npy"):
-                break
-            
-            frame_features = np.load(f"{output_path}/embedding_{index}.npy")
-            similarity = cosine_similarity(frame_features, query_embedding.detach().cpu())
-            similarity_scores.append([index, similarity.item()])
+    if not os.path.exists(f"{output_path}/embedding_0.npy"):
+        print("computing embeddings...")
+        classifier(texts=query_text)
+        embeddings = classifier.video_embeddings
 
-            index += 1
+        with tqdm(total=embeddings.shape[0], desc="saving embeddings: ") as pbar:
+            for i in range(embeddings.shape[0]):
+                np.save(output_path+f"/embedding_{i}.npy", embeddings[i])
+                pbar.update(1)
 
+    query_embedding = classifier.get_text_features(query_text)
+    index = 0
+    while True:
+        if not os.path.exists(f"{output_path}/embedding_{index}.npy"):
+            break
         
-    else:
-        print("predicting...")
-        if not os.path.exists(output_path):
-            os.mkdir(output_path)
-        
-        cap = cv2.VideoCapture(video_path)
+        frame_features = np.load(f"{output_path}/embedding_{index}.npy")
+        similarity = classifier.cosine_similarity(frame_features, query_embedding)
+        similarity_scores.append([index, similarity.item()])
 
-        width = int(cap.get(cv2.CAP_PROP_FRAME_WIDTH))
-        height = int(cap.get(cv2.CAP_PROP_FRAME_HEIGHT))
-        
-        with torch.no_grad():
-            index = 0
-            while cap.isOpened():
-                ret, frame = cap.read()
-                if not ret:
-                    break
-
-                # Resize frame to match CLIP model input size (224x224)
-                
-
-                frame_to_save = cv2.resize(frame, (width, height))
-
-                cv2.imwrite(output_path+f"/{index}.png", frame_to_save)
-
-                frame = cv2.resize(frame, (224, 224))
-
-                # Convert frame to tensor and normalize
-                frame = torch.tensor(frame).permute(2, 0, 1).unsqueeze(0).float() / 255.0
-                frame = frame.to(DEVICE)
-
-                # Get frame embedding
-                frame_features = model.get_image_features(pixel_values=frame)
-                np.save(output_path+f"/embedding_{index}.npy", frame_features.cpu())
-                # frame_embedding = frame_features[:, 0]  
-
-                # print(frame_embedding.shape, query_embedding.shape, frame_features.shape)
-                # Compute cosine similarity with query text embedding
-                similarity = cosine_similarity(frame_features.cpu(), query_embedding.cpu())
-                similarity_scores.append([index, similarity.item()])
-
-                index += 1
-
-        cap.release()
+        index += 1
 
     toc = time.time() 
     print(f"done in {(toc-tic):.2f} seconds...")
@@ -165,10 +150,3 @@ async def annotate_video(video_path, output_path):
 async def annotate_image(image_path):
     detector = OD(capture_video="", output_detection='', output_results="", model_name='yolov5s.pt')
     detector(image=image_path)
-
-
-
-
-
-
-

@@ -44,7 +44,7 @@ class ImageClassification:
         frameCount = int(vid.get(cv2.CAP_PROP_FRAME_COUNT))
 
         embeddings = []
-        with tqdm(total=frameCount, desc="computing image embeddings: ") as pbar:
+        with tqdm(total=frameCount, desc="computing video embeddings: ") as pbar:
             while vid.isOpened:
                 okay, frame = vid.read()
                 if not okay:

@@ -35,22 +35,26 @@ def video2images(video_path):
     output_path = video_path.replace(".mp4", "")
     cap = cv2.VideoCapture(video_path)
 
-    if not cap.isOpened:
+    if not cap.isOpened():
         print(">>>>> loading video problem")
+        return
 
-    print(cap.get(cv2.CAP_PROP_FRAME_COUNT))
     width = int(cap.get(cv2.CAP_PROP_FRAME_WIDTH))
     height = int(cap.get(cv2.CAP_PROP_FRAME_HEIGHT))
+    total_count = int(cap.get(cv2.CAP_PROP_FRAME_COUNT))
 
     frameCount = 0
-    while cap.isOpened():
-        okay, frame = cap.read()
-        if not okay:
-            break
+    with tqdm(total=total_count, desc="saving original frames: ") as pbar:
+        while cap.isOpened():
+            okay, frame = cap.read()
+            if not okay:
+                break
 
-        frame_to_save = cv2.resize(frame, (width, height))
-        cv2.imwrite(output_path+f"/{frameCount}.png", frame_to_save)
-        frameCount += 1
+            frame_to_save = cv2.resize(frame, (width, height))
+            cv2.imwrite(output_path+f"/{frameCount}.png", frame_to_save)
+            frameCount += 1
+            pbar.update(1)
+
     cap.release()
         
 
@@ -70,27 +74,27 @@ def compute_cosine_similarity(video_path, query_text):
     similarity_scores = []
 
     tic = time.time()
-    if os.path.exists(f"{output_path}/embedding_0.npy"):
-        query_embedding = classifier.get_text_features(query_text)
-        index = 0
-        while True:
-            if not os.path.exists(f"{output_path}/embedding_{index}.npy"):
-                break
-            
-            frame_features = np.load(f"{output_path}/embedding_{index}.npy")
-            similarity = classifier.cosine_similarity(frame_features, query_embedding)
-            similarity_scores.append([index, similarity.item()])
-
-            index += 1
-        
-    else:
-        print("predicting...")
+    if not os.path.exists(f"{output_path}/embedding_0.npy"):
+        print("computing embeddings...")
         classifier(texts=query_text)
         embeddings = classifier.video_embeddings
-        scores = classifier.scores
-        for i in range(embeddings.shape[0]):
-            np.save(output_path+f"/embedding_{i}.npy", embeddings[i])
-        similarity_scores = scores.tolist()
+
+        with tqdm(total=embeddings.shape[0], desc="saving embeddings: ") as pbar:
+            for i in range(embeddings.shape[0]):
+                np.save(output_path+f"/embedding_{i}.npy", embeddings[i])
+                pbar.update(1)
+
+    query_embedding = classifier.get_text_features(query_text)
+    index = 0
+    while True:
+        if not os.path.exists(f"{output_path}/embedding_{index}.npy"):
+            break
+        
+        frame_features = np.load(f"{output_path}/embedding_{index}.npy")
+        similarity = classifier.cosine_similarity(frame_features, query_embedding)
+        similarity_scores.append([index, similarity.item()])
+
+        index += 1
 
     toc = time.time() 
     print(f"done in {(toc-tic):.2f} seconds...")

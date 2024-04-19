@@ -5,3 +5,4 @@ backend/videos/*.png
 backend/videos/**/*.npy
 backend/__pycache__/*
 __pycache__/*
+.DS_Store

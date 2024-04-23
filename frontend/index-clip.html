@@ -4,6 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>D3.js Visualization</title>
+    <link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/4.5.2/css/bootstrap.min.css">
     <script src="https://d3js.org/d3.v7.min.js"></script>
     <style>
         .axis path,
@@ -26,37 +27,73 @@
 </head>
 <body>
 
-    <label>Query:</label>
-    <input type="text" id="queryInput"/>
-    <input type="button" id="searchButton" value="Search"/>
-
-
-    <br/>
-    <svg width="900" height="150">
-        <g transform="translate(100, 100)">
-            <!-- Create the curve -->
-            <path class="line"></path>
-            <!-- Create the axis -->
-            <g class="axis"></g>
-        </g>
-    </svg>
+    <div class="container">
+        <div class="row">
+            <div class="col-md-6">
+                <label for="queryInput">Query:</label>
+                <input type="text" id="queryInput" class="form-control">
+            </div>
+            <div class="col-md-6">
+                <label for="videoName">Video:</label>
+                <input type="text" id="videoName" class="form-control">
+            </div>
+        </div>
     
-    <br/>
-    <div id="imageContainer">
-        <img src="" alt="" id="image-element">
+        <div class="row mt-3">
+            <div class="col-md-6">
+                <input type="button" id="searchButton" value="Search" class="btn btn-primary">
+                <input type="button" id="odButton" value="Object Detection" class="btn btn-secondary">
+            </div>
+        </div>
+    
+        <div class="row mt-3">
+            <svg width="900" height="150">
+                <g transform="translate(100, 100)">
+                    <!-- Create the curve -->
+                    <path class="line"></path>
+                    <!-- Create the axis -->
+                    <g class="axis"></g>
+                </g>
+            </svg>
+        </div>
+    
+        <div class="row mt-3">
+            
+            <div class="col-md-3">
+                <label>Applied search:</label>
+                <br/>
+                <i><span id="query-element"></span></i>
+                <br/>
+                <img src="" alt="" id="imsearch-element">
+            </div>
+
+            <div class="col-md-9">
+                <div id="imageContainer">
+                    <img src="" alt="" id="image-element" class="img-fluid">
+                </div>
+            </div>
+
+        </div>
     </div>
+    
+    <script src="https://ajax.googleapis.com/ajax/libs/jquery/3.5.1/jquery.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/popper.js/1.16.0/umd/popper.min.js"></script>
+    <script src="https://maxcdn.bootstrapcdn.com/bootstrap/4.5.2/js/bootstrap.min.js"></script>
 
 
     <script>
         // Sample data
         const data = [[0, 0.1], [1, 0.2], [2, 0], [3, 0.4], [4, 0.3], [5, 0.5], [6, 0.6], [7, 0.4], [8, 0.8], [9, 0.7], [10, 0.6], [11, 0.5], [12, 0.4], [13, 0.3], [14, 0.2], [15, 0.1], [16, 0.2], [17, 0.3], [18, 0.4], [19, 0.5], [20, 0.6], [21, 0.7], [22, 0.8], [23, 0.9], [24, 0.8], [25, 0.7], [26, 0.6], [27, 0.5], [28, 0.4], [29, 0.3], [30, 0.2], [31, 0.1], [32, 0.2], [33, 0.3], [34, 0.4], [35, 0.5], [36, 0.6], [37, 0.7], [38, 0.8], [39, 0.9], [40, 0.8], [41, 0.7], [42, 0.6], [43, 0.5], [44, 0.4], [45, 0.3], [46, 0.2], [47, 0.1], [48, 0.2], [49, 0.3], [50, 0.4], [51, 0.5], [52, 0.6], [53, 0.7], [54, 0.8], [55, 0.9], [56, 0.8], [57, 0.7], [58, 0.6], [59, 0.5], [60, 0.4], [61, 0.3], [62, 0.2], [63, 0.1], [64, 0.2], [65, 0.3], [66, 0.4], [67, 0.5], [68, 0.6], [69, 0.7], [70, 0.8], [71, 0.9], [72, 0.8], [73, 0.7], [74, 0.6], [75, 0.5], [76, 0.4], [77, 0.3], [78, 0.2], [79, 0.1], [80, 0.2], [81, 0.3], [82, 0.4], [83, 0.5], [84, 0.6], [85, 0.7], [86, 0.8], [87, 0.9], [88, 0.8], [89, 0.7], [90, 0.6], [91, 0.5], [92, 0.4], [93, 0.3], [94, 0.2], [95, 0.1], [96, 0.2], [97, 0.3], [98, 0.4], [99, 0.3]];
 
-        const video_name = "goal.mp4";
+        let video_name = "dynamic-scene-graph2.mp4";
 
         // Set the dimensions and margins of the plot
+        const MAX_PREDICTIONS = 5;
+        const RAY = 5;
         const width = 800;
         const height = 70;
         let scores = null;
+        let detections = null;
         
         // Create a scale for the x-axis
         const xScale = d3.scaleLinear()
@@ -170,14 +207,14 @@
             }).on("focus", function(){});
 
         // Append the grid lines
-        d3.select("g.axisy")
-            .selectAll("g.tick")
-            .append("line")
-            .attr("class", "grid-line")
-            .attr("x1", 0)
-            .attr("y1", 0)
-            .attr("x2", width)
-            .attr("y2", 0);
+        // d3.select("g.axisy")
+        //     .selectAll("g.tick")
+        //     .append("line")
+        //     .attr("class", "grid-line")
+        //     .attr("x1", 0)
+        //     .attr("y1", 0)
+        //     .attr("x2", width)
+        //     .attr("y2", 0);
 
 
         const server_url = 'http://localhost:8000'
@@ -238,12 +275,145 @@
 
 
                 console.log(body);
+
+                let which_query = document.getElementById("query-element");
+                which_query.innerHTML = inputValue;
+
+                let image = document.getElementById('imsearch-element');
+                image.src = '';
+
+
             } catch (error) {
                 console.error('Error loading search results:', error);
             }
-
-
         });
+
+
+        const odButton = document.getElementById("odButton");
+        odButton.addEventListener('click', async () => {
+            let video_name = document.getElementById("videoName").value;
+            const response = await fetch(`${server_url}/video/${video_name}`);
+            const body = await response.json();
+            console.log(body);
+
+            let img = 0;
+            let items = body['result'][img];
+
+            let img_path = video_name.split(".")[0]+`/${img}.png`;
+
+            console.log(img_path, items);
+            const imsearch_response = await fetch(
+                `${server_url}/search/image/${img_path}?xmin=${parseInt(items['xmin'])}&ymin=${parseInt(items['ymin'])}&xmax=${parseInt(items['xmax'])}&ymax=${parseInt(items['ymax'])}`);
+            
+                const imsearch_body = await imsearch_response.json();
+            console.log(imsearch_body);
+
+            let path = imsearch_body['path'];
+            let name = imsearch_body['name'];
+
+
+            const crop_response = await fetch(`${server_url}/image/${path}/${name}`);
+            const blob = await crop_response.blob();
+
+            const imageUrl = URL.createObjectURL(blob);
+
+            let which_query = document.getElementById("query-element");
+            which_query.innerHTML = '';
+
+            let image = document.getElementById('imsearch-element');
+            image.src = imageUrl;
+
+            
+            
+            detections = body;
+            let min_value = d3.min(body['result'], d => d[['timestamp']]);
+            let max_value = d3.max(body['result'], d => d[['timestamp']]);
+
+            console.log(min_value, max_value);
+
+            const new_yScale = d3.scaleLinear()
+                .domain([0, MAX_PREDICTIONS]) // Range from 0 to 1
+                .range([height, 0]); // Actual height of the axis
+
+            const new_yAxis = d3.axisLeft(new_yScale)
+                .ticks(5);
+
+            const new_xScale = d3.scaleLinear()
+                .domain([0, max_value]) // Range from 0 to 100
+                .range([0, width]); // Actual width of the axis
+
+
+            volatile_xScale = new_xScale;
+            
+            const new_xAxis = d3.axisBottom(new_xScale)        
+                .ticks(10); // Adjust the number of ticks as needed
+                                
+            d3.select("g.axis")
+                .transition()
+                .duration(2000)
+                .call(new_xAxis);
+            
+
+            d3.select("g.axisy")
+                .selectAll(".line")
+                .remove();
+
+            d3.select("g.axis")
+                .select('.axisy')   
+                .transition()
+                .duration(2000)     
+                .call(new_yAxis);
+
+
+            let processed_od_data = [];
+            let count_same = [];
+            let result = body['result'];
+
+            for( let i = 0; i < result.length; ++i ) {
+            
+                if( i > 0 && result[i-1]['timestamp'] != result[i]['timestamp'] ) {
+                    count_same = 0;
+                } 
+            
+                if( count_same == MAX_PREDICTIONS ) {
+                    count_same = 0;
+                    while( i < result.length && result[i-1]['timestamp'] == result[i]['timestamp'] ) {
+                        i++;
+                    }
+                    i--;
+                    continue;
+                }
+                
+                processed_od_data.push({
+                    'x': volatile_xScale(result[i]['timestamp']),
+                    'y': new_yScale(count_same),
+                    'c': result[i]['class'],
+                    'index': i
+                });
+                count_same += 1;
+            }
+
+            console.log(processed_od_data);
+
+
+            d3.select("g.axisy")
+                .selectAll(".od_item")
+                .data(processed_od_data)
+                .enter()
+                    .append("circle")
+                    .attr("class", "od_item")
+                    .attr("cx", d=>d['x'])
+                    .attr("cy", d=>d['y'])
+                    .attr("r", RAY/2)
+                    .attr("fill", "red")
+                    .on("focus", function(){})
+                    .on("click", function(d, i) {
+                        console.log(d, i);
+                    })
+
+            
+        });
+
     </script>
 </body>
 </html>

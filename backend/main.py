@@ -10,10 +10,12 @@ from clip import ImageClassification
 import cv2
 import time
 import numpy as np
-from torchvision.io import read_video
-from sklearn.metrics.pairwise import cosine_similarity
+
+from sklearn.preprocessing import LabelEncoder
 
 from tqdm import tqdm
+
+import pandas as pd
 
 app = FastAPI()
 
@@ -29,7 +31,7 @@ IMAGES_DIR = "images"
 VIDEOS_DIR = "videos"
 
 MODEL_NAME = "openai/clip-vit-base-patch16"
-SAMPLE_VIDEO_PATH = "videos/goal.mp4"
+SAMPLE_VIDEO_PATH = "videos/dynamic-scene-graph2.mp4"
 
 def video2images(video_path):
     output_path = video_path.replace(".mp4", "")
@@ -105,6 +107,20 @@ async def search(query: str):
     similarity_scores = compute_cosine_similarity(SAMPLE_VIDEO_PATH, query)
     return {"query": query, "scores": similarity_scores}
 
+@app.get("/search/image/{folder}/{image_path}")
+async def image_search(folder: str, image_path: str, xmin: int, xmax: int, ymin: int, ymax: int):
+
+    image = cv2.imread("videos/"+folder+"/"+image_path)
+    cropped_image = await crop_image(image, [xmin, ymin, xmax, ymax])
+    cv2.imwrite("images/search-image.png", cropped_image)
+
+    return {
+        "path": "images",
+        "name": "search-image.png"
+    }
+
+
+
 @app.get("/image/{filename}")
 async def get_image(filename: str):
 
@@ -119,9 +135,13 @@ async def get_image(filename: str):
 @app.get("/image/{prediction_path}/{filename}")
 async def get_image(prediction_path: str, filename: str):
 
-    img_path = os.path.join(VIDEOS_DIR, f"{prediction_path}").replace("\\","/")+f"/{filename}"
-    print(f">> {img_path}")
+    if prediction_path == "images":
+        img_path = f"images/{filename}"
+    else:
+        img_path = os.path.join(VIDEOS_DIR, f"{prediction_path}").replace("\\","/")+f"/{filename}"
     return FileResponse(img_path)
+
+
 
 
 @app.get("/video/{filename}")
@@ -134,8 +154,11 @@ async def get_video(filename: str):
         await annotate_video(video_path, output_path)
 
     paths = glob.glob(output_path+"/*.png")
+    result = pd.read_csv(output_path+"-output.csv")
+    result['timestamp'] = LabelEncoder().fit_transform(result['timestamp'].values) 
     return {
-        "frames": len(paths)
+        "frames": len(paths),
+        "result": result.to_dict(orient="records")
     }
 
 async def annotate_video(video_path, output_path):
@@ -145,8 +168,20 @@ async def annotate_video(video_path, output_path):
 
     detector = OD(capture_video=video_path, output_detection=output_path, 
                   output_results=output_path+"-output.csv", model_name="yolov5s.pt")
-    detector()
+    return detector()
 
 async def annotate_image(image_path):
     detector = OD(capture_video="", output_detection='', output_results="", model_name='yolov5s.pt')
     detector(image=image_path)
+
+
+async def crop_image(image, bbox):
+    x_min, y_min, x_max, y_max = bbox
+    x_min, y_min, x_max, y_max = int(x_min), int(y_min), int(x_max), int(y_max)
+    cropped_image = image[y_min:y_max, x_min:x_max]
+    
+    return cropped_image
+
+
+
+

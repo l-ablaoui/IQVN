@@ -31,7 +31,10 @@ IMAGES_DIR = "images"
 VIDEOS_DIR = "videos"
 
 MODEL_NAME = "openai/clip-vit-base-patch16"
-SAMPLE_VIDEO_PATH = "videos/dynamic-scene-graph2.mp4"
+SAMPLE_VIDEO_PATH = "videos/sample-video.mp4"
+
+IMAGE_CROP_QUERY = "<image-loaded>"
+OUTPUT_CROP_IMAGE = "images/search-image.png"
 
 def video2images(video_path):
     output_path = video_path.replace(".mp4", "")
@@ -86,7 +89,14 @@ def compute_cosine_similarity(video_path, query_text):
                 np.save(output_path+f"/embedding_{i}.npy", embeddings[i])
                 pbar.update(1)
 
-    query_embedding = classifier.get_text_features(query_text)
+    if query_text == IMAGE_CROP_QUERY:
+
+        print("reading image and computing features")
+        query_img = cv2.imread(OUTPUT_CROP_IMAGE)
+        query_embedding = classifier.get_image_features(query_img)
+    else:
+        query_embedding = classifier.get_text_features(query_text)
+    print("query_shape:", query_embedding.shape)
     index = 0
     while True:
         if not os.path.exists(f"{output_path}/embedding_{index}.npy"):
@@ -104,6 +114,7 @@ def compute_cosine_similarity(video_path, query_text):
 
 @app.get("/search")
 async def search(query: str):
+
     similarity_scores = compute_cosine_similarity(SAMPLE_VIDEO_PATH, query)
     return {"query": query, "scores": similarity_scores}
 
@@ -111,8 +122,11 @@ async def search(query: str):
 async def image_search(folder: str, image_path: str, xmin: int, xmax: int, ymin: int, ymax: int):
 
     image = cv2.imread("videos/"+folder+"/"+image_path)
+    
+
+
     cropped_image = await crop_image(image, [xmin, ymin, xmax, ymax])
-    cv2.imwrite("images/search-image.png", cropped_image)
+    cv2.imwrite(OUTPUT_CROP_IMAGE, cropped_image)
 
     return {
         "path": "images",
@@ -155,7 +169,8 @@ async def get_video(filename: str):
 
     paths = glob.glob(output_path+"/*.png")
     result = pd.read_csv(output_path+"-output.csv")
-    result['timestamp'] = LabelEncoder().fit_transform(result['timestamp'].values) 
+    result['timestamp'] = LabelEncoder().fit_transform(result['timestamp'].values)
+    result['class'] = LabelEncoder().fit_transform(result['name'].values) 
     return {
         "frames": len(paths),
         "result": result.to_dict(orient="records")

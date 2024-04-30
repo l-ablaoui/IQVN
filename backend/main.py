@@ -1,5 +1,6 @@
 from fastapi import FastAPI, File, UploadFile
-from fastapi.responses import FileResponse
+from fastapi.exceptions import HTTPException
+from fastapi.responses import FileResponse, JSONResponse
 import os
 from fastapi.middleware.cors import CORSMiddleware
 
@@ -10,10 +11,13 @@ from clip import ImageClassification
 import cv2
 import time
 import numpy as np
-from torchvision.io import read_video
-from sklearn.metrics.pairwise import cosine_similarity
+import base64
+
+from sklearn.preprocessing import LabelEncoder
 
 from tqdm import tqdm
+
+import pandas as pd
 
 app = FastAPI()
 
@@ -29,7 +33,10 @@ IMAGES_DIR = "images"
 VIDEOS_DIR = "videos"
 
 MODEL_NAME = "openai/clip-vit-base-patch16"
-SAMPLE_VIDEO_PATH = "videos/goal.mp4"
+SAMPLE_VIDEO_PATH = "videos/sample-video-2.mp4"
+
+IMAGE_CROP_QUERY = "<image-loaded>"
+OUTPUT_CROP_IMAGE = "images/search-image.png"
 
 def video2images(video_path):
     output_path = video_path.replace(".mp4", "")
@@ -84,7 +91,14 @@ def compute_cosine_similarity(video_path, query_text):
                 np.save(output_path+f"/embedding_{i}.npy", embeddings[i])
                 pbar.update(1)
 
-    query_embedding = classifier.get_text_features(query_text)
+    if query_text == IMAGE_CROP_QUERY:
+
+        print("reading image and computing features")
+        query_img = cv2.imread(OUTPUT_CROP_IMAGE)
+        query_embedding = classifier.get_image_features(query_img)
+    else:
+        query_embedding = classifier.get_text_features(query_text)
+    print("query_shape:", query_embedding.shape)
     index = 0
     while True:
         if not os.path.exists(f"{output_path}/embedding_{index}.npy"):
@@ -102,8 +116,26 @@ def compute_cosine_similarity(video_path, query_text):
 
 @app.get("/search")
 async def search(query: str):
+
     similarity_scores = compute_cosine_similarity(SAMPLE_VIDEO_PATH, query)
     return {"query": query, "scores": similarity_scores}
+
+@app.get("/search/image/{folder}/{image_path}")
+async def image_search(folder: str, image_path: str, xmin: int, xmax: int, ymin: int, ymax: int):
+
+    image = cv2.imread("videos/"+folder+"/"+image_path)
+    
+
+
+    cropped_image = await crop_image(image, [xmin, ymin, xmax, ymax])
+    cv2.imwrite(OUTPUT_CROP_IMAGE, cropped_image)
+
+    return {
+        "path": "images",
+        "name": "search-image.png"
+    }
+
+
 
 @app.get("/image/{filename}")
 async def get_image(filename: str):
@@ -119,9 +151,32 @@ async def get_image(filename: str):
 @app.get("/image/{prediction_path}/{filename}")
 async def get_image(prediction_path: str, filename: str):
 
-    img_path = os.path.join(VIDEOS_DIR, f"{prediction_path}").replace("\\","/")+f"/{filename}"
-    print(f">> {img_path}")
+    if prediction_path == "images":
+        img_path = f"images/{filename}"
+    else:
+        img_path = os.path.join(VIDEOS_DIR, f"{prediction_path}").replace("\\","/")+f"/{filename}"
     return FileResponse(img_path)
+
+@app.post("/upload_png/")
+async def upload_png(image_data: dict):
+    data_url = image_data.get('image_data', '')
+    
+    image_data_str = data_url.split(",")[1]
+    
+    image_bytes = base64.b64decode(image_data_str)
+    
+    image_array = np.frombuffer(image_bytes, dtype=np.uint8)
+    
+    img = cv2.imdecode(image_array, cv2.IMREAD_COLOR)
+    
+    print("Image shape:", img.shape)
+
+    cv2.imwrite(OUTPUT_CROP_IMAGE, img)
+
+    similarity_scores = compute_cosine_similarity(SAMPLE_VIDEO_PATH, IMAGE_CROP_QUERY)
+    return {"query": IMAGE_CROP_QUERY, "scores": similarity_scores}
+
+
 
 
 @app.get("/video/{filename}")
@@ -134,8 +189,12 @@ async def get_video(filename: str):
         await annotate_video(video_path, output_path)
 
     paths = glob.glob(output_path+"/*.png")
+    result = pd.read_csv(output_path+"-output.csv")
+    result['timestamp'] = LabelEncoder().fit_transform(result['timestamp'].values)
+    result['class'] = LabelEncoder().fit_transform(result['name'].values) 
     return {
-        "frames": len(paths)
+        "frames": len(paths),
+        "result": result.to_dict(orient="records")
     }
 
 async def annotate_video(video_path, output_path):
@@ -145,8 +204,20 @@ async def annotate_video(video_path, output_path):
 
     detector = OD(capture_video=video_path, output_detection=output_path, 
                   output_results=output_path+"-output.csv", model_name="yolov5s.pt")
-    detector()
+    return detector()
 
 async def annotate_image(image_path):
     detector = OD(capture_video="", output_detection='', output_results="", model_name='yolov5s.pt')
     detector(image=image_path)
+
+
+async def crop_image(image, bbox):
+    x_min, y_min, x_max, y_max = bbox
+    x_min, y_min, x_max, y_max = int(x_min), int(y_min), int(x_max), int(y_max)
+    cropped_image = image[y_min:y_max, x_min:x_max]
+    
+    return cropped_image
+
+
+
+

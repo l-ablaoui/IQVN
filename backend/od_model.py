@@ -120,8 +120,12 @@ class OD:
             ret, frame = cap.read()
             if not ret:
                 break
+
+            print("from:", frame.shape[1], frame.shape[0])
             
             frame = cv2.resize(frame, (width, height))
+
+            print("to:", frame.shape[1], frame.shape[0])
             
             start_time = time()
             results = self.score_frame(frame)
@@ -129,7 +133,11 @@ class OD:
             
             end_time = time()
             fps = 1/np.round(end_time - start_time, 2)
-            print(f"Frames Per Second : {fps}")
+            if frame_number % 100 == 0:
+                print(f"Frames Per Second : {fps}")
+                print(f"results")
+                print(results)
+                print("\n")
 
             if not save_video:
                 cv2.imwrite(self.output_detection+f"/{frame_number}.png", frame)

@@ -8,7 +8,7 @@ var ctx1 = canvas1.getContext("2d");
 
 const image = new Image();
 image.onload = draw; // Draw when image has loaded
-image.src = "flower.png";
+image.src = "sample.png";
 
 
 canvas.addEventListener("mousedown", onPointerDown);
@@ -122,14 +122,17 @@ function draw() {
   //Clear the background
   ctx1.fillStyle = "white";
   // ctx1.fillRect(0, 0, canvas1.width, canvas1.height);
-  ctx1.fillRect(0, 0, canvas1.width, canvas1.height);
+  ctx1.fillRect(0, 0, (pointBottomRight.x - pointTopLeft.x), (pointBottomRight.y - pointTopLeft.y));
 
 
   //Compute the ration between the canvas and the image, the draw image operate in the image coordinate system but draw in the canvas coordinate system
   var rationX = image.width / canvas.width;
   var rationY = image.height / canvas.height;
+  canvas1.width = parseInt(pointBottomRight.x - pointTopLeft.x);
+  canvas1.height = parseInt(pointBottomRight.y - pointTopLeft.y);
   ctx1.drawImage(image, pointTopLeft.x * rationX, pointTopLeft.y * rationY, (pointBottomRight.x - pointTopLeft.x) * rationX, (pointBottomRight.y - pointTopLeft.y) * rationY,
     0, 0, (pointBottomRight.x - pointTopLeft.x), (pointBottomRight.y - pointTopLeft.y));
+  
 
 }
 
@@ -138,4 +141,164 @@ function fillCircle(point, radius) {
   ctx.ellipse(point.x, point.y, radius, radius, 0, 0, 2 * Math.PI);
   ctx.fill();
 }
+
+
+const searchButton = document.getElementById("searchButton");
+    searchButton.addEventListener('click', async () => {
+
+        try {
+            let inputValue = document.getElementById("queryInput").value.trim();
+
+            let url = null;
+            let data_send = null;
+
+            if( inputValue == '' ) {
+              const dataURL = canvas1.toDataURL('image/png');
+              const response = await fetch(`${server_url}/upload_png/`, {method: 'POST', body: JSON.stringify({ image_data: dataURL }), headers: {'Content-Type': 'application/json'}});
+              const body = await response.json();
+
+
+
+
+
+
+              
+              console.log(body);
+
+              d3.select("g.axisy")
+                  .selectAll(".od_item")
+                  .remove();
+
+              scores = body;
+              let min_value = d3.min(body['scores'], d => d[1]);
+              let max_value = d3.max(body['scores'], d => d[1]);
+
+              console.log(min_value, max_value);
+
+              const new_yScale = d3.scaleLinear()
+                  .domain([min_value, max_value]) // Range from 0 to 1
+                  .range([height, 0]); // Actual height of the axis
+
+              const new_yAxis = d3.axisLeft(new_yScale)
+                  .ticks(5);
+
+              const new_xScale = d3.scaleLinear()
+                  .domain([0, body['scores'].length]) // Range from 0 to 100
+                  .range([0, width]); // Actual width of the axis
+
+
+              volatile_xScale = new_xScale;
+              
+              const new_xAxis = d3.axisBottom(new_xScale)        
+                  .ticks(10); // Adjust the number of ticks as needed
+                                  
+              d3.select("g.axis")
+                  .transition()
+                  .duration(2000)
+                  .call(new_xAxis);
+
+              d3.select("g.axisy")
+                  .selectAll(".line")
+                  .remove();
+              
+              d3.select("g.axisy")
+                  .append("path")
+                  .datum(body['scores'])
+                  .transition()
+                  .duration(2000)
+                  .attr("d", d3.line()
+                      .x(function(d) { return new_xScale(d[0]); })
+                      .y(function(d) { return new_yScale(d[1]); })
+                  ).attr("class", "line");
+
+              d3.select("g.axis")
+                  .select('.axisy')   
+                  .transition()
+                  .duration(2000)     
+                  .call(new_yAxis);
+
+
+              console.log(body);
+
+              let which_query = document.getElementById("query-element");
+              which_query.innerHTML = inputValue;
+
+              let image = document.getElementById('imsearch-element');
+              image.src = '';
+              
+              
+
+            } else {
+              const response = await fetch(`${server_url}/search?query=${inputValue}`);
+              const body = await response.json();
+              console.log(body);
+
+              d3.select("g.axisy")
+                  .selectAll(".od_item")
+                  .remove();
+
+              scores = body;
+              let min_value = d3.min(body['scores'], d => d[1]);
+              let max_value = d3.max(body['scores'], d => d[1]);
+
+              console.log(min_value, max_value);
+
+              const new_yScale = d3.scaleLinear()
+                  .domain([min_value, max_value]) // Range from 0 to 1
+                  .range([height, 0]); // Actual height of the axis
+
+              const new_yAxis = d3.axisLeft(new_yScale)
+                  .ticks(5);
+
+              const new_xScale = d3.scaleLinear()
+                  .domain([0, body['scores'].length]) // Range from 0 to 100
+                  .range([0, width]); // Actual width of the axis
+
+
+              volatile_xScale = new_xScale;
+              
+              const new_xAxis = d3.axisBottom(new_xScale)        
+                  .ticks(10); // Adjust the number of ticks as needed
+                                  
+              d3.select("g.axis")
+                  .transition()
+                  .duration(2000)
+                  .call(new_xAxis);
+
+              d3.select("g.axisy")
+                  .selectAll(".line")
+                  .remove();
+              
+              d3.select("g.axisy")
+                  .append("path")
+                  .datum(body['scores'])
+                  .transition()
+                  .duration(2000)
+                  .attr("d", d3.line()
+                      .x(function(d) { return new_xScale(d[0]); })
+                      .y(function(d) { return new_yScale(d[1]); })
+                  ).attr("class", "line");
+
+              d3.select("g.axis")
+                  .select('.axisy')   
+                  .transition()
+                  .duration(2000)     
+                  .call(new_yAxis);
+
+
+              console.log(body);
+
+              let which_query = document.getElementById("query-element");
+              which_query.innerHTML = inputValue;
+
+              let image = document.getElementById('imsearch-element');
+              image.src = '';
+            }
+            
+
+
+        } catch (error) {
+            console.error('Error loading search results:', error);
+        }
+    });
 

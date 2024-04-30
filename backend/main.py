@@ -1,5 +1,6 @@
 from fastapi import FastAPI, File, UploadFile
-from fastapi.responses import FileResponse
+from fastapi.exceptions import HTTPException
+from fastapi.responses import FileResponse, JSONResponse
 import os
 from fastapi.middleware.cors import CORSMiddleware
 
@@ -10,6 +11,7 @@ from clip import ImageClassification
 import cv2
 import time
 import numpy as np
+import base64
 
 from sklearn.preprocessing import LabelEncoder
 
@@ -31,7 +33,7 @@ IMAGES_DIR = "images"
 VIDEOS_DIR = "videos"
 
 MODEL_NAME = "openai/clip-vit-base-patch16"
-SAMPLE_VIDEO_PATH = "videos/sample-video.mp4"
+SAMPLE_VIDEO_PATH = "videos/sample-video-2.mp4"
 
 IMAGE_CROP_QUERY = "<image-loaded>"
 OUTPUT_CROP_IMAGE = "images/search-image.png"
@@ -154,6 +156,25 @@ async def get_image(prediction_path: str, filename: str):
     else:
         img_path = os.path.join(VIDEOS_DIR, f"{prediction_path}").replace("\\","/")+f"/{filename}"
     return FileResponse(img_path)
+
+@app.post("/upload_png/")
+async def upload_png(image_data: dict):
+    data_url = image_data.get('image_data', '')
+    
+    image_data_str = data_url.split(",")[1]
+    
+    image_bytes = base64.b64decode(image_data_str)
+    
+    image_array = np.frombuffer(image_bytes, dtype=np.uint8)
+    
+    img = cv2.imdecode(image_array, cv2.IMREAD_COLOR)
+    
+    print("Image shape:", img.shape)
+
+    cv2.imwrite(OUTPUT_CROP_IMAGE, img)
+
+    similarity_scores = compute_cosine_similarity(SAMPLE_VIDEO_PATH, IMAGE_CROP_QUERY)
+    return {"query": IMAGE_CROP_QUERY, "scores": similarity_scores}
 
 
 

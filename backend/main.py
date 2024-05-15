@@ -33,7 +33,7 @@ IMAGES_DIR = "images"
 VIDEOS_DIR = "videos"
 
 MODEL_NAME = "openai/clip-vit-base-patch16"
-SAMPLE_VIDEO_PATH = "videos/sample-video-2.mp4"
+SAMPLE_VIDEO_PATH = "../../data/charades/Charades_v1_480/Y6R7T.mp4"
 
 IMAGE_CROP_QUERY = "<image-loaded>"
 OUTPUT_CROP_IMAGE = "images/search-image.png"
@@ -64,8 +64,8 @@ def video2images(video_path):
 
     cap.release()
         
-
-def compute_cosine_similarity(video_path, query_text):    
+        
+def compute_cosine_similarity(video_path, query_text, reduction = False):    
     output_path = video_path.replace(".mp4", "")
     if not os.path.exists(output_path):
         os.mkdir(output_path)
@@ -78,6 +78,7 @@ def compute_cosine_similarity(video_path, query_text):
 
     print("output_path:", output_path)
 
+    video_features = []
     similarity_scores = []
 
     tic = time.time()
@@ -105,6 +106,8 @@ def compute_cosine_similarity(video_path, query_text):
             break
         
         frame_features = np.load(f"{output_path}/embedding_{index}.npy")
+        if reduction:
+            video_features.append(frame_features)
         similarity = classifier.cosine_similarity(frame_features, query_embedding)
         similarity_scores.append([index, similarity.item()])
 
@@ -112,21 +115,28 @@ def compute_cosine_similarity(video_path, query_text):
 
     toc = time.time() 
     print(f"done in {(toc-tic):.2f} seconds...")
-    return similarity_scores
+
+    if reduction:
+        return similarity_scores, classifier.tsne_reduction(np.array(video_features))
+    else:
+        return similarity_scores
+
+
+def tsne_reduction(video_path):
+    classifier = ImageClassification(video_path, MODEL_NAME)
+    classifier()
+    return classifier.tsne_reduction()
+
 
 @app.get("/search")
 async def search(query: str):
+    similarity_scores, tsne = compute_cosine_similarity(SAMPLE_VIDEO_PATH, query, True)
+    return {"query": query, "scores": similarity_scores, "tsne": [{'x': float(tsne[i, 0]), 'y': float(tsne[i, 1])} for i in range(len(tsne))]}  # add tsne scores
 
-    similarity_scores = compute_cosine_similarity(SAMPLE_VIDEO_PATH, query)
-    return {"query": query, "scores": similarity_scores}
 
 @app.get("/search/image/{folder}/{image_path}")
 async def image_search(folder: str, image_path: str, xmin: int, xmax: int, ymin: int, ymax: int):
-
     image = cv2.imread("videos/"+folder+"/"+image_path)
-    
-
-
     cropped_image = await crop_image(image, [xmin, ymin, xmax, ymax])
     cv2.imwrite(OUTPUT_CROP_IMAGE, cropped_image)
 
@@ -136,10 +146,8 @@ async def image_search(folder: str, image_path: str, xmin: int, xmax: int, ymin:
     }
 
 
-
 @app.get("/image/{filename}")
 async def get_image(filename: str):
-
     image_path = os.path.join(IMAGES_DIR, filename).replace("\\","/")
     output_path = os.path.join(IMAGES_DIR, "annotated-"+filename).replace("\\","/")
 
@@ -148,35 +156,30 @@ async def get_image(filename: str):
 
     return FileResponse(output_path)
 
+
 @app.get("/image/{prediction_path}/{filename}")
 async def get_image(prediction_path: str, filename: str):
-
     if prediction_path == "images":
         img_path = f"images/{filename}"
     else:
         img_path = os.path.join(VIDEOS_DIR, f"{prediction_path}").replace("\\","/")+f"/{filename}"
     return FileResponse(img_path)
 
+
 @app.post("/upload_png/")
 async def upload_png(image_data: dict):
     data_url = image_data.get('image_data', '')
     
     image_data_str = data_url.split(",")[1]
-    
     image_bytes = base64.b64decode(image_data_str)
-    
     image_array = np.frombuffer(image_bytes, dtype=np.uint8)
-    
     img = cv2.imdecode(image_array, cv2.IMREAD_COLOR)
-    
-    print("Image shape:", img.shape)
 
     cv2.imwrite(OUTPUT_CROP_IMAGE, img)
 
     similarity_scores = compute_cosine_similarity(SAMPLE_VIDEO_PATH, IMAGE_CROP_QUERY)
-    return {"query": IMAGE_CROP_QUERY, "scores": similarity_scores}
-
-
+    tsne = tsne_reduction(SAMPLE_VIDEO_PATH)
+    return {"query": IMAGE_CROP_QUERY, "scores": similarity_scores, "tsne": [{'x': float(tsne[i, 0]), 'y': float(tsne[i, 1])} for i in range(len(tsne))]}
 
 
 @app.get("/video/{filename}")
@@ -197,14 +200,15 @@ async def get_video(filename: str):
         "result": result.to_dict(orient="records")
     }
 
+
 async def annotate_video(video_path, output_path):
-    
     if not os.path.exists(output_path):
         os.mkdir(output_path)
 
     detector = OD(capture_video=video_path, output_detection=output_path, 
                   output_results=output_path+"-output.csv", model_name="yolov5s.pt")
     return detector()
+
 
 async def annotate_image(image_path):
     detector = OD(capture_video="", output_detection='', output_results="", model_name='yolov5s.pt')
@@ -217,7 +221,3 @@ async def crop_image(image, bbox):
     cropped_image = image[y_min:y_max, x_min:x_max]
     
     return cropped_image
-
-
-
-

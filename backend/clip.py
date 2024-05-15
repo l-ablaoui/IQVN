@@ -16,6 +16,7 @@ class ImageClassification:
         self.image_embeddings = None 
         self.text_embeddings = None 
         self.scores = None
+        self.reduction = None
 
         #model loading
         self.clip_preprocessor = CLIPProcessor.from_pretrained(clip_checkpoint)
@@ -57,7 +58,6 @@ class ImageClassification:
     
     def cosine_similarity(self, embeds1, embeds2):
         # Reshape 1D arrays to 2D if necessary
-        print(embeds1.shape, embeds2.shape)
         if embeds1.ndim == 1:
             embeds1 = embeds1.reshape(1, -1)
         if embeds2.ndim == 1:
@@ -74,9 +74,18 @@ class ImageClassification:
         cosine_similarity = dot_product / (norm_x * norm_y.T)
 
         return cosine_similarity
-    
+
+    def tsne_reduction(self, embeddings, random_state=0, n_iter=1000, metric="cosine"):
+        from sklearn.manifold import TSNE
+        tsne = TSNE(random_state = random_state, n_iter = n_iter, metric = metric)
+
+        return tsne.fit_transform(embeddings)
+     
+
     def __call__(self, images=None, texts=None):
         self.video_embeddings = self.get_video_features()
+        self.reduction = self.reduction(self.video_embeddings)
+
         image_cosine = None
         text_cosine = None
 
@@ -92,4 +101,3 @@ class ImageClassification:
                 self.scores = text_cosine 
             else:
                 self.scores = np.concatenate(self.scores, text_cosine, axis = 0)
-        

@@ -9,9 +9,7 @@ video.addEventListener("mouseup", onPointerUp);
 video.addEventListener("mousemove", onPointerMove);
 
 state = "idle";
-var pointTopLeft = { x: 10, y: 10 };
-var pointBottomRight = { x: Math.max(20, video.width / 4), y: Math.max(20, video.height / 4) };
-var center = { x: (pointTopLeft.x + pointBottomRight.x) / 2, y: (pointTopLeft.y + pointBottomRight.y) / 2 };
+var center = { x: (window.cropTopLeft.x + window.cropBotRight.x) / 2, y: (window.cropTopLeft.y + window.cropBotRight.y) / 2 };
 var mouseDown = center;
 
 function getEventLocation(e) {
@@ -28,12 +26,12 @@ function length2(p1, p2) {
 function onPointerDown(e) {
   mouseDown = getEventLocation(e);
   //Get the closest point
-  let dP1 = length2(mouseDown, pointTopLeft);
-  let dP2 = length2(mouseDown, pointBottomRight);
+  let dP1 = length2(mouseDown, window.cropTopLeft);
+  let dP2 = length2(mouseDown, window.cropBotRight);
   let dC = length2(mouseDown, center);
 
-  let dPTopRight = length2(mouseDown, { x: pointBottomRight.x, y: pointTopLeft.y });
-  let dPBottomLeft = length2(mouseDown, { x: pointTopLeft.x, y: pointBottomRight.y });
+  let dPTopRight = length2(mouseDown, { x: window.cropBotRight.x, y: window.cropTopLeft.y });
+  let dPBottomLeft = length2(mouseDown, { x: window.cropTopLeft.x, y: window.cropBotRight.y });
 
   let list = [dP1, dP2, dC, dPTopRight, dPBottomLeft];
   //sort the list
@@ -55,27 +53,27 @@ function onPointerMove(e) {
   };
   switch (state) {
     case "dP1":
-      pointTopLeft = { x: pointTopLeft.x + delta.x, y: pointTopLeft.y + delta.y };
+      window.cropTopLeft = { x: window.cropTopLeft.x + delta.x, y: window.cropTopLeft.y + delta.y };
       break;
     case "dP2":
-      pointBottomRight = { x: pointBottomRight.x + delta.x, y: pointBottomRight.y + delta.y };
+      window.cropBotRight = { x: window.cropBotRight.x + delta.x, y: window.cropBotRight.y + delta.y };
       break;
     case "dC":
-      pointTopLeft = { x: pointTopLeft.x + delta.x, y: pointTopLeft.y + delta.y };
-      pointBottomRight = { x: pointBottomRight.x + delta.x, y: pointBottomRight.y + delta.y };
+      window.cropTopLeft = { x: window.cropTopLeft.x + delta.x, y: window.cropTopLeft.y + delta.y };
+      window.cropBotRight = { x: window.cropBotRight.x + delta.x, y: window.cropBotRight.y + delta.y };
       break;
 
     case "dCTR":
-      pointTopLeft = { x: pointTopLeft.x, y: pointTopLeft.y + delta.y };
-      pointBottomRight = { x: pointBottomRight.x + delta.x, y: pointBottomRight.y };
+      window.cropTopLeft = { x: window.cropTopLeft.x, y: window.cropTopLeft.y + delta.y };
+      window.cropBotRight = { x: window.cropBotRight.x + delta.x, y: window.cropBotRight.y };
       break;
 
     case "dCBL":
-      pointTopLeft = { x: pointTopLeft.x + delta.x, y: pointTopLeft.y };
-      pointBottomRight = { x: pointBottomRight.x, y: pointBottomRight.y + delta.y };
+      window.cropTopLeft = { x: window.cropTopLeft.x + delta.x, y: window.cropTopLeft.y };
+      window.cropBotRight = { x: window.cropBotRight.x, y: window.cropBotRight.y + delta.y };
       break;
   }
-  center = { x: (pointTopLeft.x + pointBottomRight.x) / 2, y: (pointTopLeft.y + pointBottomRight.y) / 2 };
+  center = { x: (window.cropTopLeft.x + window.cropBotRight.x) / 2, y: (window.cropTopLeft.y + window.cropBotRight.y) / 2 };
   mouseDown = mousePosition;
   draw();
 }
@@ -103,17 +101,17 @@ function draw() {
 
  //Draw the points for the corners of the square
   ctx.fillStyle = "rgba(100,200,255,1)";
-  fillCircle(pointTopLeft, 5);
-  fillCircle(pointBottomRight, 5);
-  fillCircle({ x: pointBottomRight.x, y: pointTopLeft.y }, 5);
-  fillCircle({ x: pointTopLeft.x, y: pointBottomRight.y }, 5);
+  fillCircle(window.cropTopLeft, 5);
+  fillCircle(window.cropBotRight, 5);
+  fillCircle({ x: window.cropBotRight.x, y: window.cropTopLeft.y }, 5);
+  fillCircle({ x: window.cropTopLeft.x, y: window.cropBotRight.y }, 5);
 
   //Draw the selection rectangle
   ctx.fillStyle = "rgba(100,200,255,0.3)";
-  ctx.fillRect(pointTopLeft.x, pointTopLeft.y, pointBottomRight.x - pointTopLeft.x, pointBottomRight.y - pointTopLeft.y);
+  ctx.fillRect(window.cropTopLeft.x, window.cropTopLeft.y, window.cropBotRight.x - window.cropTopLeft.x, window.cropBotRight.y - window.cropTopLeft.y);
 
   ctx.strokeStyle = "rgba(100,200,255,1)";
-  ctx.rect(pointTopLeft.x, pointTopLeft.y, pointBottomRight.x - pointTopLeft.x, pointBottomRight.y - pointTopLeft.y);
+  ctx.rect(window.cropTopLeft.x, window.cropTopLeft.y, window.cropBotRight.x - window.cropTopLeft.x, window.cropBotRight.y - window.cropTopLeft.y);
   ctx.stroke();
 
   /*drawing the lil cropped image on the bottom */
@@ -121,16 +119,16 @@ function draw() {
   //Clear the background
   ctx_cropped.fillStyle = "white";
   // ctx_cropped.fillRect(0, 0, cropped.width, cropped.height);
-  ctx_cropped.fillRect(0, 0, (pointBottomRight.x - pointTopLeft.x), (pointBottomRight.y - pointTopLeft.y));
+  ctx_cropped.fillRect(0, 0, (window.cropBotRight.x - window.cropTopLeft.x), (window.cropBotRight.y - window.cropTopLeft.y));
 
 
   //Compute the ratio between the container and the actual image, then draw image operate in the image coordinate system but draw in the video coordinate system
   var rationX = window.current_frame.width / video.width;
   var rationY = window.current_frame.height / video.height;
-  cropped.width = parseInt(pointBottomRight.x - pointTopLeft.x);
-  cropped.height = parseInt(pointBottomRight.y - pointTopLeft.y);
-  ctx_cropped.drawImage(window.current_frame, pointTopLeft.x * rationX, pointTopLeft.y * rationY, (pointBottomRight.x - pointTopLeft.x) * rationX, (pointBottomRight.y - pointTopLeft.y) * rationY,
-    0, 0, (pointBottomRight.x - pointTopLeft.x), (pointBottomRight.y - pointTopLeft.y));
+  cropped.width = parseInt(window.cropBotRight.x - window.cropTopLeft.x);
+  cropped.height = parseInt(window.cropBotRight.y - window.cropTopLeft.y);
+  ctx_cropped.drawImage(window.current_frame, window.cropTopLeft.x * rationX, window.cropTopLeft.y * rationY, (window.cropBotRight.x - window.cropTopLeft.x) * rationX, (window.cropBotRight.y - window.cropTopLeft.y) * rationY,
+    0, 0, (window.cropBotRight.x - window.cropTopLeft.x), (window.cropBotRight.y - window.cropTopLeft.y));
 }
 
 function fillCircle(point, radius) {

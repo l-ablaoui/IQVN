@@ -32,7 +32,7 @@
             <label class="row">Outputs:</label>
             <input type="button" id="toggleObj" value="Detected objects" class="btn btn-info"/>
             <div class="row" id="objDiv">
-                <canvas id="objPlot" width="500px" height="400px" ></canvas>
+                <canvas id="objPlot" width="500px" height="300px" ></canvas>
             </div>
             <input type="button" id="toggleScores" value="Similarity scores chart" class="btn btn-info"/>
             <div class="row" id="scoreDiv">
@@ -48,6 +48,8 @@
 
 <script type='text/javascript' > 
     window.current_frame = new Image();
+    window.cropTopLeft = { x: 10, y: 10 };
+    window.cropBotRight = { x: 40, y: 40 };
 </script>
 <script>
     /*variables declaration*/
@@ -173,7 +175,7 @@
             ctx.lineTo(x, y);
         }
 
-        ctx.strokeStyle = "blue";
+        ctx.strokeStyle = "gray";
         ctx.lineWidth = 1;
         ctx.stroke();
 
@@ -237,8 +239,15 @@
         }
 
         //for each timestamp, draw circles on the level of the object label
+        var currentFrameObjIndex = -1;
         for (var k = 0; k < objs["results"].length; ++k) {
-            objects = objs["results"][k];
+            var objects = objs["results"][k];
+
+            //draw current frame dots last to stand out
+            if (objects[0]["timestamp"] == currentIndex) { 
+                currentFrameObjIndex = k;
+                continue; 
+            }
             for (var i = 0;i < objects.length;++i) {
                 //xpos reflects the timestamp
                 timestamp = objects[i]["timestamp"];
@@ -253,8 +262,33 @@
                 const y = plotHeight - offsetY - (j / objs["classes"].length) * (plotHeight - offsetY * 2);
 
                 //draw circle
-                dotColor = (timestamp == currentIndex)? "red" : "blue";
+                dotColor = (timestamp == currentIndex)? "darkcyan" : "gray";
                 dotRadius = (timestamp == currentIndex)? 4 : 2;
+                ctx.beginPath();
+                ctx.moveTo(x - dotRadius, y - dotRadius);
+                ctx.arc(x, y, dotRadius, 0, Math.PI * 2, true);
+                ctx.strokeStyle = dotColor;
+                ctx.fill();
+                ctx.stroke();
+            }
+        }
+
+        //current frame dots drawing (if any)
+        if (currentFrameObjIndex != -1) {
+            var objects = objs["results"][currentFrameObjIndex];
+            console.log(objects, currentFrameObjIndex);
+            for (var i = 0; i < objects.length;++i) {
+                const x = offsetX + (currentIndex / objs["maxTime"]) * (plotWidth - 2 * offsetX);
+
+                label = objects[i]["label"];
+                var j = 0;
+                for (;j < objs["classes"].length; ++j) {
+                    if (label == objs["classes"][j]["index"]) { break; }
+                } 
+                const y = plotHeight - offsetY - (j / objs["classes"].length) * (plotHeight - offsetY * 2);
+
+                dotColor = "dodgerblue";
+                dotRadius = 4;
                 ctx.beginPath();
                 ctx.moveTo(x - dotRadius, y - dotRadius);
                 ctx.arc(x, y, dotRadius, 0, Math.PI * 2, true);
@@ -298,11 +332,13 @@
         
         //draw the points (square shaped for now)
         for (i = 0;i < tsne_reduction.length;++i) {
+            //draw current frame marker last to stand out
+            if (i == currentIndex) { continue; }
             x = offsetX + (tsne_reduction[i]['x'] - min_x) / (max_x - min_x) * (plotWidth - 2 * offsetX);
             y = plotHeight - offsetY - (tsne_reduction[i]['y'] - min_y) / (max_y - min_y) * (plotHeight - 2 * offsetY);
 
-            dotColor = (i == currentIndex)? "red" : "blue";
-            dotRadius = (i == currentIndex)? 4 : 2;
+            dotColor = "gray";
+            dotRadius = 2;
             ctx.beginPath();
             ctx.moveTo(x - dotRadius, y - dotRadius);
             ctx.arc(x, y, dotRadius, 0, Math.PI * 2, true);
@@ -310,6 +346,18 @@
             ctx.fill();
             ctx.stroke();
         }
+
+        x = offsetX + (tsne_reduction[currentIndex]['x'] - min_x) / (max_x - min_x) * (plotWidth - 2 * offsetX);
+        y = plotHeight - offsetY - (tsne_reduction[currentIndex]['y'] - min_y) / (max_y - min_y) * (plotHeight - 2 * offsetY);
+
+        dotColor = "dodgerblue";
+        dotRadius = 4;
+        ctx.beginPath();
+        ctx.moveTo(x - dotRadius, y - dotRadius);
+        ctx.arc(x, y, dotRadius, 0, Math.PI * 2, true);
+        ctx.strokeStyle = dotColor;
+        ctx.fill();
+        ctx.stroke();
     }
 
     // Update score curve and vertical line position
@@ -451,7 +499,7 @@
     //video) and expecting an array of scores plus a reduction array from the server
     searchImage.addEventListener('click', async () => {
         try {
-            const dataURL = canvas1.toDataURL('image/png');
+            const dataURL = cropped.toDataURL('image/png');
             const response = await fetch(`${server_url}/upload_png/`, 
                 {method: 'POST', body: JSON.stringify({ image_data: dataURL }), 
                 headers: {'Content-Type': 'application/json'}});

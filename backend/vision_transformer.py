@@ -2,12 +2,12 @@ import cv2
 import torch
 import numpy as np
 
-from transformers import CLIPModel, CLIPProcessor
+from transformers import AutoModel, AutoProcessor
 
 from tqdm import tqdm
 
-class ImageClassification:
-    def __init__ (self, video_path = "", clip_checkpoint = "openai/clip-vit-base-patch32"):
+class VisionTransformer:
+    def __init__ (self, video_path = "", checkpoint = "google/owlvit-base-patch32"):
         #input video path
         self.video_path = video_path
 
@@ -19,25 +19,25 @@ class ImageClassification:
         self.reduction = None
 
         #model loading
-        self.clip_preprocessor = CLIPProcessor.from_pretrained(clip_checkpoint)
-        self.clip_model = CLIPModel.from_pretrained(clip_checkpoint)
+        self.processor = AutoProcessor.from_pretrained(checkpoint)
+        self.model = AutoModel.from_pretrained(checkpoint)
         self.device = 'cuda' if torch.cuda.is_available() else 'cpu'
         print("Using device: ", self.device)
-        self.clip_model.to(self.device)
+        self.model.to(self.device)
 
     def load_video(self):
         return cv2.VideoCapture(self.video_path)
     
     def get_image_features(self, images):
         with torch.no_grad():
-            img_input = self.clip_preprocessor(images=images, text=None, padding=True, return_tensors="pt").to(self.device)
-            outputs = self.clip_model.get_image_features(**img_input)
+            img_input = self.processor(images=images, text=None, padding=True, return_tensors="pt").to(self.device)
+            outputs = self.model.get_image_features(**img_input)
             return outputs.detach().cpu().numpy()
 
     def get_text_features(self, texts):
         with torch.no_grad():
-            inputs = self.clip_preprocessor(images=None, text=texts, padding=True, return_tensors="pt").to(self.device)
-            outputs = self.clip_model.get_text_features(**inputs)
+            inputs = self.processor(images=None, text=texts, padding=True, return_tensors="pt").to(self.device)
+            outputs = self.model.get_text_features(**inputs)
             return outputs.detach().cpu().numpy()
     
     def get_video_features(self):
@@ -84,7 +84,7 @@ class ImageClassification:
 
     def __call__(self, images=None, texts=None):
         self.video_embeddings = self.get_video_features()
-        self.reduction = self.reduction(self.video_embeddings)
+        self.reduction = self.tsne_reduction(self.video_embeddings)
 
         image_cosine = None
         text_cosine = None

@@ -6,7 +6,7 @@ from fastapi.middleware.cors import CORSMiddleware
 
 import glob
 from od_model import OD
-from clip import ImageClassification
+from vision_transformer import VisionTransformer
 
 import cv2
 import time
@@ -32,8 +32,10 @@ app.add_middleware(
 IMAGES_DIR = "images"
 VIDEOS_DIR = "videos"
 
-MODEL_NAME = "openai/clip-vit-base-patch16"
-SAMPLE_VIDEO_PATH = "../../data/charades/Charades_v1_480/Y6R7T.mp4"
+#MODEL_NAME = "openai/clip-vit-base-patch16"
+#MODEL_NAME = "google/owlvit-base-patch32"
+MODEL_NAME = "google/owlv2-base-patch16-ensemble"
+SAMPLE_VIDEO_PATH = "videos/Y6R7T.mp4"
 
 IMAGE_CROP_QUERY = "<image-loaded>"
 OUTPUT_CROP_IMAGE = "images/search-image.png"
@@ -74,7 +76,7 @@ def compute_cosine_similarity(video_path, query_text, reduction = False):
         video2images(video_path)
 
     #Getting video embeddings and computing cosine similarity
-    classifier = ImageClassification(video_path, MODEL_NAME)
+    classifier = VisionTransformer(video_path, MODEL_NAME)
 
     print("output_path:", output_path)
 
@@ -121,11 +123,6 @@ def compute_cosine_similarity(video_path, query_text, reduction = False):
     else:
         return similarity_scores
 
-
-def tsne_reduction(video_path):
-    classifier = ImageClassification(video_path, MODEL_NAME)
-    classifier()
-    return classifier.tsne_reduction()
 
 
 @app.get("/search")
@@ -177,8 +174,7 @@ async def upload_png(image_data: dict):
 
     cv2.imwrite(OUTPUT_CROP_IMAGE, img)
 
-    similarity_scores = compute_cosine_similarity(SAMPLE_VIDEO_PATH, IMAGE_CROP_QUERY)
-    tsne = tsne_reduction(SAMPLE_VIDEO_PATH)
+    similarity_scores, tsne = compute_cosine_similarity(SAMPLE_VIDEO_PATH, IMAGE_CROP_QUERY, reduction=True)
     return {"query": IMAGE_CROP_QUERY, "scores": similarity_scores, "tsne": [{'x': float(tsne[i, 0]), 'y': float(tsne[i, 1])} for i in range(len(tsne))]}
 
 

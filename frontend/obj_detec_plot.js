@@ -2,7 +2,7 @@ var objPlot = document.getElementById("objPlot");
 
 //to keep space between plot and canvas boundaries
 var objPlotOffsetLeft = 50;
-var objPlotOffsetRight = 20;
+var objPlotOffsetRight = 0;
 var objPlotOffsetY = 20;
 
 /*main drawing function for detected objects plot*/
@@ -17,39 +17,7 @@ var plotObjects = (currentIndex) => {
     var ctx = objPlot.getContext("2d");
     ctx.clearRect(0, 0, plotWidth, plotHeight);
 
-    //draw x axis
-    ctx.beginPath();
-    ctx.moveTo(objPlotOffsetLeft, plotHeight - objPlotOffsetY);
-    ctx.lineTo(plotWidth - objPlotOffsetRight, plotHeight - objPlotOffsetY);
-    ctx.strokeStyle = "black";
-    ctx.lineWidth = 1;
-    ctx.stroke();
-
-    //draw arrow at the end of the x axis
-    ctx.beginPath();
-    ctx.moveTo(plotWidth - objPlotOffsetRight, plotHeight - objPlotOffsetY);
-    ctx.lineTo(plotWidth - objPlotOffsetRight - 5, plotHeight - objPlotOffsetY + 5);
-    ctx.lineTo(plotWidth - objPlotOffsetRight - 5, plotHeight - objPlotOffsetY - 5);
-    ctx.closePath();
-    ctx.fillStyle = "black";
-    ctx.fill();
-
-    //draw y axis
-    ctx.beginPath();
-    ctx.moveTo(objPlotOffsetLeft, objPlotOffsetY);
-    ctx.lineTo(objPlotOffsetLeft, plotHeight - objPlotOffsetY);
-    ctx.strokeStyle = "black";
-    ctx.lineWidth = 1;
-    ctx.stroke();
-
-    //draw arrow at the end of the y axis
-    ctx.beginPath();
-    ctx.moveTo(objPlotOffsetLeft, objPlotOffsetY);
-    ctx.lineTo(objPlotOffsetLeft + 5, objPlotOffsetY + 5);
-    ctx.lineTo(objPlotOffsetLeft - 5, objPlotOffsetY + 5);
-    ctx.closePath();
-    ctx.fillStyle = "black";
-    ctx.fill();
+    plotAxes(objPlotOffsetLeft, objPlotOffsetRight, objPlotOffsetY, objPlot);
 
     // Draw class names on y-axis
     for (var i = 0; i < window.objs["classes"].length; ++i) {
@@ -81,14 +49,9 @@ var plotObjects = (currentIndex) => {
             const y = plotHeight - objPlotOffsetY - (j / window.objs["classes"].length) * (plotHeight - objPlotOffsetY * 2);
 
             //draw circle
-            dotColor = (timestamp == currentIndex)? "darkcyan" : "gray";
-            dotRadius = (timestamp == currentIndex)? 4 : 2;
-            ctx.beginPath();
-            ctx.moveTo(x - dotRadius, y - dotRadius);
-            ctx.arc(x, y, dotRadius, 0, Math.PI * 2, true);
-            ctx.strokeStyle = dotColor;
-            ctx.fill();
-            ctx.stroke();
+            ctx.fillStyle = "gray";
+            dotRadius = 2;
+            fillCircle(ctx, {x: x, y: y}, dotRadius);
         }
     }
 
@@ -106,14 +69,9 @@ var plotObjects = (currentIndex) => {
             } 
             const y = plotHeight - objPlotOffsetY - (j / window.objs["classes"].length) * (plotHeight - objPlotOffsetY * 2);
 
-            dotColor = "dodgerblue";
+            ctx.fillStyle = "royalblue";
             dotRadius = 4;
-            ctx.beginPath();
-            ctx.moveTo(x - dotRadius, y - dotRadius);
-            ctx.arc(x, y, dotRadius, 0, Math.PI * 2, true);
-            ctx.strokeStyle = dotColor;
-            ctx.fill();
-            ctx.stroke();
+            fillCircle(ctx, {x: x, y: y}, dotRadius);
         }
     }
 
@@ -162,8 +120,14 @@ objPlot.addEventListener("click", (event) => {
         window.cropTopLeft.y = bb[1];
         window.cropBotRight.x = bb[2];
         window.cropBotRight.y = bb[3];
-    }
 
-    //draw the cropped area
-    draw();
+        //toggle cropping
+        window.isCropVisible = true;
+        document.getElementById("crop").style.display = "block";
+        document.getElementById("cropLabel").style.display = "block";
+
+        //draw the cropped area (calls drao from crop_script)
+        updateVideo(window.current_frame.src);
+    }
+    //drawCropped();
 });

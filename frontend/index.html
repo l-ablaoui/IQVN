@@ -17,28 +17,35 @@
             <input type="button" id="videoButton" value="Load"/>
         </div>-->
         <div class="col-sm"> <!-- inputs (video, crop, query) -->
-            <label >Inputs:</label>
-            <input type="text" id="queryInput" class="form-control"/>
-            <input type="button" id="searchT" value="Text-based search" class="btn btn-sm btn-primary"/>
-            <input type="button" id="searchI" value="Crop-image-based search" class="btn btn-sm btn-secondary"/>
-            <input type="button" id="objDetec" value="Object detection" class="btn btn-sm btn-secondary" />
-            <div class="col-sm">
-                <input class="row" style="width: 100%;" type="range" id="slider" min="1" step="1" value="1">
-                <canvas class="row" style="width:100%; " id="video"></canvas>
-                <canvas class="row" id="crop"></canvas>
+            <label class="row">Inputs:</label>
+            <input type="text" id="queryInput" class="row form-control"/>
+            <div class="row">
+                <input type="button" id="searchT" style="margin:0.1%;" value="Text-based search" class="btn btn-sm btn-primary"/>
+                <input type="button" id="searchI" style="margin:0.1%;" value="Crop-image-based search" class="btn btn-sm btn-secondary"/>
+                <input type="button" id="objDetec" style="margin:0.1%;" value="Object detection" class="btn btn-sm btn-secondary" />
             </div>
+            <canvas class="row" style="width:100%; " id="video"></canvas>
+            <input class="row" style="width: 100%;" type="range" id="slider" min="1" step="1" value="1">
+            <input type="button" id="toggleCrop" style="margin:0.1%;" value="toggle cropping" class="row btn btn-sm btn-secondary" />
+            <div class="row">
+                <label class="col text-left" id="cropLabel">Cropped area: </label>
+            </div>
+            <div class="row justify-content-center">
+                <canvas class="text-center" id="crop"></canvas>
+            </div>
+            
         </div>
-        <div class="col-sm"> <!-- outputs (scores, tsne reduction, detected objects) -->
+        <div class="col-sm"> <!-- outputs (window.scores, tsne reduction, detected objects) -->
             <label class="row">Outputs:</label>
-            <input type="button" id="toggleObj" style="width:100%;" value="▲ Detected objects" class="btn btn-info"/>
+            <input type="button" id="toggleObj" style="width:100%;" value="▲ Detected objects" class="row btn btn-info"/>
             <div class="row" id="objDiv">
                 <canvas id="objPlot" width="500px" height="300px" ></canvas>
             </div>
-            <input type="button" id="toggleScores" style="width:100%;" value="▲ Similarity scores chart" class="btn btn-info"/>
+            <input type="button" id="toggleScores" style="width:100%;" value="▲ Similarity window.scores chart" class="row btn btn-info"/>
             <div class="row" id="scoreDiv">
                 <canvas id="scorePlot" width="500px" ></canvas>
             </div>  
-            <input type="button" id="toggleTsne" style="width:100%;" value="▲ Video embeddings scatter plot in reduced embedding space" class="btn btn-info"/>
+            <input type="button" id="toggleTsne" style="width:100%;" value="▲ Video embeddings scatter plot in reduced embedding space" class="row btn btn-info"/>
             <div class="row" id="tsneDiv">
                 <canvas class="row" id="tsnePlot" width="500px" height="500px" ></canvas>
                 <input type="button" id="resetTsnePlot" value="reset" class="row btn btn-sm btn-secondary"/>
@@ -51,11 +58,13 @@
     //displayed frame
     window.current_frame = new Image();
 
-    //cropping box coordinates
+    //cropping stuff
     window.cropTopLeft = { x: 10, y: 10 };
     window.cropBotRight = { x: 40, y: 40 };
+    window.isCropVisible = false;
 
     //query result slot
+    window.scores = null;
     window.tsne_reduction = null;
     window.objs = null;
 </script>
@@ -63,8 +72,6 @@
     /*variables declaration*/
     //document components
     var slider = document.getElementById("slider");
-    var scorePlot = document.getElementById("scorePlot");
-    var verticalLine = document.getElementById("verticalLine");
    //TODO var videoLoadButton = document.getElementById("videoButton");
     var searchText = document.getElementById("searchT");
     var searchImage = document.getElementById("searchI");
@@ -72,17 +79,17 @@
     var toggleObj = document.getElementById("toggleObj");
     var toggleScores = document.getElementById("toggleScores");
     var toggleTsne = document.getElementById("toggleTsne");
+    var toggleCrop = document.getElementById("toggleCrop");
 
     //hiding canvas and buttons at first
     document.getElementById("objDiv").style.display = "none";
     document.getElementById("scoreDiv").style.display = "none";
     document.getElementById("tsneDiv").style.display = "none";
+    document.getElementById("crop").style.display = "none";
+    document.getElementById("cropLabel").style.display = "none";
     toggleObj.style.display = "none";
     toggleScores.style.display = "none";
     toggleTsne.style.display = "none";
-
-    //query results slots
-    var scores = null;
 
     const server_url = 'http://localhost:8000';
 
@@ -90,6 +97,14 @@
     // Y6R7T.mp4 DUDE DRINKING WATER
     var video_name = "Y6R7T.mp4";
 
+    /*methods declaration*/
+    var fillCircle = (ctx, point, radius) => {
+        ctx.beginPath();
+        ctx.ellipse(point.x, point.y, radius, radius, 0, 0, 2 * Math.PI);
+        ctx.fill();
+    }
+
+    //update video component
     var updateVideo = (imageUrl) => {
         // Set the image source to the created URL
         window.current_frame.src = imageUrl;
@@ -113,105 +128,65 @@
 
             // Draw the image onto the canvas
             ctx.drawImage(window.current_frame, 0, 0, width, height);
+
+            if (window.isCropVisible) { drawCropped(); }
         };
     }
 
-    /*methods declaration*/
     //Plot the vertical line that indicates the current frame on the curve
     var plotMarker = (currentIndex, max, offsetLeft, offsetRight, offsetY, svg) => {
         var plotWidth = svg.clientWidth;
         var plotHeight = svg.clientHeight;
-
         var ctx = svg.getContext("2d");
         var x = offsetLeft + (currentIndex / (max - 1)) * (plotWidth - offsetLeft - offsetRight);
         
         ctx.beginPath();
-        ctx.moveTo(x, offsetLeft);
+        ctx.moveTo(x, offsetY);
         ctx.lineTo(x, plotHeight - offsetY);
         ctx.strokeStyle = "red";
         ctx.lineWidth = 1;
         ctx.stroke();
     };
 
-    //Plot the score curve
-    var plotCurve = (currentIndex) => {
-        if (scores == null) { return; }
-
-        //normalize scores' array
-        minScore = Math.min(...scores);
-        maxScore = Math.max(...scores);
-        scaledScores = scores.map(score => (score - minScore) / (maxScore - minScore));
-
-        //offset, to keep space between plot and canvas boundaries
-        var offsetX = 20;
-        var offsetY = 20;
-
-        //canvas with/length
-        var plotWidth = scorePlot.clientWidth;
-        var plotHeight = scorePlot.clientHeight;
-
-        //reset the drawing
-        var ctx = scorePlot.getContext("2d");
-        ctx.clearRect(0, 0, plotWidth, plotHeight);
+    var plotAxes = (offsetLeft, offsetRight, offsetY, svg) => {
+        var lenX = svg.clientWidth;
+        var lenY = svg.clientHeight;
+        var ctx = svg.getContext("2d");
 
         //draw x axis
         ctx.beginPath();
-        ctx.moveTo(offsetX, plotHeight - offsetY);
-        ctx.lineTo(plotWidth - offsetX, plotHeight - offsetY);
+        ctx.moveTo(offsetLeft, lenY - offsetY);
+        ctx.lineTo(lenX - offsetRight, lenY - offsetY);
         ctx.strokeStyle = "black";
         ctx.lineWidth = 1;
         ctx.stroke();
 
         //draw arrow at the end of the x axis
         ctx.beginPath();
-        ctx.moveTo(plotWidth - offsetX, plotHeight - offsetY);
-        ctx.lineTo(plotWidth - offsetX - 5, plotHeight - offsetY + 5);
-        ctx.lineTo(plotWidth - offsetX - 5, plotHeight - offsetY - 5);
+        ctx.moveTo(lenX - offsetRight, lenY - offsetY);
+        ctx.lineTo(lenX - offsetRight - 5, lenY - offsetY + 5);
+        ctx.lineTo(lenX - offsetRight - 5, lenY - offsetY - 5);
         ctx.closePath();
         ctx.fillStyle = "black";
         ctx.fill();
 
         //draw y axis
         ctx.beginPath();
-        ctx.moveTo(offsetX, offsetY);
-        ctx.lineTo(offsetX, plotHeight - offsetY);
+        ctx.moveTo(offsetLeft, offsetY);
+        ctx.lineTo(offsetLeft, lenY - offsetY);
         ctx.strokeStyle = "black";
         ctx.lineWidth = 1;
         ctx.stroke();
 
         //draw arrow at the end of the y axis
         ctx.beginPath();
-        ctx.moveTo(offsetX, offsetY);
-        ctx.lineTo(offsetX + 5, offsetY + 5);
-        ctx.lineTo(offsetX - 5, offsetY + 5);
+        ctx.moveTo(offsetLeft, offsetY);
+        ctx.lineTo(offsetLeft + 5, offsetY + 5);
+        ctx.lineTo(offsetLeft - 5, offsetY + 5);
         ctx.closePath();
         ctx.fillStyle = "black";
         ctx.fill();
-
-        // Draw scale values on y-axis
-        for (let i = 0; i < 5; i += 1) {
-            const yPos = plotHeight - offsetY - (i / 5) * (plotHeight - 2 * offsetY);
-
-            //Math.trunc(value * 100) / 100 := a precision of 0.01
-            ctx.fillText(Math.trunc(i / 5 * maxScore * 100) / 100.0, offsetX / 4, yPos);
-        }
-
-        //draw the curve
-        ctx.beginPath();
-        ctx.moveTo(offsetX, plotHeight - scaledScores[0] * (plotHeight - 2 * offsetY));
-
-        for (let i = 1; i < scaledScores.length; i++) {
-            var x = offsetX + (i / (scaledScores.length - 1)) * (plotWidth - 2 * offsetX);
-            var y = plotHeight - offsetY - scaledScores[i] * (plotHeight - 2 * offsetY);
-            ctx.lineTo(x, y);
-        }
-
-        ctx.strokeStyle = "gray";
-        ctx.lineWidth = 1;
         ctx.stroke();
-
-        //update vertical line position
-        plotMarker(currentIndex, scores.length, offsetX, offsetX, offsetY, scorePlot);
     };
 
     // Update score curve and vertical line position
@@ -225,11 +200,30 @@
     };
 
     /*Listeners*/
+    toggleCrop.addEventListener("click", () => {
+        var crop = document.getElementById("crop");
+        var cropLabel = document.getElementById("cropLabel");
+        if (window.isCropVisible == false) {
+            window.isCropVisible = true;
+            crop.style.display = "block";
+            cropLabel.style.display = "block";
+            updateVideo(window.current_frame.src);
+        } 
+        else {
+            window.isCropVisible = false;
+            crop.style.display = "none";
+            cropLabel.style.display = "none";
+            updateVideo(window.current_frame.src);
+        }
+    });
+
     toggleObj.addEventListener("click", () => {
         var x = document.getElementById("objDiv");
         if (x.style.display === "none") {
             x.style.display = "block";
             toggleObj.value = "▼ Detected objects";
+            var currentIndex = parseInt(slider.value) - 1;
+            plotObjects(currentIndex);
         } else {
             x.style.display = "none";
             toggleObj.value = "▲ Detected objects";
@@ -241,6 +235,8 @@
         if (x.style.display === "none") {
             x.style.display = "block";
             toggleScores.value = "▼ Similarity scores chart";
+            var currentIndex = parseInt(slider.value) - 1;
+            plotCurve(currentIndex);
         } else {
             x.style.display = "none";
             toggleScores.value = "▲ Similarity scores chart";
@@ -252,6 +248,8 @@
         if (x.style.display === "none") {
             x.style.display = "block";
             toggleTsne.value = "▼ Video embeddings scatter plot in reduced embedding space";
+            var currentIndex = parseInt(slider.value) - 1;
+            plotTsneReduction(currentIndex);
         } else {
             x.style.display = "none";
             toggleTsne.value = "▲ Video embeddings scatter plot in reduced embedding space";
@@ -307,12 +305,12 @@
             const body = await response.json();
 
             //only keep scores and tsne reduction values
-            scores = body['scores'].map(function(value,index) { return value[1]; });
+            window.scores = body['scores'].map(function(value,index) { return value[1]; });
             window.tsne_reduction = body['tsne'];
             console.log(body);
 
             //adjust the slider's max value
-            slider.max = scores.length;
+            slider.max = window.scores.length;
             
             //request to update the image
             var frameIndex = parseInt(slider.value) - 1;
@@ -331,13 +329,14 @@
 
             //update the curve plot
             updateScores(frameIndex);
-        } catch (error) {
+        } 
+        catch (error) {
             console.error('Error loading similarity scores:', error);
         }
     });
 
     //Image-based search, needs the cropped image to be defined (hover over the 
-    //video) and expecting an array of scores plus a reduction array from the server
+    //video) and expecting an array of window.scores plus a reduction array from the server
     searchImage.addEventListener('click', async () => {
         try {
             const dataURL = cropped.toDataURL('image/png');
@@ -346,13 +345,13 @@
                 headers: {'Content-Type': 'application/json'}});
             const body = await response.json();
 
-            //only keep scores and tsne reduction values
-            scores = body['scores'].map(function(value,index) { return value[1]; });
+            //only keep window.scores and tsne reduction values
+            window.scores = body['scores'].map(function(value,index) { return value[1]; });
             window.tsne_reduction = body['tsne'];
             console.log(body);
 
             //adjust the slider's max value
-            slider.max = scores.length;
+            slider.max = window.scores.length;
             
             //request to update the image
             var frameIndex = parseInt(slider.value) - 1;
@@ -365,7 +364,7 @@
             //update component
             updateVideo(imageUrl);
 
-            //show buttons for toggling scores/reduction
+            //show buttons for toggling window.scores/reduction
             toggleScores.style.display = "block";
             toggleTsne.style.display = "block";
 
@@ -373,7 +372,7 @@
             updateScores(frameIndex);
         }
         catch (error) {
-            console.error('Error loading similarity scores:', error);
+            console.error('Error loading similarity window.scores:', error);
         }
     });
     
@@ -436,10 +435,11 @@
             updateScores(frameIndex);
         }
         catch (error) {
-            console.error('Error loading similarity scores:', error);
+            console.error('Error loading similarity window.scores:', error);
         }
     })
 </script>
+<script src="similarity_scores_plot.js"></script>
 <script src="crop_script.js"></script>
 <script src="tsne_plot.js"></script>
 <script src="obj_detec_plot.js"></script>

@@ -33,7 +33,7 @@ var plotTsneReduction = (currentIndex) => {
     //tsnePlot width/length
     var plotWidth = tsnePlot.clientWidth;
     var plotHeight = tsnePlot.clientHeight;
-
+    
     //reset the drawing
     var ctx = tsnePlot.getContext("2d");
     ctx.clearRect(0, 0, plotWidth, plotHeight);  
@@ -42,32 +42,22 @@ var plotTsneReduction = (currentIndex) => {
     for (i = 0;i < window.tsne_reduction.length;++i) {
         //draw current frame marker last to stand out
         if (i == currentIndex) { continue; }
+
         x = tsnePlotOffsetX + (window.tsne_reduction[i]['x'] - min_x) / (max_x - min_x) * (plotWidth - 2 * tsnePlotOffsetX);
         y = plotHeight - tsnePlotOffsetY - (window.tsne_reduction[i]['y'] - min_y) / (max_y - min_y) * (plotHeight - 2 * tsnePlotOffsetY);
 
-        dotColor = "gray";
+        ctx.fillStyle = "gray";
         dotRadius = 2;
-        ctx.beginPath();
-
         // Apply zoom/pan transformations to coordinates only and not to point radius (for visibility purposes)
-        ctx.moveTo(tsneTranslate.x + x * tsneScale - dotRadius, tsneTranslate.y + y * tsneScale);
-        ctx.arc(tsneTranslate.x + x * tsneScale, tsneTranslate.y + y * tsneScale, dotRadius, 0, Math.PI * 2, true);
-        ctx.strokeStyle = dotColor;
-        ctx.fill();
-        ctx.stroke();
+        fillCircle(ctx, {x: tsneTranslate.x + x * tsneScale, y: tsneTranslate.y + y * tsneScale}, dotRadius);
     }
 
     x = tsnePlotOffsetX + (window.tsne_reduction[currentIndex]['x'] - min_x) / (max_x - min_x) * (plotWidth - 2 * tsnePlotOffsetX);
     y = plotHeight - tsnePlotOffsetY - (window.tsne_reduction[currentIndex]['y'] - min_y) / (max_y - min_y) * (plotHeight - 2 * tsnePlotOffsetY);
 
-    dotColor = "dodgerblue";
+    ctx.fillStyle = "royalblue";
     dotRadius = 4;
-    ctx.beginPath();
-    ctx.moveTo(tsneTranslate.x + x * tsneScale - dotRadius, tsneTranslate.y + y * tsneScale);
-    ctx.arc(tsneTranslate.x + x * tsneScale, tsneTranslate.y + y * tsneScale, dotRadius, 0, Math.PI * 2, true);
-    ctx.strokeStyle = dotColor;
-    ctx.fill();
-    ctx.stroke();
+    fillCircle(ctx, {x: tsneTranslate.x + x * tsneScale, y: tsneTranslate.y + y * tsneScale}, dotRadius);
 }
 
 /*zoom/pan handling */

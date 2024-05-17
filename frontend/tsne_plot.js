@@ -1,3 +1,5 @@
+var tsnePlot = document.getElementById("tsnePlot");
+
 //initial zoom setting
 var tsneScale = 1.0;
 var tsneTranslate = { x: 0, y: 0 };

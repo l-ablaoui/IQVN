@@ -57,12 +57,12 @@
 
     //query result slot
     window.tsne_reduction = null;
+    window.objs = null;
 </script>
 <script>
     /*variables declaration*/
     //document components
     var slider = document.getElementById("slider");
-    var video = document.getElementById("video");
     var scorePlot = document.getElementById("scorePlot");
     var verticalLine = document.getElementById("verticalLine");
    //TODO var videoLoadButton = document.getElementById("videoButton");
@@ -83,7 +83,6 @@
 
     //query results slots
     var scores = null;
-    var objs = null;
 
     const server_url = 'http://localhost:8000';
 
@@ -91,17 +90,43 @@
     // Y6R7T.mp4 DUDE DRINKING WATER
     var video_name = "Y6R7T.mp4";
 
+    var updateVideo = (imageUrl) => {
+        // Set the image source to the created URL
+        window.current_frame.src = imageUrl;
+
+        // Wait for the image to load
+        window.current_frame.onload = () => {
+            // Access the width and height properties
+            const width = window.current_frame.width;
+            const height = window.current_frame.height;
+
+            // Get the canvas element
+            const canvas = document.getElementById("video");
+            const ctx = canvas.getContext("2d");
+
+            // Set canvas dimensions to match the image
+            canvas.width = width;
+            canvas.height = height;
+
+            // Clear any previous content on the canvas
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+            // Draw the image onto the canvas
+            ctx.drawImage(window.current_frame, 0, 0, width, height);
+        };
+    }
+
     /*methods declaration*/
     //Plot the vertical line that indicates the current frame on the curve
-    var plotMarker = (currentIndex, max, offsetX, offsetY, svg) => {
+    var plotMarker = (currentIndex, max, offsetLeft, offsetRight, offsetY, svg) => {
         var plotWidth = svg.clientWidth;
         var plotHeight = svg.clientHeight;
 
         var ctx = svg.getContext("2d");
-        var x = offsetX + (currentIndex / (max - 1)) * (plotWidth - 2 * offsetX);
+        var x = offsetLeft + (currentIndex / (max - 1)) * (plotWidth - offsetLeft - offsetRight);
         
         ctx.beginPath();
-        ctx.moveTo(x, offsetY);
+        ctx.moveTo(x, offsetLeft);
         ctx.lineTo(x, plotHeight - offsetY);
         ctx.strokeStyle = "red";
         ctx.lineWidth = 1;
@@ -186,126 +211,7 @@
         ctx.stroke();
 
         //update vertical line position
-        plotMarker(currentIndex, scores.length, offsetX, offsetY, scorePlot);
-    };
-
-    var plotObjects = (currentIndex) => {
-        if (objs == null) { return; }
-
-        //offset, to keep space between plot and canvas boundaries
-        var offsetX = 50;
-        var offsetY = 20;
-
-        //canvas with/length
-        var plotWidth = objPlot.clientWidth;
-        var plotHeight = objPlot.clientHeight;
-
-        //reset the drawing
-        var ctx = objPlot.getContext("2d");
-        ctx.clearRect(0, 0, plotWidth, plotHeight);
-
-        //draw x axis
-        ctx.beginPath();
-        ctx.moveTo(offsetX, plotHeight - offsetY);
-        ctx.lineTo(plotWidth - offsetX, plotHeight - offsetY);
-        ctx.strokeStyle = "black";
-        ctx.lineWidth = 1;
-        ctx.stroke();
-
-        //draw arrow at the end of the x axis
-        ctx.beginPath();
-        ctx.moveTo(plotWidth - offsetX, plotHeight - offsetY);
-        ctx.lineTo(plotWidth - offsetX - 5, plotHeight - offsetY + 5);
-        ctx.lineTo(plotWidth - offsetX - 5, plotHeight - offsetY - 5);
-        ctx.closePath();
-        ctx.fillStyle = "black";
-        ctx.fill();
-
-        //draw y axis
-        ctx.beginPath();
-        ctx.moveTo(offsetX, offsetY);
-        ctx.lineTo(offsetX, plotHeight - offsetY);
-        ctx.strokeStyle = "black";
-        ctx.lineWidth = 1;
-        ctx.stroke();
-
-        //draw arrow at the end of the y axis
-        ctx.beginPath();
-        ctx.moveTo(offsetX, offsetY);
-        ctx.lineTo(offsetX + 5, offsetY + 5);
-        ctx.lineTo(offsetX - 5, offsetY + 5);
-        ctx.closePath();
-        ctx.fillStyle = "black";
-        ctx.fill();
-
-        // Draw class names on y-axis
-        for (var i = 0; i < objs["classes"].length; ++i) {
-            const yPos = plotHeight - offsetY - (i / objs["classes"].length) * (plotHeight - 2 * offsetY);
-            ctx.fillText(objs["classes"][i]["label"], offsetX / 10, yPos);
-        }
-
-        //for each timestamp, draw circles on the level of the object label
-        var currentFrameObjIndex = -1;
-        for (var k = 0; k < objs["results"].length; ++k) {
-            var objects = objs["results"][k];
-
-            //draw current frame dots last to stand out
-            if (objects[0]["timestamp"] == currentIndex) { 
-                currentFrameObjIndex = k;
-                continue; 
-            }
-            for (var i = 0;i < objects.length;++i) {
-                //xpos reflects the timestamp
-                timestamp = objects[i]["timestamp"];
-                const x = offsetX + (timestamp / objs["maxTime"]) * (plotWidth - 2 * offsetX);
-                
-                //matching label with plot line (ypos)
-                label = objects[i]["label"];
-                var j = 0;
-                for (;j < objs["classes"].length; ++j) {
-                    if (label == objs["classes"][j]["index"]) { break; }
-                } 
-                const y = plotHeight - offsetY - (j / objs["classes"].length) * (plotHeight - offsetY * 2);
-
-                //draw circle
-                dotColor = (timestamp == currentIndex)? "darkcyan" : "gray";
-                dotRadius = (timestamp == currentIndex)? 4 : 2;
-                ctx.beginPath();
-                ctx.moveTo(x - dotRadius, y - dotRadius);
-                ctx.arc(x, y, dotRadius, 0, Math.PI * 2, true);
-                ctx.strokeStyle = dotColor;
-                ctx.fill();
-                ctx.stroke();
-            }
-        }
-
-        //current frame dots drawing (if any)
-        if (currentFrameObjIndex != -1) {
-            var objects = objs["results"][currentFrameObjIndex];
-            
-            for (var i = 0; i < objects.length;++i) {
-                const x = offsetX + (currentIndex / objs["maxTime"]) * (plotWidth - 2 * offsetX);
-
-                label = objects[i]["label"];
-                var j = 0;
-                for (;j < objs["classes"].length; ++j) {
-                    if (label == objs["classes"][j]["index"]) { break; }
-                } 
-                const y = plotHeight - offsetY - (j / objs["classes"].length) * (plotHeight - offsetY * 2);
-
-                dotColor = "dodgerblue";
-                dotRadius = 4;
-                ctx.beginPath();
-                ctx.moveTo(x - dotRadius, y - dotRadius);
-                ctx.arc(x, y, dotRadius, 0, Math.PI * 2, true);
-                ctx.strokeStyle = dotColor;
-                ctx.fill();
-                ctx.stroke();
-            }
-        }
-
-        //update vertical line position
-        plotMarker(currentIndex, objs["maxTime"], offsetX, offsetY, objPlot);
+        plotMarker(currentIndex, scores.length, offsetX, offsetX, offsetY, scorePlot);
     };
 
     // Update score curve and vertical line position
@@ -365,29 +271,7 @@
             const imageUrl = URL.createObjectURL(blob);
 
             //update component
-            // Set the image source to the created URL
-            window.current_frame.src = imageUrl;
-
-            // Wait for the image to load
-            window.current_frame.onload = () => {
-                // Access the width and height properties
-                const width = window.current_frame.width;
-                const height = window.current_frame.height;
-
-                // Get the canvas element
-                const canvas = document.getElementById("video");
-                const ctx = canvas.getContext("2d");
-
-                // Set canvas dimensions to match the image
-                canvas.width = width;
-                canvas.height = height;
-
-                // Clear any previous content on the canvas
-                ctx.clearRect(0, 0, canvas.width, canvas.height);
-
-                // Draw the image onto the canvas
-                ctx.drawImage(window.current_frame, 0, 0, width, height);
-            };
+            updateVideo(imageUrl);
 
             //update plots
             updateScores(frameIndex);
@@ -438,6 +322,9 @@
             const blob = await imgresponse.blob();
             const imageUrl = URL.createObjectURL(blob);
 
+            //update component
+            updateVideo(imageUrl);
+
             //show buttons for toggling scores/reduction
             toggleScores.style.display = "block";
             toggleTsne.style.display = "block";
@@ -474,6 +361,9 @@
             const imgresponse = await fetch(`${server_url}/image/${name_processed}/${frameIndex}.png`);
             const blob = await imgresponse.blob();
             const imageUrl = URL.createObjectURL(blob);
+
+            //update component
+            updateVideo(imageUrl);
 
             //show buttons for toggling scores/reduction
             toggleScores.style.display = "block";
@@ -536,8 +426,8 @@
                 });
             }
 
-            objs = {"results": objects, "classes": classes, "maxTime": body["frames"]};
-            console.log(objs);
+            window.objs = {"results": objects, "classes": classes, "maxTime": body["frames"]};
+            console.log(window.objs);
 
             //show button for toggling obj chart
             toggleObj.style.display = "block";
@@ -552,6 +442,7 @@
 </script>
 <script src="crop_script.js"></script>
 <script src="tsne_plot.js"></script>
+<script src="obj_detec_plot.js"></script>
 
 </body>
 </html>

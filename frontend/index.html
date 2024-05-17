@@ -30,26 +30,33 @@
         </div>
         <div class="col-sm"> <!-- outputs (scores, tsne reduction, detected objects) -->
             <label class="row">Outputs:</label>
-            <input type="button" id="toggleObj" value="Detected objects" class="btn btn-info"/>
+            <input type="button" id="toggleObj" style="width:100%;" value="▲ Detected objects" class="btn btn-info"/>
             <div class="row" id="objDiv">
                 <canvas id="objPlot" width="500px" height="300px" ></canvas>
             </div>
-            <input type="button" id="toggleScores" value="Similarity scores chart" class="btn btn-info"/>
+            <input type="button" id="toggleScores" style="width:100%;" value="▲ Similarity scores chart" class="btn btn-info"/>
             <div class="row" id="scoreDiv">
                 <canvas id="scorePlot" width="500px" ></canvas>
             </div>  
-            <input type="button" id="toggleTsne" value="Video embeddings scatter plot in reduced embedding space" class="btn btn-info"/>
+            <input type="button" id="toggleTsne" style="width:100%;" value="▲ Video embeddings scatter plot in reduced embedding space" class="btn btn-info"/>
             <div class="row" id="tsneDiv">
-                <canvas  id="tsnePlot" width="500px" height="500px" ></canvas>
+                <canvas class="row" id="tsnePlot" width="500px" height="500px" ></canvas>
+                <input type="button" id="resetTsnePlot" value="reset" class="row btn btn-sm btn-secondary"/>
             </div>
         </div>
     </div>
 </div>
 
 <script type='text/javascript' > 
+    //displayed frame
     window.current_frame = new Image();
+
+    //cropping box coordinates
     window.cropTopLeft = { x: 10, y: 10 };
     window.cropBotRight = { x: 40, y: 40 };
+
+    //query result slot
+    window.tsne_reduction = null;
 </script>
 <script>
     /*variables declaration*/
@@ -76,7 +83,6 @@
 
     //query results slots
     var scores = null;
-    var tsne_reduction = null;
     var objs = null;
 
     const server_url = 'http://localhost:8000';
@@ -276,7 +282,7 @@
         //current frame dots drawing (if any)
         if (currentFrameObjIndex != -1) {
             var objects = objs["results"][currentFrameObjIndex];
-            console.log(objects, currentFrameObjIndex);
+            
             for (var i = 0; i < objects.length;++i) {
                 const x = offsetX + (currentIndex / objs["maxTime"]) * (plotWidth - 2 * offsetX);
 
@@ -302,64 +308,6 @@
         plotMarker(currentIndex, objs["maxTime"], offsetX, offsetY, objPlot);
     };
 
-    var plotTsneReduction = (currentIndex) => {
-        if (tsne_reduction == null) { return; }
-
-        /*get min/max to later normalize reduction values*/
-        min_x = tsne_reduction[0]['x'];
-        max_x = tsne_reduction[0]['x'];
-        min_y = tsne_reduction[0]['y'];
-        max_y = tsne_reduction[0]['y'];
-
-        for (i = 1;i < tsne_reduction.length;++i) {
-            min_x = (min_x > tsne_reduction[i]['x'])? tsne_reduction[i]['x'] : min_x;
-            max_x = (max_x < tsne_reduction[i]['x'])? tsne_reduction[i]['x'] : max_x;
-            min_y = (min_y > tsne_reduction[i]['y'])? tsne_reduction[i]['y'] : min_y;
-            max_y = (max_y < tsne_reduction[i]['y'])? tsne_reduction[i]['y'] : max_y;
-        }
-
-        //offset, to keep space between plot and canvas boundaries
-        var offsetX = 20;
-        var offsetY = 20;
-
-        //canvas with/length
-        var plotWidth = tsnePlot.clientWidth;
-        var plotHeight = tsnePlot.clientHeight;
-
-        //reset the drawing
-        var ctx = tsnePlot.getContext("2d");
-        ctx.clearRect(0, 0, plotWidth, plotHeight);      
-        
-        //draw the points (square shaped for now)
-        for (i = 0;i < tsne_reduction.length;++i) {
-            //draw current frame marker last to stand out
-            if (i == currentIndex) { continue; }
-            x = offsetX + (tsne_reduction[i]['x'] - min_x) / (max_x - min_x) * (plotWidth - 2 * offsetX);
-            y = plotHeight - offsetY - (tsne_reduction[i]['y'] - min_y) / (max_y - min_y) * (plotHeight - 2 * offsetY);
-
-            dotColor = "gray";
-            dotRadius = 2;
-            ctx.beginPath();
-            ctx.moveTo(x - dotRadius, y - dotRadius);
-            ctx.arc(x, y, dotRadius, 0, Math.PI * 2, true);
-            ctx.strokeStyle = dotColor;
-            ctx.fill();
-            ctx.stroke();
-        }
-
-        x = offsetX + (tsne_reduction[currentIndex]['x'] - min_x) / (max_x - min_x) * (plotWidth - 2 * offsetX);
-        y = plotHeight - offsetY - (tsne_reduction[currentIndex]['y'] - min_y) / (max_y - min_y) * (plotHeight - 2 * offsetY);
-
-        dotColor = "dodgerblue";
-        dotRadius = 4;
-        ctx.beginPath();
-        ctx.moveTo(x - dotRadius, y - dotRadius);
-        ctx.arc(x, y, dotRadius, 0, Math.PI * 2, true);
-        ctx.strokeStyle = dotColor;
-        ctx.fill();
-        ctx.stroke();
-    }
-
     // Update score curve and vertical line position
     var updateScores = (frameIndex) => {
         if (parseInt(slider.value) - 1 != frameIndex) { slider.value = frameIndex + 1; }
@@ -375,8 +323,10 @@
         var x = document.getElementById("objDiv");
         if (x.style.display === "none") {
             x.style.display = "block";
+            toggleObj.value = "▼ Detected objects";
         } else {
             x.style.display = "none";
+            toggleObj.value = "▲ Detected objects";
         }
     });
 
@@ -384,8 +334,10 @@
         var x = document.getElementById("scoreDiv");
         if (x.style.display === "none") {
             x.style.display = "block";
+            toggleScores.value = "▼ Similarity scores chart";
         } else {
             x.style.display = "none";
+            toggleScores.value = "▲ Similarity scores chart";
         }
     });
 
@@ -393,8 +345,10 @@
         var x = document.getElementById("tsneDiv");
         if (x.style.display === "none") {
             x.style.display = "block";
+            toggleTsne.value = "▼ Video embeddings scatter plot in reduced embedding space";
         } else {
             x.style.display = "none";
+            toggleTsne.value = "▲ Video embeddings scatter plot in reduced embedding space";
         }
     });
 
@@ -415,7 +369,7 @@
             window.current_frame.src = imageUrl;
 
             // Wait for the image to load
-            window.current_frame.onload = function() {
+            window.current_frame.onload = () => {
                 // Access the width and height properties
                 const width = window.current_frame.width;
                 const height = window.current_frame.height;
@@ -470,7 +424,7 @@
 
             //only keep scores and tsne reduction values
             scores = body['scores'].map(function(value,index) { return value[1]; });
-            tsne_reduction = body['tsne'];
+            window.tsne_reduction = body['tsne'];
             console.log(body);
 
             //adjust the slider's max value
@@ -507,7 +461,7 @@
 
             //only keep scores and tsne reduction values
             scores = body['scores'].map(function(value,index) { return value[1]; });
-            tsne_reduction = body['tsne'];
+            window.tsne_reduction = body['tsne'];
             console.log(body);
 
             //adjust the slider's max value
@@ -597,6 +551,7 @@
     })
 </script>
 <script src="crop_script.js"></script>
+<script src="tsne_plot.js"></script>
 
 </body>
 </html>

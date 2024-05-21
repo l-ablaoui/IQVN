@@ -29,7 +29,7 @@ var plotCurve = (currentIndex) => {
         const yPos = plotHeight - offsetY - (i / 5) * (plotHeight - 2 * offsetY);
 
         //Math.trunc(value * 100) / 100 := a precision of 0.01
-        ctx.fillText(Math.trunc(i / 5 * maxScore * 100) / 100.0, offsetLeft / 4, yPos);
+        ctx.fillText(Math.trunc(((4 - i) * minScore / 4 + i / 4 * maxScore) * 100) / 100.0, offsetLeft / 4, yPos);
     }
 
     //selected points highlight
@@ -52,7 +52,7 @@ var plotCurve = (currentIndex) => {
         ctx.lineTo(x, y);
     }
 
-    ctx.strokeStyle = "gray";
+    ctx.strokeStyle = window.REGULAR_COLOR;
     ctx.lineWidth = 1;
     ctx.stroke();
 

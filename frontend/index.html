@@ -104,35 +104,6 @@
         ctx.fill();
     }
 
-    //update video component
-    var updateVideo = (imageUrl) => {
-        // Set the image source to the created URL
-        window.current_frame.src = imageUrl;
-
-        // Wait for the image to load
-        window.current_frame.onload = () => {
-            // Access the width and height properties
-            const width = window.current_frame.width;
-            const height = window.current_frame.height;
-
-            // Get the canvas element
-            const canvas = document.getElementById("video");
-            const ctx = canvas.getContext("2d");
-
-            // Set canvas dimensions to match the image
-            canvas.width = width;
-            canvas.height = height;
-
-            // Clear any previous content on the canvas
-            ctx.clearRect(0, 0, canvas.width, canvas.height);
-
-            // Draw the image onto the canvas
-            ctx.drawImage(window.current_frame, 0, 0, width, height);
-
-            if (window.isCropVisible) { drawCropped(); }
-        };
-    }
-
     //Plot the vertical line that indicates the current frame on the curve
     var plotMarker = (currentIndex, max, offsetLeft, offsetRight, offsetY, svg) => {
         var plotWidth = svg.clientWidth;
@@ -188,6 +159,35 @@
         ctx.fill();
         ctx.stroke();
     };
+
+    //update video component
+    var updateVideo = (imageUrl) => {
+        // Set the image source to the created URL
+        window.current_frame.src = imageUrl;
+
+        // Wait for the image to load
+        window.current_frame.onload = () => {
+            // Access the width and height properties
+            const width = window.current_frame.width;
+            const height = window.current_frame.height;
+
+            // Get the canvas element
+            const canvas = document.getElementById("video");
+            const ctx = canvas.getContext("2d");
+
+            // Set canvas dimensions to match the image
+            canvas.width = width;
+            canvas.height = height;
+
+            // Clear any previous content on the canvas
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+            // Draw the image onto the canvas
+            ctx.drawImage(window.current_frame, 0, 0, width, height);
+
+            if (window.isCropVisible) { drawCropped(); }
+        };
+    }
 
     // Update score curve and vertical line position
     var updateScores = (frameIndex) => {

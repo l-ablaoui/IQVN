@@ -49,7 +49,7 @@ var plotObjects = (currentIndex) => {
             const y = plotHeight - objPlotOffsetY - (j / window.objs["classes"].length) * (plotHeight - objPlotOffsetY * 2);
 
             //draw circle
-            ctx.fillStyle = "gray";
+            ctx.fillStyle = window.REGULAR_COLOR;
             dotRadius = 2;
             fillCircle(ctx, {x: x, y: y}, dotRadius);
         }
@@ -69,7 +69,7 @@ var plotObjects = (currentIndex) => {
             } 
             const y = plotHeight - objPlotOffsetY - (j / window.objs["classes"].length) * (plotHeight - objPlotOffsetY * 2);
 
-            ctx.fillStyle = "royalblue";
+            ctx.fillStyle = window.EMPHASIS_COLOR;
             dotRadius = 4;
             fillCircle(ctx, {x: x, y: y}, dotRadius);
         }

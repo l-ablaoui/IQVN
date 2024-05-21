@@ -1,4 +1,5 @@
 var tsnePlot = document.getElementById("tsnePlot");
+var tsneColorScale = document.getElementById("tsneColorMap");
 
 //initial zoom setting
 var tsneScale = 1.0;
@@ -21,6 +22,8 @@ var selectionMouseDownPoint = selectionCenter;
 /*main drawing function for tsne reduced embeddings' scatter plot */
 var plotTsneReduction = (currentIndex) => {
     if (window.tsne_reduction == null) { return; }
+
+    var colorMap = generateColorMap(currentIndex, window.cmap);
 
     /*get min/max to later normalize reduction values*/
     min_x = window.tsne_reduction[0]['x'];
@@ -51,7 +54,7 @@ var plotTsneReduction = (currentIndex) => {
         x = tsnePlotOffsetX + (window.tsne_reduction[i]['x'] - min_x) / (max_x - min_x) * (plotWidth - 2 * tsnePlotOffsetX);
         y = plotHeight - tsnePlotOffsetY - (window.tsne_reduction[i]['y'] - min_y) / (max_y - min_y) * (plotHeight - 2 * tsnePlotOffsetY);
 
-        ctx.fillStyle = "gray";
+        ctx.fillStyle = colorMap[i];
         dotRadius = 2;
         // Apply zoom/pan transformations to coordinates only and not to point radius (for visibility purposes)
         fillCircle(ctx, {x: tsneTranslate.x + x * tsneScale, y: tsneTranslate.y + y * tsneScale}, dotRadius);
@@ -60,12 +63,117 @@ var plotTsneReduction = (currentIndex) => {
     x = tsnePlotOffsetX + (window.tsne_reduction[currentIndex]['x'] - min_x) / (max_x - min_x) * (plotWidth - 2 * tsnePlotOffsetX);
     y = plotHeight - tsnePlotOffsetY - (window.tsne_reduction[currentIndex]['y'] - min_y) / (max_y - min_y) * (plotHeight - 2 * tsnePlotOffsetY);
 
-    ctx.fillStyle = "royalblue";
+    ctx.fillStyle = colorMap[currentIndex];
     dotRadius = 4;
     fillCircle(ctx, {x: tsneTranslate.x + x * tsneScale, y: tsneTranslate.y + y * tsneScale}, dotRadius);
 
     if (window.isSelection) { drawRectangle(ctx, window.selectionTopLeft, window.selectionBotRight); }
 }
+
+/*color map stuff */
+//plot colormap
+var generateColorMap = (currentIndex, cmap) => {
+    colorMap = [];
+    if (window.tsne_reduction == null) { return colorMap; }
+
+    switch (cmap) {
+        case "time": {
+            var color1 = {red: 0, green: 255, blue: 0};
+            var color2 = {red: 0, green: 0, blue: 255};
+            for (var i = 0; i < window.tsne_reduction.length; ++i) { 
+                var factor1 = (window.tsne_reduction.length - 1 - i) / (window.tsne_reduction.length - 1);
+                var factor2 = i / (window.tsne_reduction.length - 1);
+                colorMap.push((currentIndex != i)? 
+                    `rgb(${color1.red * factor1 + color2.red * factor2}, 
+                    ${color1.green * factor1 + color2.green * factor2}, 
+                    ${color1.blue * factor1 + color2.blue * factor2}` 
+                    : window.EMPHASIS_COLOR); 
+            }
+            drawColorScale(0, window.tsne_reduction.length, color1, color2);
+            break;
+        }
+
+        case "score": {
+            //make sure scores exist and match the tsne reduction
+            if (window.scores == null) { generateColorMap(currentIndex, ""); }
+            if (window.scores.length != window.tsne_reduction.length) { generateColorMap(currentIndex, ""); }
+
+            /*get min/max to normalize scores*/
+            min_score = window.scores[0];
+            max_score = window.scores[0];
+
+            for (i = 1;i < window.scores.length;++i) {
+                min_score = (min_score > window.scores[i])? window.scores[i] : min_score;
+                max_score = (max_score < window.scores[i])? window.scores[i] : max_score;
+            }
+
+            var color1 = {red: 255, green: 212, blue: 191};
+            var color2 = {red: 68, green: 53, blue: 91};
+            for (var i = 0; i < window.tsne_reduction.length; ++i) { 
+                var factor = (window.scores[i] - min_score) / (max_score - min_score);
+                colorMap.push((currentIndex != i)? 
+                    `rgb(${color1.red * (1 - factor) + color2.red * factor}, 
+                    ${color1.green * (1 - factor) + color2.green * factor}, 
+                    ${color1.blue * (1 - factor) + color2.blue * factor}` 
+                    : window.EMPHASIS_COLOR); 
+            }
+            drawColorScale(min_score, max_score, color1, color2);
+            break;
+        }
+
+        default: { //gray colormap with red as amphasis
+            //squash the color map on default
+            tsneColorScale.height = 0;
+            for (var i = 0; i < window.tsne_reduction.length; ++i) { colorMap.push((currentIndex == i)? window.EMPHASIS_COLOR: window.REGULAR_COLOR); }
+            break;
+        }
+    }
+
+    return colorMap;
+}
+
+var drawColorScale = (minValue, maxValue, minColor, maxColor) => {
+    const ctx = tsneColorScale.getContext("2d");
+    tsneColorScale.height = 20;
+    tsneColorScale.width = 300;
+
+    minValue = Math.trunc(minValue * 100) / 100;
+    maxValue = Math.trunc(maxValue * 100) / 100;
+
+    const gradient = ctx.createLinearGradient(0, 0, tsneColorScale.width, 0);
+    gradient.addColorStop(0, `rgb(${minColor.red}, ${minColor.green}, ${minColor.blue})`);   // Blue at the left
+    gradient.addColorStop(1, `rgb(${maxColor.red}, ${maxColor.green}, ${maxColor.blue})`);  // Red at the right
+    ctx.fillStyle = gradient;
+    ctx.fillRect(0, 0, tsneColorScale.width, tsneColorScale.height);
+
+    // Add min and max values
+    ctx.fillStyle = 'black';
+    ctx.font = '14px Arial';
+    ctx.textAlign = 'center';
+    ctx.fillText(minValue, 15, tsneColorScale.height / 2 + 5); // Min value at the left
+    ctx.fillStyle = 'white';
+    ctx.fillText(maxValue, tsneColorScale.width - 15, tsneColorScale.height / 2 + 5); // Max value at the right
+}
+
+//colormap selector handling
+document.addEventListener("DOMContentLoaded", function() {
+    const radioButtons = document.querySelectorAll('input[name="selectColorMap"]');
+
+    // Function to handle the change event
+    const handleRadioChange = () => {
+        const selectedValue = document.querySelector('input[name="selectColorMap"]:checked').value;
+        window.cmap = selectedValue;
+
+        //redraw components
+        var currentIndex = parseInt(slider.value) - 1;
+        plotTsneReduction(currentIndex);
+    };
+
+    // Add change event listener to each radio button
+    radioButtons.forEach(radio => {
+        radio.addEventListener('change', handleRadioChange);
+    });
+});
 
 /*zoom/pan handling */
 var zoomPanWheel = (event) => {
@@ -259,9 +367,17 @@ var selectionMouseMove = (event) => {
     plotCurve(currentIndex);
 }
 
-var selectionMouseUp = (event) => { selectionState = "idle"; }
+var selectionMouseUp = () => { 
+    selectionState = "idle"; 
 
-/*zoom/pan reset option*/
+    // Redraw the content
+    var currentIndex = parseInt(slider.value) - 1;
+    plotTsneReduction(currentIndex);
+    updateSelected(currentIndex);
+    plotCurve(currentIndex);
+}
+
+/*zoom/pan reset option (or reset all?)*/
 var resetTsne = document.getElementById("resetTsnePlot");
 
 resetTsne.addEventListener("click", () => {
@@ -271,9 +387,25 @@ resetTsne.addEventListener("click", () => {
     isTsneDragging = false;
     tsneDragOffset = { x: 0, y: 0 };
 
+    //reset selection
+    window.isSelection = false;
+    window.selectedPoints = [];
+
+    tsnePlot.removeEventListener("mousemove", selectionMouseMove);
+    tsnePlot.removeEventListener("mousedown", selectionMouseDown);
+    tsnePlot.removeEventListener("mouseup", selectionMouseUp);
+    tsnePlot.removeEventListener("mouseout", selectionMouseUp);
+
+    tsnePlot.addEventListener("mousedown", zoomPanMouseDown);
+    tsnePlot.addEventListener("mouseup", zoomPanMouseUp);
+    tsnePlot.addEventListener("mouseout", zoomPanMouseUp);
+    tsnePlot.addEventListener("mousemove", zoomPanMouseMove);
+    tsnePlot.addEventListener("wheel", zoomPanWheel);
+
     //redraw context
     currentIndex = parseInt(slider.value) - 1;
     plotTsneReduction(currentIndex);
+    plotCurve(currentIndex);
 });
 
 /*zoomPan/selection toggle option */

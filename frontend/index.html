@@ -48,6 +48,23 @@
             <input type="button" id="toggleTsne" style="width:100%;" value="▲ Video embeddings scatter plot in reduced embedding space" class="row btn btn-info"/>
             <div class="row" id="tsneDiv">
                 <canvas class="row" id="tsnePlot" width="500px" height="500px" ></canvas>
+                <div class="row justify-content-center">
+                    <canvas class="text-center" id="tsneColorMap" height="0px"></canvas>
+                </div>
+                <div class="row">
+                    <div class="col-sm justify-content-center"> 
+                        <input type="radio" id="defaultMap" name="selectColorMap" value="default" checked />
+                        <label >default</label>
+                    </div>
+                    <div class="col-sm justify-content-center"> 
+                        <input type="radio" id="timeMap" name="selectColorMap" value="time"/>
+                        <label >time</label>
+                    </div>
+                    <div class="col-sm justify-content-center"> 
+                        <input type="radio" id="scoreMap" name="selectColorMap" value="score"/>
+                        <label >query score</label>
+                    </div>
+                </div>
                 <div class="row">
                     <input type="button" id="resetTsnePlot" value="reset" class="col-sm btn btn-sm btn-secondary"/>
                     <input type="button" id="selectDots" value="navigate/select" class="col-sm btn btn-sm btn-secondary"/>
@@ -61,6 +78,11 @@
 <script type='text/javascript' > 
     //displayed frame
     window.current_frame = new Image();
+    window.cmap = "default";
+
+    //chart colors
+    window.REGULAR_COLOR = "gray";
+    window.EMPHASIS_COLOR = "red";
 
     //cropping stuff
     window.cropTopLeft = { x: 10, y: 10 };
@@ -105,7 +127,13 @@
 
     //video to be loaded from /videos folder, could be that of objects or depth map
     // Y6R7T.mp4 DUDE DRINKING WATER
-    var video_name = "Y6R7T.mp4";
+    // 5VUT9.mp4 WOMAN IN THE KITCHEN
+    /*5VUT9 0.0 10.0##the person is holding a broom.
+    5VUT9 5.0 10.0##person put the broom aside.
+    5VUT9 8.0 13.0##person open a cabinet door get a cup out.
+    5VUT9 0.0 10.0##a person standing in the doorway holds a broom.
+    5VUT9 18.0 25.0##person pour a cup of coffee.*/
+    var video_name = "5VUT9.mp4";
 
     /*methods declaration*/
     var fillCircle = (ctx, point, radius) => {
@@ -124,7 +152,7 @@
         ctx.beginPath();
         ctx.moveTo(x, offsetY);
         ctx.lineTo(x, plotHeight - offsetY);
-        ctx.strokeStyle = "red";
+        ctx.strokeStyle = window.EMPHASIS_COLOR;
         ctx.lineWidth = 1;
         ctx.stroke();
     };
@@ -447,7 +475,8 @@
         catch (error) {
             console.error('Error loading similarity window.scores:', error);
         }
-    })
+    });
+
 </script>
 <script src="similarity_scores_plot.js"></script>
 <script src="crop_script.js"></script>

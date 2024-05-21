@@ -41,14 +41,18 @@
             <div class="row" id="objDiv">
                 <canvas id="objPlot" width="500px" height="300px" ></canvas>
             </div>
-            <input type="button" id="toggleScores" style="width:100%;" value="▲ Similarity window.scores chart" class="row btn btn-info"/>
+            <input type="button" id="toggleScores" style="width:100%;" value="▲ Similarity scores chart" class="row btn btn-info"/>
             <div class="row" id="scoreDiv">
                 <canvas id="scorePlot" width="500px" ></canvas>
             </div>  
             <input type="button" id="toggleTsne" style="width:100%;" value="▲ Video embeddings scatter plot in reduced embedding space" class="row btn btn-info"/>
             <div class="row" id="tsneDiv">
                 <canvas class="row" id="tsnePlot" width="500px" height="500px" ></canvas>
-                <input type="button" id="resetTsnePlot" value="reset" class="row btn btn-sm btn-secondary"/>
+                <div class="row">
+                    <input type="button" id="resetTsnePlot" value="reset" class="col-sm btn btn-sm btn-secondary"/>
+                    <input type="button" id="selectDots" value="navigate/select" class="col-sm btn btn-sm btn-secondary"/>
+                </div>
+                
             </div>
         </div>
     </div>
@@ -62,6 +66,12 @@
     window.cropTopLeft = { x: 10, y: 10 };
     window.cropBotRight = { x: 40, y: 40 };
     window.isCropVisible = false;
+
+    //selection stuff
+    window.selectionTopLeft = { x: 10, y: 10 };
+    window.selectionBotRight = { x: 40, y: 40 };
+    window.isSelection = false;
+    window.selectedPoints = [];
 
     //query result slot
     window.scores = null;

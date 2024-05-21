@@ -32,11 +32,21 @@ var plotCurve = (currentIndex) => {
         ctx.fillText(Math.trunc(i / 5 * maxScore * 100) / 100.0, offsetLeft / 4, yPos);
     }
 
+    //selected points highlight
+    for (var i = 0; i < window.selectedPoints.length; ++i) {
+        var x = offsetLeft + (window.selectedPoints[i] / (scaledScores.length - 1)) * (plotWidth - offsetRight - offsetLeft);
+        ctx.beginPath();
+        ctx.moveTo(x, offsetY);
+        ctx.lineTo(x, plotHeight - offsetY);
+        ctx.strokeStyle = "rgba(100,200,255,0.3)";
+        ctx.stroke();
+    }
+
     //draw the curve
     ctx.beginPath();
     ctx.moveTo(offsetLeft, plotHeight - scaledScores[0] * (plotHeight - 2 * offsetY));
 
-    for (let i = 1; i < scaledScores.length; i++) {
+    for (var i = 1; i < scaledScores.length; i++) {
         var x = offsetLeft + (i / (scaledScores.length - 1)) * (plotWidth - offsetRight - offsetLeft);
         var y = plotHeight - offsetY - scaledScores[i] * (plotHeight - 2 * offsetY);
         ctx.lineTo(x, y);

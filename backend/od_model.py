@@ -120,12 +120,8 @@ class OD:
             ret, frame = cap.read()
             if not ret:
                 break
-
-            print("from:", frame.shape[1], frame.shape[0])
             
             frame = cv2.resize(frame, (width, height))
-
-            print("to:", frame.shape[1], frame.shape[0])
             
             start_time = time()
             results = self.score_frame(frame)

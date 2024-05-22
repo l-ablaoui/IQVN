@@ -7,6 +7,7 @@ from fastapi.middleware.cors import CORSMiddleware
 import glob
 from od_model import OD
 from vision_transformer import VisionTransformer
+from depthmap import DepthMapEstimation
 
 import cv2
 import time
@@ -32,30 +33,30 @@ app.add_middleware(
 IMAGES_DIR = "images"
 VIDEOS_DIR = "videos"
 
-#MODEL_NAME = "openai/clip-vit-base-patch16"
+MODEL_NAME = "openai/clip-vit-base-patch16"
 #MODEL_NAME = "google/owlvit-base-patch32"
-MODEL_NAME = "google/owlv2-base-patch16-ensemble"
-SAMPLE_VIDEO_PATH = "videos/Y6R7T.mp4"
+#MODEL_NAME = "google/owlv2-base-patch16-ensemble"
+SAMPLE_VIDEO_PATH = "videos/5VUT9.mp4"
 
 IMAGE_CROP_QUERY = "<image-loaded>"
 OUTPUT_CROP_IMAGE = "images/search-image.png"
 
 def video2images(video_path):
     output_path = video_path.replace(".mp4", "")
-    cap = cv2.VideoCapture(video_path)
+    vid = cv2.VideoCapture(video_path)
 
-    if not cap.isOpened():
+    if not vid.isOpened():
         print(">>>>> loading video problem")
         return
 
-    width = int(cap.get(cv2.CAP_PROP_FRAME_WIDTH))
-    height = int(cap.get(cv2.CAP_PROP_FRAME_HEIGHT))
-    total_count = int(cap.get(cv2.CAP_PROP_FRAME_COUNT))
+    width = int(vid.get(cv2.CAP_PROP_FRAME_WIDTH))
+    height = int(vid.get(cv2.CAP_PROP_FRAME_HEIGHT))
+    total_count = int(vid.get(cv2.CAP_PROP_FRAME_COUNT))
 
     frameCount = 0
     with tqdm(total=total_count, desc="saving original frames: ") as pbar:
-        while cap.isOpened():
-            okay, frame = cap.read()
+        while vid.isOpened():
+            okay, frame = vid.read()
             if not okay:
                 break
 
@@ -64,7 +65,7 @@ def video2images(video_path):
             frameCount += 1
             pbar.update(1)
 
-    cap.release()
+    vid.release()
         
         
 def compute_cosine_similarity(video_path, query_text, reduction = False):    
@@ -79,11 +80,9 @@ def compute_cosine_similarity(video_path, query_text, reduction = False):
     classifier = VisionTransformer(video_path, MODEL_NAME)
 
     print("output_path:", output_path)
-
-    video_features = []
-    similarity_scores = []
-
     tic = time.time()
+
+    #save embeddings and tsne reduction in file if not there already
     if not os.path.exists(f"{output_path}/embedding_0.npy"):
         print("computing embeddings...")
         classifier(texts=query_text)
@@ -93,23 +92,26 @@ def compute_cosine_similarity(video_path, query_text, reduction = False):
             for i in range(embeddings.shape[0]):
                 np.save(output_path+f"/embedding_{i}.npy", embeddings[i])
                 pbar.update(1)
+        tsne_reduction = classifier.reduction
+        np.save(output_path+f"/tsne_reduction.npy", tsne_reduction)
 
+    #query type (text/image)
     if query_text == IMAGE_CROP_QUERY:
-
         print("reading image and computing features")
         query_img = cv2.imread(OUTPUT_CROP_IMAGE)
         query_embedding = classifier.get_image_features(query_img)
     else:
         query_embedding = classifier.get_text_features(query_text)
     print("query_shape:", query_embedding.shape)
+
+    #computing similarity scores and piling
+    similarity_scores = []
     index = 0
     while True:
         if not os.path.exists(f"{output_path}/embedding_{index}.npy"):
             break
         
         frame_features = np.load(f"{output_path}/embedding_{index}.npy")
-        if reduction:
-            video_features.append(frame_features)
         similarity = classifier.cosine_similarity(frame_features, query_embedding)
         similarity_scores.append([index, similarity.item()])
 
@@ -119,10 +121,10 @@ def compute_cosine_similarity(video_path, query_text, reduction = False):
     print(f"done in {(toc-tic):.2f} seconds...")
 
     if reduction:
-        return similarity_scores, classifier.tsne_reduction(np.array(video_features))
+        tsne_reduction = np.load(output_path+f"/tsne_reduction.npy")
+        return similarity_scores, tsne_reduction
     else:
         return similarity_scores
-
 
 
 @app.get("/search")
@@ -178,7 +180,7 @@ async def upload_png(image_data: dict):
     return {"query": IMAGE_CROP_QUERY, "scores": similarity_scores, "tsne": [{'x': float(tsne[i, 0]), 'y': float(tsne[i, 1])} for i in range(len(tsne))]}
 
 
-@app.get("/video/{filename}")
+@app.get("/video/objects/{filename}")
 async def get_video(filename: str):
     video_path = os.path.join(VIDEOS_DIR, filename).replace("\\","/")
     name = filename.split(".")[0]
@@ -195,6 +197,28 @@ async def get_video(filename: str):
         "frames": len(paths),
         "result": result.to_dict(orient="records")
     }
+
+@app.get("/video/depth/{filename}")
+async def get_depth_video(filename: str):
+    video_path = os.path.join(VIDEOS_DIR, filename).replace("\\","/")
+    name = filename.split(".")[0]
+    output_path = os.path.join(VIDEOS_DIR, f"depth-{name}").replace("\\","/")
+
+    if not os.path.exists(output_path) or not os.path.exists(output_path+"/depth_frame_0.png"):
+        await get_depth_video(video_path, output_path)
+
+    paths = glob.glob(output_path+"/depth_frame_*.png")
+    return { "frames": len(paths) }
+
+
+@app.get("/video/{filename}/fps")
+async def get_video_fps(filename: str):
+    video_path = os.path.join(VIDEOS_DIR, filename).replace("\\","/")
+    vid = cv2.VideoCapture(video_path)
+    if (not vid.isOpened):
+        return { "fps": -1}
+    else:
+        return { "fps": int(vid.get(cv2.CAP_PROP_FPS)) }
 
 
 async def annotate_video(video_path, output_path):
@@ -217,3 +241,12 @@ async def crop_image(image, bbox):
     cropped_image = image[y_min:y_max, x_min:x_max]
     
     return cropped_image
+
+
+async def get_depth_video(video_path, output_path):
+    if not os.path.exists(output_path):
+        os.mkdir(output_path)
+
+    depth_estimator = DepthMapEstimation(video_path=video_path)
+    depth_estimator.get_depth_video()
+    depth_estimator.save_depth_video(save_path=output_path, save_video=False)

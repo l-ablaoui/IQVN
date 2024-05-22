@@ -20,13 +20,16 @@
             <label class="row">Inputs:</label>
             <input type="text" id="queryInput" class="row form-control"/>
             <div class="row">
-                <input type="button" id="searchT" style="margin:0.1%;" value="Text-based search" class="btn btn-sm btn-primary"/>
-                <input type="button" id="searchI" style="margin:0.1%;" value="Crop-image-based search" class="btn btn-sm btn-secondary"/>
-                <input type="button" id="objDetec" style="margin:0.1%;" value="Object detection" class="btn btn-sm btn-secondary" />
+                <input type="button" id="searchT" style="margin:0.1%;" value="Text-based search" class="btn  btn-sm btn-primary"/>
+                <input type="button" id="objDetec" style="margin:0.1%;" value="Object detection" class="btn  btn-sm btn-secondary" />
+                <input type="button" id="depthComp" style="margin:0.1%;" value="Depth estimation" class="btn  btn-sm btn-secondary" />
             </div>
             <canvas class="row" style="width:100%; " id="video"></canvas>
             <input class="row" style="width: 100%;" type="range" id="slider" min="1" step="1" value="1">
-            <input type="button" id="toggleCrop" style="margin:0.1%;" value="toggle cropping" class="row btn btn-sm btn-secondary" />
+            <div class="row">
+                <input type="button" id="searchI" style="margin:0.1%;" value="Crop-image-based search" class="btn btn-sm btn-primary"/>
+                <input type="button" id="toggleCrop" style="margin:0.1%;" value="toggle cropping" class="btn btn-sm btn-secondary" />
+            </div>
             <div class="row">
                 <label class="col text-left" id="cropLabel">Cropped area: </label>
             </div>
@@ -35,17 +38,17 @@
             </div>
             
         </div>
-        <div class="col-sm"> <!-- outputs (window.scores, tsne reduction, detected objects) -->
+        <div class="col-sm" style="overflow-x: hidden; overflow-y: auto; height:100vh; "> <!-- outputs (window.scores, tsne reduction, detected objects) -->
             <label class="row">Outputs:</label>
-            <input type="button" id="toggleObj" style="width:100%;" value="▲ Detected objects" class="row btn btn-info"/>
+            <input type="button" id="toggleObj" style="width:100%;" value="▲ Detected objects" class="row btn btn-sm btn-info"/>
             <div class="row" id="objDiv">
                 <canvas id="objPlot" width="500px" height="300px" ></canvas>
             </div>
-            <input type="button" id="toggleScores" style="width:100%;" value="▲ Similarity scores chart" class="row btn btn-info"/>
+            <input type="button" id="toggleScores" style="width:100%;" value="▲ Similarity scores chart" class="row btn btn-sm btn-info"/>
             <div class="row" id="scoreDiv">
                 <canvas id="scorePlot" width="500px" ></canvas>
             </div>  
-            <input type="button" id="toggleTsne" style="width:100%;" value="▲ Video embeddings scatter plot in reduced embedding space" class="row btn btn-info"/>
+            <input type="button" id="toggleTsne" style="width:100%;" value="▲ Video embeddings scatter plot in reduced embedding space" class="row btn btn-sm btn-info"/>
             <div class="row" id="tsneDiv">
                 <canvas class="row" id="tsnePlot" width="500px" height="500px" ></canvas>
                 <div class="row justify-content-center">
@@ -66,10 +69,13 @@
                     </div>
                 </div>
                 <div class="row">
-                    <input type="button" id="resetTsnePlot" value="reset" class="col-sm btn btn-sm btn-secondary"/>
-                    <input type="button" id="selectDots" value="navigate/select" class="col-sm btn btn-sm btn-secondary"/>
+                    <input type="button" id="resetTsnePlot" value="reset" style="margin:0.1%;" class="col-sm btn btn-sm btn-secondary"/>
+                    <input type="button" id="selectDots" value="navigate/select" style="margin:0.1%;" class="col-sm btn btn-sm btn-secondary"/>
                 </div>
-                
+            </div>
+            <input type="button" id="toggleDepth" style="width:100%;" value="▲ Depth map" class="row btn btn-sm btn-info"/>
+            <div class="row" id="depthDiv">
+                <canvas class="row" style="width:100%; " id="depthVideo"></canvas>
             </div>
         </div>
     </div>
@@ -108,20 +114,25 @@
     var searchText = document.getElementById("searchT");
     var searchImage = document.getElementById("searchI");
     var objDetec = document.getElementById("objDetec");
+    var depthEstimate = document.getElementById("depthComp");
+
     var toggleObj = document.getElementById("toggleObj");
     var toggleScores = document.getElementById("toggleScores");
     var toggleTsne = document.getElementById("toggleTsne");
+    var toggleDepth = document.getElementById("toggleDepth");
     var toggleCrop = document.getElementById("toggleCrop");
 
     //hiding canvas and buttons at first
     document.getElementById("objDiv").style.display = "none";
     document.getElementById("scoreDiv").style.display = "none";
     document.getElementById("tsneDiv").style.display = "none";
+    document.getElementById("depthDiv").style.display = "none";
     document.getElementById("crop").style.display = "none";
     document.getElementById("cropLabel").style.display = "none";
     toggleObj.style.display = "none";
     toggleScores.style.display = "none";
     toggleTsne.style.display = "none";
+    toggleDepth.style.display = "none";
 
     const server_url = 'http://localhost:8000';
 
@@ -234,6 +245,7 @@
         plotObjects(frameIndex);
         plotCurve(frameIndex);
         plotTsneReduction(frameIndex);
+        updateDepthVideo(frameIndex);
         //TODO update other plots or frames later (possible in here)
     };
 
@@ -291,6 +303,20 @@
         } else {
             x.style.display = "none";
             toggleTsne.value = "▲ Video embeddings scatter plot in reduced embedding space";
+        }
+    });
+
+    toggleDepth.addEventListener("click", async () => {
+        var depthDiv = document.getElementById("depthDiv");
+        if (depthDiv.style.display == "none") {
+            depthDiv.style.display = "block";
+            toggleDepth.value = "▼ Depth map";
+            var frameIndex = parseInt(slider.value) - 1;
+            await updateDepthVideo(frameIndex);
+        } 
+        else {
+            toggleDepth.value = "▲ Depth map";
+            depthDiv.style.display = "none";
         }
     });
 
@@ -418,7 +444,7 @@
         //when reorganizing the detection's array, it is assumed that the detections are 
         //ordrered in terms of timestamp
         try {
-            const response = await fetch(`${server_url}/video/${video_name}`);
+            const response = await fetch(`${server_url}/video/objects/${video_name}`);
             const body = await response.json();
             results = body["result"];
 
@@ -473,7 +499,29 @@
             updateScores(frameIndex);
         }
         catch (error) {
-            console.error('Error loading similarity window.scores:', error);
+            console.error('Error detecting objects: ', error);
+        }
+    });
+
+    depthEstimate.addEventListener("click", async () => {
+        try {
+            //compute the depth map
+            const response = await fetch(`${server_url}/video/depth/${video_name}`);
+            const body = await response.json();
+            console.log(body);
+
+            //update slider values
+            slider.max = body["frames"];
+
+            //display the depth map of the current frame only
+            frameIndex = parseInt(slider.value) - 1;
+            updateDepthVideo(frameIndex);
+
+            toggleDepth.style.display = "block";
+
+        }
+        catch (error) {
+            console.error('Error computing depth map: ', error);
         }
     });
 
@@ -482,6 +530,7 @@
 <script src="crop_script.js"></script>
 <script src="tsne_plot.js"></script>
 <script src="obj_detec_plot.js"></script>
+<script src="depth_script.js"></script>
 
 </body>
 </html>

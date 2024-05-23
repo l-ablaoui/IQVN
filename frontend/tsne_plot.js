@@ -66,6 +66,9 @@ var plotTsneReduction = (currentIndex) => {
     ctx.fillStyle = colorMap[currentIndex];
     dotRadius = 4;
     fillCircle(ctx, {x: tsneTranslate.x + x * tsneScale, y: tsneTranslate.y + y * tsneScale}, dotRadius);
+    ctx.arc(tsneTranslate.x + x * tsneScale + dotRadius, tsneTranslate.y + y * tsneScale, 0, dotRadius, 2 * Math.PI);
+    ctx.strokeStyle = "black";
+    ctx.stroke();
 
     if (window.isSelection) { drawRectangle(ctx, window.selectionTopLeft, window.selectionBotRight); }
 }
@@ -78,8 +81,8 @@ var generateColorMap = (currentIndex, cmap) => {
 
     switch (cmap) {
         case "time": {
-            var color1 = {red: 0, green: 255, blue: 0};
-            var color2 = {red: 0, green: 0, blue: 255};
+            var color1 = {red: 68, green: 53, blue: 91};
+            var color2 = {red: 255, green: 212, blue: 191};
             for (var i = 0; i < window.tsne_reduction.length; ++i) { 
                 var factor1 = (window.tsne_reduction.length - 1 - i) / (window.tsne_reduction.length - 1);
                 var factor2 = i / (window.tsne_reduction.length - 1);
@@ -107,15 +110,13 @@ var generateColorMap = (currentIndex, cmap) => {
                 max_score = (max_score < window.scores[i])? window.scores[i] : max_score;
             }
 
-            var color1 = {red: 255, green: 212, blue: 191};
-            var color2 = {red: 68, green: 53, blue: 91};
+            var color1 = {red: 255, green: 0, blue: 0};
+            var color2 = {red: 0, green: 255, blue: 0};
             for (var i = 0; i < window.tsne_reduction.length; ++i) { 
                 var factor = (window.scores[i] - min_score) / (max_score - min_score);
-                colorMap.push((currentIndex != i)? 
-                    `rgb(${color1.red * (1 - factor) + color2.red * factor}, 
+                colorMap.push(`rgb(${color1.red * (1 - factor) + color2.red * factor}, 
                     ${color1.green * (1 - factor) + color2.green * factor}, 
-                    ${color1.blue * (1 - factor) + color2.blue * factor}` 
-                    : window.EMPHASIS_COLOR); 
+                    ${color1.blue * (1 - factor) + color2.blue * factor}`); 
             }
             drawColorScale(min_score, max_score, color1, color2);
             break;

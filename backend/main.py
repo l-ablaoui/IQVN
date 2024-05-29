@@ -36,7 +36,7 @@ VIDEOS_DIR = "videos"
 MODEL_NAME = "openai/clip-vit-base-patch16"
 #MODEL_NAME = "google/owlvit-base-patch32"
 #MODEL_NAME = "google/owlv2-base-patch16-ensemble"
-SAMPLE_VIDEO_PATH = "videos/5VUT9.mp4"
+SAMPLE_VIDEO_PATH = "videos/Y6R7T.mp4"
 
 IMAGE_CROP_QUERY = "<image-loaded>"
 OUTPUT_CROP_IMAGE = "images/search-image.png"
@@ -92,8 +92,19 @@ def compute_cosine_similarity(video_path, query_text, reduction = False):
             for i in range(embeddings.shape[0]):
                 np.save(output_path+f"/embedding_{i}.npy", embeddings[i])
                 pbar.update(1)
-        tsne_reduction = classifier.reduction
-        np.save(output_path+f"/tsne_reduction.npy", tsne_reduction)
+        
+        if reduction:
+            if not os.path.exists(f"{output_path}/tsne_reduction.npy"):
+                tsne_reduction = classifier.tsne_reduction(classifier.video_embeddings)
+                np.save(output_path+f"/tsne_reduction.npy", tsne_reduction)
+
+            if not os.path.exists(f"{output_path}/pca_reduction.npy"):
+                pca_reduction = classifier.pca_reduction(classifier.video_embeddings)
+                np.save(output_path+f"/pca_reduction.npy", pca_reduction)
+
+            if not os.path.exists(f"{output_path}/umap_reduction.npy"):
+                umap_reduction = classifier.umap_reduction(classifier.video_embeddings)
+                np.save(output_path+f"/umap_reduction.npy", umap_reduction)
 
     #query type (text/image)
     if query_text == IMAGE_CROP_QUERY:
@@ -122,15 +133,23 @@ def compute_cosine_similarity(video_path, query_text, reduction = False):
 
     if reduction:
         tsne_reduction = np.load(output_path+f"/tsne_reduction.npy")
-        return similarity_scores, tsne_reduction
+        pca_reduction = np.load(output_path+f"/pca_reduction.npy")
+        umap_reduction = np.load(output_path+f"/umap_reduction.npy")
+        return similarity_scores, tsne_reduction, pca_reduction, umap_reduction
     else:
         return similarity_scores
 
 
 @app.get("/search")
 async def search(query: str):
-    similarity_scores, tsne = compute_cosine_similarity(SAMPLE_VIDEO_PATH, query, True)
-    return {"query": query, "scores": similarity_scores, "tsne": [{'x': float(tsne[i, 0]), 'y': float(tsne[i, 1])} for i in range(len(tsne))]}  # add tsne scores
+    similarity_scores, tsne, pca, umap = compute_cosine_similarity(SAMPLE_VIDEO_PATH, query, True)
+    return {
+        "query": query, 
+        "scores": similarity_scores, 
+        "tsne": [{'x': float(tsne[i, 0]), 'y': float(tsne[i, 1])} for i in range(len(tsne))],
+        "pca": [{'x': float(pca[i, 0]), 'y': float(pca[i, 1])} for i in range(len(pca))],
+        "umap": [{'x': float(umap[i, 0]), 'y': float(umap[i, 1])} for i in range(len(umap))]
+    }
 
 
 @app.get("/search/image/{folder}/{image_path}")
@@ -176,8 +195,14 @@ async def upload_png(image_data: dict):
 
     cv2.imwrite(OUTPUT_CROP_IMAGE, img)
 
-    similarity_scores, tsne = compute_cosine_similarity(SAMPLE_VIDEO_PATH, IMAGE_CROP_QUERY, reduction=True)
-    return {"query": IMAGE_CROP_QUERY, "scores": similarity_scores, "tsne": [{'x': float(tsne[i, 0]), 'y': float(tsne[i, 1])} for i in range(len(tsne))]}
+    similarity_scores, tsne, pca, umap = compute_cosine_similarity(SAMPLE_VIDEO_PATH, IMAGE_CROP_QUERY, reduction=True)
+    return {
+        "query": IMAGE_CROP_QUERY, 
+        "scores": similarity_scores, 
+        "tsne": [{'x': float(tsne[i, 0]), 'y': float(tsne[i, 1])} for i in range(len(tsne))],
+        "pca": [{'x': float(pca[i, 0]), 'y': float(pca[i, 1])} for i in range(len(pca))],
+        "umap": [{'x': float(umap[i, 0]), 'y': float(umap[i, 1])} for i in range(len(umap))]
+    }
 
 
 @app.get("/video/objects/{filename}")
@@ -216,7 +241,7 @@ async def get_video_fps(filename: str):
     video_path = os.path.join(VIDEOS_DIR, filename).replace("\\","/")
     vid = cv2.VideoCapture(video_path)
     if (not vid.isOpened):
-        return { "fps": -1}
+        return { "fps": -1 }
     else:
         return { "fps": int(vid.get(cv2.CAP_PROP_FPS)) }
 

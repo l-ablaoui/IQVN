@@ -21,21 +21,21 @@ var selectionMouseDownPoint = selectionCenter;
 
 /*main drawing function for tsne reduced embeddings' scatter plot */
 var plotTsneReduction = (currentIndex) => {
-    if (window.tsne_reduction == null) { return; }
+    if (window.displayed_reduction == null) { return; }
 
     var colorMap = generateColorMap(currentIndex, window.cmap);
 
     /*get min/max to later normalize reduction values*/
-    min_x = window.tsne_reduction[0]['x'];
-    max_x = window.tsne_reduction[0]['x'];
-    min_y = window.tsne_reduction[0]['y'];
-    max_y = window.tsne_reduction[0]['y'];
+    min_x = window.displayed_reduction[0]['x'];
+    max_x = window.displayed_reduction[0]['x'];
+    min_y = window.displayed_reduction[0]['y'];
+    max_y = window.displayed_reduction[0]['y'];
 
-    for (i = 1;i < window.tsne_reduction.length;++i) {
-        min_x = (min_x > window.tsne_reduction[i]['x'])? window.tsne_reduction[i]['x'] : min_x;
-        max_x = (max_x < window.tsne_reduction[i]['x'])? window.tsne_reduction[i]['x'] : max_x;
-        min_y = (min_y > window.tsne_reduction[i]['y'])? window.tsne_reduction[i]['y'] : min_y;
-        max_y = (max_y < window.tsne_reduction[i]['y'])? window.tsne_reduction[i]['y'] : max_y;
+    for (i = 1;i < window.displayed_reduction.length;++i) {
+        min_x = (min_x > window.displayed_reduction[i]['x'])? window.displayed_reduction[i]['x'] : min_x;
+        max_x = (max_x < window.displayed_reduction[i]['x'])? window.displayed_reduction[i]['x'] : max_x;
+        min_y = (min_y > window.displayed_reduction[i]['y'])? window.displayed_reduction[i]['y'] : min_y;
+        max_y = (max_y < window.displayed_reduction[i]['y'])? window.displayed_reduction[i]['y'] : max_y;
     }
 
     //tsnePlot width/length
@@ -47,12 +47,12 @@ var plotTsneReduction = (currentIndex) => {
     ctx.clearRect(0, 0, plotWidth, plotHeight);  
     
     //draw the points (square shaped for now)
-    for (i = 0;i < window.tsne_reduction.length;++i) {
+    for (i = 0;i < window.displayed_reduction.length;++i) {
         //draw current frame marker last to stand out
         if (i == currentIndex) { continue; }
 
-        x = tsnePlotOffsetX + (window.tsne_reduction[i]['x'] - min_x) / (max_x - min_x) * (plotWidth - 2 * tsnePlotOffsetX);
-        y = plotHeight - tsnePlotOffsetY - (window.tsne_reduction[i]['y'] - min_y) / (max_y - min_y) * (plotHeight - 2 * tsnePlotOffsetY);
+        x = tsnePlotOffsetX + (window.displayed_reduction[i]['x'] - min_x) / (max_x - min_x) * (plotWidth - 2 * tsnePlotOffsetX);
+        y = plotHeight - tsnePlotOffsetY - (window.displayed_reduction[i]['y'] - min_y) / (max_y - min_y) * (plotHeight - 2 * tsnePlotOffsetY);
 
         ctx.fillStyle = colorMap[i];
         dotRadius = 2;
@@ -60,8 +60,8 @@ var plotTsneReduction = (currentIndex) => {
         fillCircle(ctx, {x: tsneTranslate.x + x * tsneScale, y: tsneTranslate.y + y * tsneScale}, dotRadius);
     }
 
-    x = tsnePlotOffsetX + (window.tsne_reduction[currentIndex]['x'] - min_x) / (max_x - min_x) * (plotWidth - 2 * tsnePlotOffsetX);
-    y = plotHeight - tsnePlotOffsetY - (window.tsne_reduction[currentIndex]['y'] - min_y) / (max_y - min_y) * (plotHeight - 2 * tsnePlotOffsetY);
+    x = tsnePlotOffsetX + (window.displayed_reduction[currentIndex]['x'] - min_x) / (max_x - min_x) * (plotWidth - 2 * tsnePlotOffsetX);
+    y = plotHeight - tsnePlotOffsetY - (window.displayed_reduction[currentIndex]['y'] - min_y) / (max_y - min_y) * (plotHeight - 2 * tsnePlotOffsetY);
 
     ctx.fillStyle = colorMap[currentIndex];
     dotRadius = 4;
@@ -77,29 +77,29 @@ var plotTsneReduction = (currentIndex) => {
 //plot colormap
 var generateColorMap = (currentIndex, cmap) => {
     colorMap = [];
-    if (window.tsne_reduction == null) { return colorMap; }
+    if (window.displayed_reduction == null) { return colorMap; }
 
     switch (cmap) {
         case "time": {
             var color1 = {red: 68, green: 53, blue: 91};
             var color2 = {red: 255, green: 212, blue: 191};
-            for (var i = 0; i < window.tsne_reduction.length; ++i) { 
-                var factor1 = (window.tsne_reduction.length - 1 - i) / (window.tsne_reduction.length - 1);
-                var factor2 = i / (window.tsne_reduction.length - 1);
+            for (var i = 0; i < window.displayed_reduction.length; ++i) { 
+                var factor1 = (window.displayed_reduction.length - 1 - i) / (window.displayed_reduction.length - 1);
+                var factor2 = i / (window.displayed_reduction.length - 1);
                 colorMap.push((currentIndex != i)? 
                     `rgb(${color1.red * factor1 + color2.red * factor2}, 
                     ${color1.green * factor1 + color2.green * factor2}, 
                     ${color1.blue * factor1 + color2.blue * factor2}` 
                     : window.EMPHASIS_COLOR); 
             }
-            drawColorScale(0, window.tsne_reduction.length, color1, color2);
+            drawColorScale(0, window.displayed_reduction.length, color1, color2);
             break;
         }
 
         case "score": {
             //make sure scores exist and match the tsne reduction
             if (window.scores == null) { generateColorMap(currentIndex, ""); }
-            if (window.scores.length != window.tsne_reduction.length) { generateColorMap(currentIndex, ""); }
+            if (window.scores.length != window.displayed_reduction.length) { generateColorMap(currentIndex, ""); }
 
             /*get min/max to normalize scores*/
             min_score = window.scores[0];
@@ -112,7 +112,7 @@ var generateColorMap = (currentIndex, cmap) => {
 
             var color1 = {red: 255, green: 0, blue: 0};
             var color2 = {red: 0, green: 255, blue: 0};
-            for (var i = 0; i < window.tsne_reduction.length; ++i) { 
+            for (var i = 0; i < window.displayed_reduction.length; ++i) { 
                 var factor = (window.scores[i] - min_score) / (max_score - min_score);
                 colorMap.push(`rgb(${color1.red * (1 - factor) + color2.red * factor}, 
                     ${color1.green * (1 - factor) + color2.green * factor}, 
@@ -125,7 +125,7 @@ var generateColorMap = (currentIndex, cmap) => {
         default: { //gray colormap with red as amphasis
             //squash the color map on default
             tsneColorScale.height = 0;
-            for (var i = 0; i < window.tsne_reduction.length; ++i) { colorMap.push((currentIndex == i)? window.EMPHASIS_COLOR: window.REGULAR_COLOR); }
+            for (var i = 0; i < window.displayed_reduction.length; ++i) { colorMap.push((currentIndex == i)? window.EMPHASIS_COLOR: window.REGULAR_COLOR); }
             break;
         }
     }
@@ -156,12 +156,13 @@ var drawColorScale = (minValue, maxValue, minColor, maxColor) => {
     ctx.fillText(maxValue, tsneColorScale.width - 15, tsneColorScale.height / 2 + 5); // Max value at the right
 }
 
-//colormap selector handling
+//selectors handling (colormap and reduction method)
 document.addEventListener("DOMContentLoaded", function() {
-    const radioButtons = document.querySelectorAll('input[name="selectColorMap"]');
+    const colorRadioButtons = document.querySelectorAll('input[name="selectColorMap"]');
+    const reductionMethodButtons = document.querySelectorAll('input[name="selectReductionMethod"]');
 
-    // Function to handle the change event
-    const handleRadioChange = () => {
+    // Function to handle the colormap change
+    const handleColorMapChange = () => {
         const selectedValue = document.querySelector('input[name="selectColorMap"]:checked').value;
         window.cmap = selectedValue;
 
@@ -170,9 +171,24 @@ document.addEventListener("DOMContentLoaded", function() {
         plotTsneReduction(currentIndex);
     };
 
+    // Function to handle the reduction algorithm change
+    const handleReductionMethodChange = () => {
+        const selectedValue = document.querySelector('input[name="selectReductionMethod"]:checked').value;
+        window.displayed_reduction = (selectedValue == "tsne")? window.tsne_reduction : 
+                                    (selectedValue == "pca")? window.pca_reduction : window.umap_reduction;
+
+        //redraw components
+        var currentIndex = parseInt(slider.value) - 1;
+        plotTsneReduction(currentIndex);
+    };
+
     // Add change event listener to each radio button
-    radioButtons.forEach(radio => {
-        radio.addEventListener('change', handleRadioChange);
+    colorRadioButtons.forEach(radio => {
+        radio.addEventListener('change', handleColorMapChange);
+    });
+
+    reductionMethodButtons.forEach(radio => {
+        radio.addEventListener('change', handleReductionMethodChange);
     });
 });
 
@@ -270,19 +286,19 @@ var isCircleInSquare = (p1, p2, c, r) => {
 
 // update the selection indices global vector
 var updateSelected = (currentIndex) => {
-    if (window.tsne_reduction == null) { return; }
+    if (window.displayed_reduction == null) { return; }
 
     /*get min/max to later normalize reduction values*/
-    min_x = window.tsne_reduction[0]['x'];
-    max_x = window.tsne_reduction[0]['x'];
-    min_y = window.tsne_reduction[0]['y'];
-    max_y = window.tsne_reduction[0]['y'];
+    min_x = window.displayed_reduction[0]['x'];
+    max_x = window.displayed_reduction[0]['x'];
+    min_y = window.displayed_reduction[0]['y'];
+    max_y = window.displayed_reduction[0]['y'];
 
-    for (i = 1;i < window.tsne_reduction.length;++i) {
-        min_x = (min_x > window.tsne_reduction[i]['x'])? window.tsne_reduction[i]['x'] : min_x;
-        max_x = (max_x < window.tsne_reduction[i]['x'])? window.tsne_reduction[i]['x'] : max_x;
-        min_y = (min_y > window.tsne_reduction[i]['y'])? window.tsne_reduction[i]['y'] : min_y;
-        max_y = (max_y < window.tsne_reduction[i]['y'])? window.tsne_reduction[i]['y'] : max_y;
+    for (i = 1;i < window.displayed_reduction.length;++i) {
+        min_x = (min_x > window.displayed_reduction[i]['x'])? window.displayed_reduction[i]['x'] : min_x;
+        max_x = (max_x < window.displayed_reduction[i]['x'])? window.displayed_reduction[i]['x'] : max_x;
+        min_y = (min_y > window.displayed_reduction[i]['y'])? window.displayed_reduction[i]['y'] : min_y;
+        max_y = (max_y < window.displayed_reduction[i]['y'])? window.displayed_reduction[i]['y'] : max_y;
     }
 
     //tsnePlot width/length
@@ -292,10 +308,10 @@ var updateSelected = (currentIndex) => {
     //clear all
     window.selectedPoints = [];
 
-    for (i = 0;i < window.tsne_reduction.length;++i) {
+    for (i = 0;i < window.displayed_reduction.length;++i) {
         //get center coordinates
-        x = tsnePlotOffsetX + (window.tsne_reduction[i]['x'] - min_x) / (max_x - min_x) * (plotWidth - 2 * tsnePlotOffsetX);
-        y = plotHeight - tsnePlotOffsetY - (window.tsne_reduction[i]['y'] - min_y) / (max_y - min_y) * (plotHeight - 2 * tsnePlotOffsetY);
+        x = tsnePlotOffsetX + (window.displayed_reduction[i]['x'] - min_x) / (max_x - min_x) * (plotWidth - 2 * tsnePlotOffsetX);
+        y = plotHeight - tsnePlotOffsetY - (window.displayed_reduction[i]['y'] - min_y) / (max_y - min_y) * (plotHeight - 2 * tsnePlotOffsetY);
 
         //checking if circle is in the selected area, taking into account the current zoom/pan and the big coloured dot that is the current frame embedding
         if (isCircleInSquare(window.selectionTopLeft, window.selectionBotRight, 

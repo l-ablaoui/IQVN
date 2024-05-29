@@ -75,16 +75,42 @@ class VisionTransformer:
 
         return cosine_similarity
 
-    def tsne_reduction(self, embeddings, random_state=0, n_iter=1000, metric="cosine"):
+    def tsne_reduction(self, embeddings, normalize=True, random_state=0, n_iter=1000, metric="cosine"):
         from sklearn.manifold import TSNE
         tsne = TSNE(random_state = random_state, n_iter = n_iter, metric = metric)
 
-        return tsne.fit_transform(embeddings)
-     
+        if normalize:
+            from sklearn.preprocessing import StandardScaler
+            normalizer = StandardScaler()
+            return tsne.fit_transform(normalizer.fit_transform(embeddings)) 
+        else:
+            return tsne.fit_transform(embeddings)
+
+    def pca_reduction(self, embeddings):
+        from sklearn.decomposition import PCA
+        from sklearn.preprocessing import StandardScaler
+
+        normalizer = StandardScaler()
+        pca = PCA(n_components=2)
+
+        return pca.fit_transform(normalizer.fit_transform(embeddings))
+    
+    def umap_reduction(self, embeddings, normalize=True, random_state=0):
+        from sklearn.preprocessing import StandardScaler
+        import umap
+
+        normalizer = StandardScaler()
+        u_map = umap.UMAP(n_components=2, random_state=random_state)
+
+        if normalize:
+            from sklearn.preprocessing import StandardScaler
+            normalizer = StandardScaler()
+            return u_map.fit_transform(normalizer.fit_transform(embeddings)) 
+        else:
+            return u_map.fit_transform(embeddings)
 
     def __call__(self, images=None, texts=None):
         self.video_embeddings = self.get_video_features()
-        self.reduction = self.tsne_reduction(self.video_embeddings)
 
         image_cosine = None
         text_cosine = None
@@ -101,3 +127,4 @@ class VisionTransformer:
                 self.scores = text_cosine 
             else:
                 self.scores = np.concatenate(self.scores, text_cosine, axis = 0)
+

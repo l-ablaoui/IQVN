@@ -267,6 +267,22 @@
         //TODO update other plots or frames later (possible in here)
     };
 
+    /*Listeners*/
+    var updateFrameIndexOnClick = (svg, offsetLeft, offsetRight, offsetY, nb_values, event) => {
+        const mouseX = event.offsetX;
+        const mouseY = event.offsetY;
+
+        plotWidth = svg.clientWidth;
+        plotHeight = svg.clientHeight;
+
+        //case clicked on the offset
+        if (offsetY > mouseY || mouseY > plotHeight - offsetY) { return; }
+        if (offsetLeft > mouseX || mouseX > plotWidth - offsetRight) { return; }
+
+        var frameIndex = Math.trunc((mouseX - offsetLeft) / (plotWidth - offsetRight - offsetLeft) * (nb_values - 1));
+
+        updateScores(frameIndex);
+    }
 
     toggleCrop.addEventListener("click", () => {
         var crop = document.getElementById("crop");
@@ -398,7 +414,8 @@
             //show buttons for toggling scores/reduction
             toggleScores.style.display = "block";
             toggleTsne.style.display = "block";
-            
+            scorePlot.addEventListener("click", (event) => updateFrameIndexOnClick(scorePlot, scorePlotOffsetLeft, scorePlotOffsetRight, scorePlotOffsetY, slider.max, event));
+
             //update the curve plot
             updateScores(frameIndex);
         } 
@@ -444,6 +461,7 @@
             //show buttons for toggling window.scores/reduction
             toggleScores.style.display = "block";
             toggleTsne.style.display = "block";
+            scorePlot.addEventListener("click", (event) => updateFrameIndexOnClick(scorePlot, scorePlotOffsetLeft, scorePlotOffsetRight, scorePlotOffsetY, slider.max, event));
 
             //update the curve plot
             updateScores(frameIndex);
@@ -507,6 +525,7 @@
 
             //show button for toggling obj chart
             toggleObj.style.display = "block";
+            //objPlot.addEventListener("click", (event) => updateFrameIndexOnClick(objPlot, scorePlotOffsetLeft, scorePlotOffsetRight, scorePlotOffsetY, slider.max, event));
 
             frameIndex = parseInt(slider.value) - 1;
             updateScores(frameIndex);

@@ -39,8 +39,8 @@ var plotTsneReduction = (currentIndex) => {
     }
 
     //tsnePlot width/length
-    var plotWidth = tsnePlot.clientWidth;
-    var plotHeight = tsnePlot.clientHeight;
+    var plotWidth = tsnePlot.width;
+    var plotHeight = tsnePlot.height;
     
     //reset the drawing
     var ctx = tsnePlot.getContext("2d");
@@ -201,8 +201,8 @@ tsnePlot.addEventListener("click", async (event) => {
     const mouseY = event.offsetY;
 
     //tsnePlot width/length
-    var plotWidth = tsnePlot.clientWidth;
-    var plotHeight = tsnePlot.clientHeight;
+    var plotWidth = tsnePlot.width;
+    var plotHeight = tsnePlot.height;
 
     //get min/max to later normalize reduction values
     min_x = window.displayed_reduction[0]['x'];
@@ -281,8 +281,8 @@ tsnePlot.addEventListener('wheel', zoomPanWheel);
 
 var zoomPanMouseDown = (event) => {
     isTsneDragging = true;
-    tsneDragOffset.x = event.clientX - tsneTranslate.x;
-    tsneDragOffset.y = event.clientY - tsneTranslate.y;
+    tsneDragOffset.x = event.offsetX - tsneTranslate.x;
+    tsneDragOffset.y = event.offsetY - tsneTranslate.y;
 };
 tsnePlot.addEventListener('mousedown', zoomPanMouseDown); 
 
@@ -294,8 +294,8 @@ tsnePlot.addEventListener('mouseout', zoomPanMouseUp);
 
 var zoomPanMouseMove = (event) => {
     if (isTsneDragging) {
-        tsneTranslate.x = event.clientX - tsneDragOffset.x;
-        tsneTranslate.y = event.clientY - tsneDragOffset.y;
+        tsneTranslate.x = event.offsetX - tsneDragOffset.x;
+        tsneTranslate.y = event.offsetY - tsneDragOffset.y;
 
         //redraw context
         currentIndex = parseInt(slider.value) - 1;
@@ -363,8 +363,8 @@ var updateSelected = (currentIndex) => {
     }
 
     //tsnePlot width/length
-    var plotWidth = tsnePlot.clientWidth;
-    var plotHeight = tsnePlot.clientHeight;
+    var plotWidth = tsnePlot.width;
+    var plotHeight = tsnePlot.height;
 
     //clear all
     window.selectedPoints = [];

@@ -10,8 +10,8 @@ var plotObjects = (currentIndex) => {
     if (window.objs == null) { return; }
 
     //canvas width/length
-    var plotWidth = objPlot.clientWidth;
-    var plotHeight = objPlot.clientHeight;
+    var plotWidth = objPlot.width;
+    var plotHeight = objPlot.height;
 
     //reset the drawing
     var ctx = objPlot.getContext("2d");
@@ -85,8 +85,8 @@ objPlot.addEventListener("click", (event) => {
     const mouseY = event.offsetY;
 
     //canvas width/length
-    var plotWidth = objPlot.clientWidth;
-    var plotHeight = objPlot.clientHeight;
+    var plotWidth = objPlot.width;
+    var plotHeight = objPlot.height;
 
     //if there are no detected objects at the current frame, skip
     currentFrame = parseInt(slider.value) - 1;

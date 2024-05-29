@@ -1,5 +1,3 @@
-var scorePlot = document.getElementById("scorePlot");
-
 //offset, to keep space between plot and canvas boundaries
 var scorePlotOffsetLeft = 35;
 var scorePlotOffsetRight = 0;
@@ -7,6 +5,8 @@ var scorePlotOffsetY = 20;
 
 //Plot the score curve
 var plotCurve = (currentIndex) => {
+    var scorePlot = document.getElementById("scorePlot");
+
     if (window.scores == null) { return; }
 
     //normalize scores array
@@ -15,8 +15,8 @@ var plotCurve = (currentIndex) => {
     scaledScores = window.scores.map(score => (score - minScore) / (maxScore - minScore));
 
     //canvas with/length
-    var plotWidth = scorePlot.clientWidth;
-    var plotHeight = scorePlot.clientHeight;
+    var plotWidth = scorePlot.width;
+    var plotHeight = scorePlot.height;
 
     console.log(plotHeight, plotWidth);
     //reset the drawing

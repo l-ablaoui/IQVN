@@ -268,7 +268,7 @@
     };
 
     /*Listeners*/
-    var updateFrameIndexOnClick = (svg, offsetLeft, offsetRight, offsetY, nb_values, event) => {
+    var updateFrameIndexOnClick = async (svg, offsetLeft, offsetRight, offsetY, nb_values, event) => {
         const mouseX = event.offsetX;
         const mouseY = event.offsetY;
 
@@ -280,6 +280,14 @@
         if (offsetLeft > mouseX || mouseX > plotWidth - offsetRight) { return; }
 
         var frameIndex = Math.trunc((mouseX - offsetLeft) / (plotWidth - offsetRight - offsetLeft) * (nb_values - 1));
+
+        //fetch current frame
+        var name_processed = video_name.split(".")[0]; 
+            const response = await fetch(`${server_url}/image/${name_processed}/${frameIndex}.png`);
+            const blob = await response.blob();
+            const imageUrl = URL.createObjectURL(blob);
+
+            updateVideo(imageUrl);
 
         updateScores(frameIndex);
     }

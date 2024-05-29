@@ -4,6 +4,8 @@ import pandas as pd
 import cv2
 from time import time
 
+from tqdm import tqdm
+
 class OD:
 
     def __init__(self, capture_video, output_detection, output_results, model_name):
@@ -115,37 +117,35 @@ class OD:
         
         frame_predictions = []
         frame_number = 0
-        while True:
-        
-            ret, frame = cap.read()
-            if not ret:
-                break
-            
-            frame = cv2.resize(frame, (width, height))
-            
-            start_time = time()
-            results = self.score_frame(frame)
-            frame = self.plot_boxes(results, frame)
-            
-            end_time = time()
-            fps = 1/np.round(end_time - start_time, 2)
-            if frame_number % 100 == 0:
-                print(f"Frames Per Second : {fps}")
-                print(f"results")
-                print(results)
-                print("\n")
 
-            if not save_video:
-                cv2.imwrite(self.output_detection+f"/{frame_number}.png", frame)
+        with tqdm(total=int(cap.get(cv2.CAP_PROP_FRAME_COUNT)), desc="detecting objects: ") as pbar:
+            while True:
+                ret, frame = cap.read()
+                if not ret:
+                    break
+                
+                frame = cv2.resize(frame, (width, height))
+                
+                start_time = time()
+                results = self.score_frame(frame)
+                frame = self.plot_boxes(results, frame)
+                
+                end_time = time()
+                fps = 1/np.round(end_time - start_time, 2)
 
-            if save_video:
-                output_video.write(frame)
+                if not save_video:
+                    cv2.imwrite(self.output_detection+f"/{frame_number}.png", frame)
 
-            df_results = results[-1]
-            df_results['timestamp'] = cap.get(cv2.CAP_PROP_POS_MSEC)/1000.0
-            frame_predictions.append(df_results)
+                if save_video:
+                    output_video.write(frame)
 
-            frame_number += 1
+                df_results = results[-1]
+                df_results['timestamp'] = cap.get(cv2.CAP_PROP_POS_MSEC)/1000.0
+                frame_predictions.append(df_results)
+
+                frame_number += 1
+
+                pbar.update(1)
 
         cap.release()
         if save_video:

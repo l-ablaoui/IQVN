@@ -192,6 +192,67 @@ document.addEventListener("DOMContentLoaded", function() {
     });
 });
 
+/*On click handling for navigating the video frames*/
+/*compare mouse coordinates with each dot of the plot and see if it touches any, must consider the zoom/pan */
+tsnePlot.addEventListener("click", async (event) => {
+    event.preventDefault();
+    
+    const mouseX = event.offsetX;
+    const mouseY = event.offsetY;
+
+    //tsnePlot width/length
+    var plotWidth = tsnePlot.clientWidth;
+    var plotHeight = tsnePlot.clientHeight;
+
+    //get min/max to later normalize reduction values
+    min_x = window.displayed_reduction[0]['x'];
+    max_x = window.displayed_reduction[0]['x'];
+    min_y = window.displayed_reduction[0]['y'];
+    max_y = window.displayed_reduction[0]['y'];
+
+    for (i = 1;i < window.displayed_reduction.length;++i) {
+        min_x = (min_x > window.displayed_reduction[i]['x'])? window.displayed_reduction[i]['x'] : min_x;
+        max_x = (max_x < window.displayed_reduction[i]['x'])? window.displayed_reduction[i]['x'] : max_x;
+        min_y = (min_y > window.displayed_reduction[i]['y'])? window.displayed_reduction[i]['y'] : min_y;
+        max_y = (max_y < window.displayed_reduction[i]['y'])? window.displayed_reduction[i]['y'] : max_y;
+    }
+     
+    //if clicking on the current frame index (big red dot), do nothing
+    var currentIndex = parseInt(slider.value) - 1;
+    var x = tsneTranslate.x + tsneScale * (tsnePlotOffsetX + (window.displayed_reduction[currentIndex]['x'] - min_x) / (max_x - min_x) * (plotWidth - 2 * tsnePlotOffsetX));
+    var y = tsneTranslate.y + tsneScale * (plotHeight - tsnePlotOffsetY - (window.displayed_reduction[currentIndex]['y'] - min_y) / (max_y - min_y) * (plotHeight - 2 * tsnePlotOffsetY));
+
+    dotRadius = 4;
+    var dist = (mouseX - x) * (mouseX - x) + (mouseY - y) * (mouseY - y);
+    if (dist <= dotRadius * dotRadius) {
+        return;
+    }
+
+    for (i = 0;i < window.displayed_reduction.length;++i) {
+        //get each point's coordinates after current zoom/pan
+        var x = tsneTranslate.x + tsneScale * (tsnePlotOffsetX + (window.displayed_reduction[i]['x'] - min_x) / (max_x - min_x) * (plotWidth - 2 * tsnePlotOffsetX));
+        var y = tsneTranslate.y + tsneScale * (plotHeight - tsnePlotOffsetY - (window.displayed_reduction[i]['y'] - min_y) / (max_y - min_y) * (plotHeight - 2 * tsnePlotOffsetY));
+
+        dotRadius = 2;
+        var dist = (mouseX - x) * (mouseX - x) + (mouseY - y) * (mouseY - y);
+
+        //if the user clicked inside the dot, update the frameIndex
+        if (dist <= dotRadius * dotRadius) {
+            //fetch current frame
+            var name_processed = video_name.split(".")[0]; 
+            const response = await fetch(`${server_url}/image/${name_processed}/${i}.png`);
+            const blob = await response.blob();
+            const imageUrl = URL.createObjectURL(blob);
+
+            updateVideo(imageUrl);
+
+            //update component
+            updateScores(i);
+            return;
+        }
+    }
+})
+
 /*zoom/pan handling */
 var zoomPanWheel = (event) => {
     event.preventDefault();

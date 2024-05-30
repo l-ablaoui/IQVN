@@ -18,7 +18,6 @@ var plotCurve = (currentIndex) => {
     var plotWidth = scorePlot.width;
     var plotHeight = scorePlot.height;
 
-    console.log(plotHeight, plotWidth);
     //reset the drawing
     var ctx = scorePlot.getContext("2d");
     ctx.clearRect(0, 0, plotWidth, plotHeight);

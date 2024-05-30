@@ -15,6 +15,7 @@ import numpy as np
 import base64
 
 from sklearn.preprocessing import LabelEncoder
+from sklearn.cluster import DBSCAN
 
 from tqdm import tqdm
 
@@ -36,7 +37,7 @@ VIDEOS_DIR = "videos"
 MODEL_NAME = "openai/clip-vit-base-patch16"
 #MODEL_NAME = "google/owlvit-base-patch32"
 #MODEL_NAME = "google/owlv2-base-patch16-ensemble"
-SAMPLE_VIDEO_PATH = "videos/Y6R7T.mp4"
+SAMPLE_VIDEO_PATH = "videos/workplace_enac.mp4"
 
 IMAGE_CROP_QUERY = "<image-loaded>"
 OUTPUT_CROP_IMAGE = "images/search-image.png"
@@ -143,12 +144,19 @@ def compute_cosine_similarity(video_path, query_text, reduction = False):
 @app.get("/search")
 async def search(query: str):
     similarity_scores, tsne, pca, umap = compute_cosine_similarity(SAMPLE_VIDEO_PATH, query, True)
+    tsne_clusters = DBSCAN(eps=3, min_samples=10).fit(tsne).labels_
+    pca_clusters = DBSCAN(eps=3, min_samples=10).fit(pca).labels_
+    umap_clusters = DBSCAN(eps=3, min_samples=10).fit(umap).labels_
+
     return {
         "query": query, 
         "scores": similarity_scores, 
         "tsne": [{'x': float(tsne[i, 0]), 'y': float(tsne[i, 1])} for i in range(len(tsne))],
         "pca": [{'x': float(pca[i, 0]), 'y': float(pca[i, 1])} for i in range(len(pca))],
-        "umap": [{'x': float(umap[i, 0]), 'y': float(umap[i, 1])} for i in range(len(umap))]
+        "umap": [{'x': float(umap[i, 0]), 'y': float(umap[i, 1])} for i in range(len(umap))],
+        "tsne_clusters": [int(tsne_clusters[i]) for i in range(len(tsne_clusters))],
+        "pca_clusters": [int(pca_clusters[i]) for i in range(len(pca_clusters))],
+        "umap_clusters": [int(umap_clusters[i]) for i in range(len(umap_clusters))]
     }
 
 
@@ -196,12 +204,19 @@ async def upload_png(image_data: dict):
     cv2.imwrite(OUTPUT_CROP_IMAGE, img)
 
     similarity_scores, tsne, pca, umap = compute_cosine_similarity(SAMPLE_VIDEO_PATH, IMAGE_CROP_QUERY, reduction=True)
+    tsne_clusters = DBSCAN(eps=3, min_samples=10).fit(tsne).labels_
+    pca_clusters = DBSCAN(eps=3, min_samples=10).fit(pca).labels_
+    umap_clusters = DBSCAN(eps=3, min_samples=10).fit(umap).labels_
+
     return {
         "query": IMAGE_CROP_QUERY, 
         "scores": similarity_scores, 
         "tsne": [{'x': float(tsne[i, 0]), 'y': float(tsne[i, 1])} for i in range(len(tsne))],
         "pca": [{'x': float(pca[i, 0]), 'y': float(pca[i, 1])} for i in range(len(pca))],
-        "umap": [{'x': float(umap[i, 0]), 'y': float(umap[i, 1])} for i in range(len(umap))]
+        "umap": [{'x': float(umap[i, 0]), 'y': float(umap[i, 1])} for i in range(len(umap))],
+        "tsne_clusters": [int(tsne_clusters[i]) for i in range(len(tsne_clusters))],
+        "pca_clusters": [int(pca_clusters[i]) for i in range(len(pca_clusters))],
+        "umap_clusters": [int(umap_clusters[i]) for i in range(len(umap_clusters))]
     }
 
 

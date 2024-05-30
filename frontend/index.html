@@ -74,12 +74,16 @@
                         <label>default</label>
                     </div>
                     <div class="col-sm justify-content-center">
+                        <input type="radio" id="dbscanMap" name="selectColorMap" value="clusters"/>
+                        <label>dbscan</label>
+                    </div>
+                    <div class="col-sm justify-content-center">
                         <input type="radio" id="timeMap" name="selectColorMap" value="time"/>
                         <label>time</label>
                     </div>
                     <div class="col-sm justify-content-center">
                         <input type="radio" id="scoreMap" name="selectColorMap" value="score"/>
-                        <label>query score</label>
+                        <label>score</label>
                     </div>
                 </div>
                 <div class="row">
@@ -100,9 +104,11 @@
     window.current_frame = new Image();
     window.cmap = "default";
 
-    //chart colors
+    //chart colors/sizes
     window.REGULAR_COLOR = "gray";
     window.EMPHASIS_COLOR = "red";
+    window.REGULAR_RADIUS = 2.5;
+    window.EMPHASIS_RADIUS = 5;
 
     //cropping stuff
     window.cropTopLeft = { x: 10, y: 10 };
@@ -126,6 +132,9 @@
     window.tsne_reduction = null;
     window.pca_reduction = null;
     window.umap_reduction = null;
+    window.tsne_clusters = null;
+    window.pca_clusters = null;
+    window.umap_clusters = null;
 </script>
 <script>
     /*variables declaration*/
@@ -165,7 +174,7 @@
     5VUT9 8.0 13.0##person open a cabinet door get a cup out.
     5VUT9 0.0 10.0##a person standing in the doorway holds a broom.
     5VUT9 18.0 25.0##person pour a cup of coffee.*/
-    var video_name = "Y6R7T.mp4";
+    var video_name = "workplace_enac.mp4";
 
     /*methods declaration*/
     var fillCircle = (ctx, point, radius) => {
@@ -299,8 +308,6 @@
         plotWidth = svg.width;
         plotHeight = svg.height;
 
-        console.log(mouseX, mouseY, plotWidth, plotHeight);
-
         //case clicked on the offset
         if (offsetY > mouseY || mouseY > plotHeight - offsetY) { return; }
         if (offsetLeft > mouseX || mouseX > plotWidth - offsetRight) { return; }
@@ -384,8 +391,6 @@
             tsne_plot.width = tsne_plot.offsetWidth;
             tsne_plot.height = tsne_plot.width;
 
-            console.log(tsne_plot.width, tsne_plot.offsetWidth, tsne_plot.clientWidth);
-
             var currentIndex = parseInt(slider.value) - 1;
             plotTsneReduction(currentIndex);
         } else {
@@ -427,7 +432,7 @@
             updateScores(frameIndex);
         }
         catch (error) {
-            console.error('Error loading similarity scores:', error);
+            console.error("Error loading similarity scores:", error);
         };
     });
 
@@ -445,9 +450,14 @@
 
             //only keep scores and tsne reduction values
             window.scores = body['scores'].map(function(value,index) { return value[1]; });
+
             window.tsne_reduction = body['tsne'];
             window.pca_reduction = body['pca'];
             window.umap_reduction = body['umap'];
+
+            window.tsne_clusters = body['tsne_clusters'];
+            window.pca_clusters = body['pca_clusters'];
+            window.umap_clusters = body['umap_clusters'];
             
             window.displayed_reduction = window.tsne_reduction;
 
@@ -476,7 +486,7 @@
             updateScores(frameIndex);
         } 
         catch (error) {
-            console.error('Error loading similarity scores:', error);
+            console.error("Error loading similarity scores: ", error);
         }
     });
 
@@ -494,11 +504,16 @@
 
             //only keep window.scores and tsne reduction values
             window.scores = body['scores'].map(function(value,index) { return value[1]; });
+
             window.tsne_reduction = body['tsne'];
             window.pca_reduction = body['pca'];
             window.umap_reduction = body['umap'];
 
-            window.displayed_reduction = window.tsne_reduction
+            window.tsne_clusters = body['tsne_clusters'];
+            window.pca_clusters = body['pca_clusters'];
+            window.umap_clusters = body['umap_clusters'];
+
+            window.displayed_reduction = window.tsne_reduction;
 
             console.log(body);
 
@@ -525,7 +540,7 @@
             updateScores(frameIndex);
         }
         catch (error) {
-            console.error('Error loading similarity window.scores:', error);
+            console.error("Error loading similarity window.scores: ", error);
         }
     });
     
@@ -589,7 +604,7 @@
             updateScores(frameIndex);
         }
         catch (error) {
-            console.error('Error detecting objects: ', error);
+            console.error("Error detecting objects: ", error);
         }
     });
 
@@ -611,7 +626,7 @@
             window.depth = true;
         }
         catch (error) {
-            console.error('Error computing depth map: ', error);
+            console.error("Error computing depth map: ", error);
         }
     });
 

@@ -55,7 +55,7 @@ var plotTsneReduction = (currentIndex) => {
         y = plotHeight - tsnePlotOffsetY - (window.displayed_reduction[i]['y'] - min_y) / (max_y - min_y) * (plotHeight - 2 * tsnePlotOffsetY);
 
         ctx.fillStyle = colorMap[i];
-        dotRadius = 2;
+        dotRadius = window.REGULAR_RADIUS;
         // Apply zoom/pan transformations to coordinates only and not to point radius (for visibility purposes)
         fillCircle(ctx, {x: tsneTranslate.x + x * tsneScale, y: tsneTranslate.y + y * tsneScale}, dotRadius);
     }
@@ -64,14 +64,14 @@ var plotTsneReduction = (currentIndex) => {
     y = plotHeight - tsnePlotOffsetY - (window.displayed_reduction[currentIndex]['y'] - min_y) / (max_y - min_y) * (plotHeight - 2 * tsnePlotOffsetY);
 
     ctx.fillStyle = colorMap[currentIndex];
-    dotRadius = 4;
+    dotRadius = window.EMPHASIS_RADIUS;
     fillCircle(ctx, {x: tsneTranslate.x + x * tsneScale, y: tsneTranslate.y + y * tsneScale}, dotRadius);
     ctx.arc(tsneTranslate.x + x * tsneScale + dotRadius, tsneTranslate.y + y * tsneScale, 0, dotRadius, 2 * Math.PI);
     ctx.strokeStyle = "black";
     ctx.stroke();
 
     if (window.isSelection) { drawRectangle(ctx, window.selectionTopLeft, window.selectionBotRight); }
-}
+};
 
 /*color map stuff */
 //plot colormap
@@ -121,6 +121,56 @@ var generateColorMap = (currentIndex, cmap) => {
             drawColorScale(min_score, max_score, color1, color2);
             break;
         }
+
+        case "clusters": {
+            //squash the color map 
+            tsneColorScale.height = 0;
+
+            //get currently displayed reduction DBSCAN clusters
+            var current_clusters = (window.old_reduction == "tsne")? window.tsne_clusters :
+                                (window.old_reduction == "pca")? window.pca_clusters : window.umap_clusters;
+            
+            //get the number of clusters 
+            var max_label = current_clusters[0];
+            for (i = 1;i < current_clusters.length;++i) {
+                if (max_label < current_clusters[i]) {
+                    max_label = current_clusters[i];
+                }
+            }
+            var nb_clusters = max_label + 1;
+
+            //generating random colors
+            function generateHSLColors(numColors) {
+                let colors = [];
+                const saturation = 70; // Saturation percentage
+                const lightness = 50;  // Lightness percentage
+            
+                for (let i = 0; i < numColors; i++) {
+                    const hue = Math.floor((360 / numColors) * i);
+                    colors.push(`hsl(${hue}, ${saturation}%, ${lightness}%)`);
+                }
+            
+                return colors;
+            }
+            var colors = generateHSLColors(nb_clusters);
+
+            //applying colors to clusters (-1/no cluster will be gray and current index red)
+            for (var i = 0; i < window.displayed_reduction.length; ++i) { 
+                if (i == currentIndex) {
+                    colorMap.push(window.EMPHASIS_COLOR);
+                }
+                else {
+                    if (current_clusters[i] == -1) { 
+                        colorMap.push(window.REGULAR_COLOR);
+                    }
+                    else {
+                        colorMap.push(colors[current_clusters[i]]);
+                    }
+                }
+            }
+
+            break;
+        } 
 
         default: { //gray colormap with red as amphasis
             //squash the color map on default

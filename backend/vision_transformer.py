@@ -7,7 +7,7 @@ from transformers import AutoModel, AutoProcessor
 from tqdm import tqdm
 
 class VisionTransformer:
-    def __init__ (self, video_path = "", checkpoint = "google/owlvit-base-patch32"):
+    def __init__ (self, video_path = "", checkpoint = "openai/clip-vit-base-patch16"):
         #input video path
         self.video_path = video_path
 

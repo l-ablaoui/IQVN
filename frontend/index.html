@@ -8,7 +8,7 @@
 </head>
 <body >
 
-<div style="height:100vh;" class="container">
+<div class="container" style="width: 100vh; height: 100vh;">
     <div class="row" style="width: 100%; height: 100%;">
         <!-- TODO add a video loading mechanism
             <div>
@@ -24,7 +24,7 @@
                 <input type="button" id="objDetec" style="margin:0.1%;" value="Object detection" class="btn btn-sm btn-secondary" />
                 <input type="button" id="depthComp" style="margin:0.1%;" value="Depth estimation" class="btn btn-sm btn-secondary" />
             </div>
-            <canvas class="row" style="min-width:50%; max-width:100%; max-height:70%;" id="video"></canvas>
+            <canvas class="row" style="min-width:70%; max-width:100%; max-height:70%;" id="video"></canvas>
             <input class="row" style="width:100%;" type="range" id="slider" min="1" step="1" value="1">
             <div class="row">
                 <input type="button" id="searchI" style="margin:0.1%;" value="Crop-image-based search" class="btn btn-sm btn-primary"/>
@@ -42,11 +42,11 @@
             <label class="row">Outputs:</label>
             <input type="button" id="toggleObj" style="width:100%;" value="▲ Detected objects" class="row btn btn-sm btn-info"/>
             <div class="row" id="objDiv">
-                <canvas id="objPlot" width="400px" height="300px" ></canvas>
+                <canvas id="objPlot" style="display:block; width:100%;"></canvas>
             </div>
             <input type="button" id="toggleScores" style="width:100%;" value="▲ Similarity scores chart" class="row btn btn-sm btn-info"/>
             <div class="row" style="width:100%;" id="scoreDiv">
-                <canvas id="scorePlot" width="400px" height="150px" ></canvas>
+                <canvas id="scorePlot" style="display:block; width:100%;" ></canvas>
             </div>  
             <input type="button" id="toggleTsne" style="width:100%;" value="▲ Video embeddings scatter plot in reduced embedding space" class="row btn btn-sm btn-info"/>
             <div class="row" id="tsneDiv" width="100%">
@@ -64,7 +64,7 @@
                         <label>umap</label>
                     </div>
                 </div>
-                <canvas class="row" id="tsnePlot" width="500px" height="500px" ></canvas>
+                <canvas class="row" id="tsnePlot" style="display:block; width:100%;" ></canvas>
                 <div class="row justify-content-center">
                     <canvas class="text-center" id="tsneColorMap" height="0px"></canvas>
                 </div>
@@ -173,8 +173,8 @@
 
     //Plot the vertical line that indicates the current frame on the curve
     var plotMarker = (currentIndex, max, offsetLeft, offsetRight, offsetY, svg) => {
-        var plotWidth = svg.clientWidth;
-        var plotHeight = svg.clientHeight;
+        var plotWidth = svg.width;
+        var plotHeight = svg.height;
         var ctx = svg.getContext("2d");
         var x = offsetLeft + (currentIndex / (max - 1)) * (plotWidth - offsetLeft - offsetRight);
         
@@ -187,8 +187,8 @@
     };
 
     var plotAxes = (offsetLeft, offsetRight, offsetY, svg) => {
-        var lenX = svg.clientWidth;
-        var lenY = svg.clientHeight;
+        var lenX = svg.width;
+        var lenY = svg.height;
         var ctx = svg.getContext("2d");
 
         //draw x axis
@@ -268,12 +268,35 @@
     };
 
     /*Listeners*/
+    //resize listener has to addapt the sizes of each component that has height as a function of width
+    window.addEventListener("resize", () => {
+        //update components' relative sizes
+        var score_plot = document.getElementById("scorePlot");
+        score_plot.width = score_plot.offsetWidth;
+        score_plot.height = score_plot.width * 0.5;
+
+        var tsne_plot = document.getElementById("tsnePlot");
+        tsne_plot.width = tsne_plot.offsetWidth;
+        tsne_plot.height = tsne_plot.width;
+
+        var obj_plot = document.getElementById("objPlot");
+        obj_plot.width = obj_plot.offsetWidth;
+        obj_plot.height = obj_plot.width * 0.7;
+
+        //redraw everything
+        var frameIndex = parseInt(slider.value) - 1;
+        updateVideo(frameIndex);
+        updateScores(frameIndex);
+    });
+
     var updateFrameIndexOnClick = async (svg, offsetLeft, offsetRight, offsetY, nb_values, event) => {
         const mouseX = event.offsetX;
         const mouseY = event.offsetY;
 
-        plotWidth = svg.clientWidth;
-        plotHeight = svg.clientHeight;
+        plotWidth = svg.width;
+        plotHeight = svg.height;
+
+        console.log(mouseX, mouseY, plotWidth, plotHeight);
 
         //case clicked on the offset
         if (offsetY > mouseY || mouseY > plotHeight - offsetY) { return; }
@@ -314,6 +337,12 @@
         if (x.style.display === "none") {
             x.style.display = "block";
             toggleObj.value = "▼ Detected objects";
+
+            var obj_plot = document.getElementById("objPlot");
+            obj_plot.style.display = "block";
+            obj_plot.width = obj_plot.offsetWidth;
+            obj_plot.height = obj_plot.width * 0.7;
+
             var currentIndex = parseInt(slider.value) - 1;
             plotObjects(currentIndex);
         } else {
@@ -327,6 +356,12 @@
         if (x.style.display === "none") {
             x.style.display = "block";
             toggleScores.value = "▼ Similarity scores chart";
+
+            var score_plot = document.getElementById("scorePlot");
+            score_plot.style.display = "block";
+            score_plot.width = score_plot.offsetWidth;
+            score_plot.height = score_plot.width * 0.5;
+
             var currentIndex = parseInt(slider.value) - 1;
             plotCurve(currentIndex);
         } else {
@@ -340,6 +375,14 @@
         if (x.style.display === "none") {
             x.style.display = "block";
             toggleTsne.value = "▼ Video embeddings scatter plot in reduced embedding space";
+
+            var tsne_plot = document.getElementById("tsnePlot");
+            tsne_plot.style.display = "block";
+            tsne_plot.width = tsne_plot.offsetWidth;
+            tsne_plot.height = tsne_plot.width;
+
+            console.log(tsne_plot.width, tsne_plot.offsetWidth, tsne_plot.clientWidth);
+
             var currentIndex = parseInt(slider.value) - 1;
             plotTsneReduction(currentIndex);
         } else {
@@ -388,6 +431,8 @@
     //Text-based search, expecting an array of scores plus a reduction array from the server
     searchText.addEventListener('click', async () => {
         try {
+            var scorePlot = document.getElementById("scorePlot");
+
             //query input
             let inputValue = document.getElementById("queryInput").value;
 
@@ -436,6 +481,8 @@
     //video) and expecting an array of window.scores plus a reduction array from the server
     searchImage.addEventListener('click', async () => {
         try {
+            var scorePlot = document.getElementById("scorePlot");
+            
             const dataURL = cropped.toDataURL('image/png');
             const response = await fetch(`${server_url}/upload_png/`, 
                 {method: 'POST', body: JSON.stringify({ image_data: dataURL }), 

@@ -156,6 +156,38 @@ var drawColorScale = (minValue, maxValue, minColor, maxColor) => {
     ctx.fillText(maxValue, tsneColorScale.width - 15, tsneColorScale.height / 2 + 5); // Max value at the right
 }
 
+var animateReductionTransition = (old_reduction, new_reduction, duration) => {
+    //copying to make sure the reduction results aint touched
+    const startTime = performance.now();
+    const currentIndex = parseInt(slider.value) - 1;
+
+    function animate() {
+        const currentTime = performance.now();
+        const elapsedTime = currentTime - startTime;
+        const t = Math.min(elapsedTime / duration, 1); // Normalized time [0, 1]
+  
+        window.displayed_reduction = old_reduction.map((old_point, i) => {
+            const new_point = new_reduction[i];
+            return {
+                x: (1 - t) * old_point.x + t * new_point.x,
+                y: (1 - t) * old_point.y + t * new_point.y
+            };
+        });
+        
+        // Draw scatter plot with currentData
+        plotTsneReduction(currentIndex);
+
+        if (t < 1) {
+            requestAnimationFrame(animate);
+        } 
+        else {
+            window.displayed_reduction = new_reduction;
+        }
+    }
+  
+    animate();    
+};
+
 //selectors handling (colormap and reduction method)
 document.addEventListener("DOMContentLoaded", function() {
     const colorRadioButtons = document.querySelectorAll('input[name="selectColorMap"]');
@@ -174,12 +206,16 @@ document.addEventListener("DOMContentLoaded", function() {
     // Function to handle the reduction algorithm change
     const handleReductionMethodChange = () => {
         const selectedValue = document.querySelector('input[name="selectReductionMethod"]:checked').value;
-        window.displayed_reduction = (selectedValue == "tsne")? window.tsne_reduction : 
-                                    (selectedValue == "pca")? window.pca_reduction : window.umap_reduction;
+        var old_reduction = (window.old_reduction == "tsne")? window.tsne_reduction :
+                            (window.old_reduction == "pca")? window.pca_reduction : window.umap_reduction;
+        var new_reduction = (selectedValue == "tsne")? window.tsne_reduction :
+                            (selectedValue == "pca")? window.pca_reduction : window.umap_reduction;
 
-        //redraw components
-        var currentIndex = parseInt(slider.value) - 1;
-        plotTsneReduction(currentIndex);
+        //redraw component (animate position transition)
+        animateReductionTransition(old_reduction, new_reduction, 1000);
+
+        //update state after animation
+        window.old_reduction = selectedValue;
     };
 
     // Add change event listener to each radio button

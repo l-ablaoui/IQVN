@@ -6,7 +6,7 @@
 <link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/4.5.2/css/bootstrap.min.css">
 <title>Semantic and Interactive Navigation In Videos</title>
 </head>
-<body >
+<body>
 
 <div class="container" style="width: 100vh; height: 100vh;">
     <div class="row" style="width: 100%; height: 100%;">
@@ -116,13 +116,16 @@
     window.selectedPoints = [];
 
     //query result slot
-    window.displayed_reduction = null;
     window.scores = null;
+    window.objs = null;
+    window.depth = false;
+
+    //dimension reduction stuff
+    window.old_reduction = "tsne";
+    window.displayed_reduction = null;
     window.tsne_reduction = null;
     window.pca_reduction = null;
     window.umap_reduction = null;
-    window.objs = null;
-    window.depth = false;
 </script>
 <script>
     /*variables declaration*/

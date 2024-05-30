@@ -2,7 +2,7 @@ var objPlot = document.getElementById("objPlot");
 
 //to keep space between plot and canvas boundaries
 var objPlotOffsetLeft = 50;
-var objPlotOffsetRight = 0;
+var objPlotOffsetRight = 20;
 var objPlotOffsetY = 20;
 
 /*main drawing function for detected objects plot*/

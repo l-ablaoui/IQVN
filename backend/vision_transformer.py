@@ -5,6 +5,7 @@ import numpy as np
 from transformers import AutoModel, AutoProcessor
 
 from tqdm import tqdm
+import time
 
 class VisionTransformer:
     def __init__ (self, video_path = "", checkpoint = "openai/clip-vit-base-patch16"):
@@ -77,37 +78,52 @@ class VisionTransformer:
 
     def tsne_reduction(self, embeddings, normalize=True, random_state=0, n_iter=1000, metric="cosine"):
         from sklearn.manifold import TSNE
+
+        print("applying T-SNE on embeddings...")
+        start_time = time.time()
         tsne = TSNE(random_state = random_state, n_iter = n_iter, metric = metric)
 
         if normalize:
             from sklearn.preprocessing import StandardScaler
             normalizer = StandardScaler()
-            return tsne.fit_transform(normalizer.fit_transform(embeddings)) 
+            embeddings2d = tsne.fit_transform(normalizer.fit_transform(embeddings)) 
         else:
-            return tsne.fit_transform(embeddings)
+            embeddings2d = tsne.fit_transform(embeddings)
+        print("done in ", time.time() - start_time, " seconds")
+
+        return embeddings2d
 
     def pca_reduction(self, embeddings):
         from sklearn.decomposition import PCA
         from sklearn.preprocessing import StandardScaler
 
+        print("applying PCA on embeddings...")
+        start_time = time.time()
         normalizer = StandardScaler()
         pca = PCA(n_components=2)
+        embeddings2d = pca.fit_transform(normalizer.fit_transform(embeddings))
+        print("done in ", time.time() - start_time, " seconds")
 
-        return pca.fit_transform(normalizer.fit_transform(embeddings))
+        return embeddings2d
     
     def umap_reduction(self, embeddings, normalize=True, random_state=0):
         from sklearn.preprocessing import StandardScaler
         import umap
 
+        print("applying uMap on embeddings...")
+        start_time = time.time()
         normalizer = StandardScaler()
         u_map = umap.UMAP(n_components=2, random_state=random_state)
 
         if normalize:
             from sklearn.preprocessing import StandardScaler
             normalizer = StandardScaler()
-            return u_map.fit_transform(normalizer.fit_transform(embeddings)) 
+            embeddings2d = u_map.fit_transform(normalizer.fit_transform(embeddings)) 
         else:
-            return u_map.fit_transform(embeddings)
+            embeddings2d = u_map.fit_transform(embeddings)
+        print("done in ", time.time() - start_time, " seconds")
+            
+        return embeddings2d
 
     def __call__(self, images=None, texts=None):
         self.video_embeddings = self.get_video_features()

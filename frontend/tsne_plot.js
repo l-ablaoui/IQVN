@@ -67,6 +67,7 @@ var plotTsneReduction = (currentIndex) => {
     dotRadius = window.EMPHASIS_RADIUS;
     fillCircle(ctx, {x: tsneTranslate.x + x * tsneScale, y: tsneTranslate.y + y * tsneScale}, dotRadius);
     ctx.arc(tsneTranslate.x + x * tsneScale + dotRadius, tsneTranslate.y + y * tsneScale, 0, dotRadius, 2 * Math.PI);
+    ctx.lineWidth = 2;
     ctx.strokeStyle = "black";
     ctx.stroke();
 
@@ -350,7 +351,7 @@ var zoomPanWheel = (event) => {
     const zoomFactor = 1 + wheel * tsneZoomSpeed;
     
     // Calculate new scale but constrain it within a range
-    const newScale = Math.max(Math.min(tsneScale * zoomFactor, 10), 0.1);
+    const newScale = Math.max(Math.min(tsneScale * zoomFactor, window.MAX_SCALE), window.MIN_SCALE);
     
     // Adjust translation to keep the zoom centered on the cursor
     tsneTranslate.x = mouseX - ((mouseX - tsneTranslate.x) / tsneScale) * newScale;

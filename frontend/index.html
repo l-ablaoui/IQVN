@@ -13,10 +13,16 @@
         <!-- TODO add a video loading mechanism
             <div>
             <label>Video:</label>
-            <input type="text" id="video_name"/>
+            <input type="text" id="window.current_video"/>
             <input type="button" id="videoButton" value="Load"/>
         </div>-->
         <div class="col-sm" style="overflow-x: hidden; overflow-y: auto; width:50%; height:100%;"> <!-- inputs (video, crop, query) -->
+            <div style="width:100%;" class="row">
+                <label style="width:15%">Video: </label>
+                <select id="video_names_selection" style="width:84%" name="video_names"></select>
+            </div>
+            <canvas class="row" style="min-width:70%; max-width:100%; max-height:70%;" id="video"></canvas>
+            <input class="row" style="width:100%;" type="range" id="slider" min="1" step="1" value="1">
             <label class="row">Inputs:</label>
             <input type="text" id="queryInput" class="row form-control"/>
             <div class="row">
@@ -24,8 +30,6 @@
                 <input type="button" id="objDetec" style="margin:0.1%;" value="Object detection" class="btn btn-sm btn-secondary" />
                 <input type="button" id="depthComp" style="margin:0.1%;" value="Depth estimation" class="btn btn-sm btn-secondary" />
             </div>
-            <canvas class="row" style="min-width:70%; max-width:100%; max-height:70%;" id="video"></canvas>
-            <input class="row" style="width:100%;" type="range" id="slider" min="1" step="1" value="1">
             <div class="row">
                 <input type="button" id="searchI" style="margin:0.1%;" value="Crop-image-based search" class="btn btn-sm btn-primary"/>
                 <input type="button" id="toggleCrop" style="margin:0.1%;" value="toggle cropping" class="btn btn-sm btn-secondary" />
@@ -100,6 +104,9 @@
 </div>
 
 <script type='text/javascript' > 
+    //currently used video
+    window.current_video = "";
+
     //displayed frame
     window.current_frame = new Image();
     window.cmap = "default";
@@ -109,6 +116,10 @@
     window.EMPHASIS_COLOR = "red";
     window.REGULAR_RADIUS = 2.5;
     window.EMPHASIS_RADIUS = 5;
+
+    //zoom stuff
+    window.MIN_SCALE = 0.1;
+    window.MAX_SCALE = 100;
 
     //cropping stuff
     window.cropTopLeft = { x: 10, y: 10 };
@@ -174,7 +185,6 @@
     5VUT9 8.0 13.0##person open a cabinet door get a cup out.
     5VUT9 0.0 10.0##a person standing in the doorway holds a broom.
     5VUT9 18.0 25.0##person pour a cup of coffee.*/
-    var video_name = "workplace_enac.mp4";
 
     /*methods declaration*/
     var fillCircle = (ctx, point, radius) => {
@@ -315,7 +325,7 @@
         var frameIndex = Math.trunc((mouseX - offsetLeft) / (plotWidth - offsetRight - offsetLeft) * (nb_values - 1));
 
         //fetch current frame
-        var name_processed = video_name.split(".")[0]; 
+        var name_processed = window.current_video.split(".")[0]; 
             const response = await fetch(`${server_url}/image/${name_processed}/${frameIndex}.png`);
             const blob = await response.blob();
             const imageUrl = URL.createObjectURL(blob);
@@ -420,7 +430,7 @@
             var frameIndex = parseInt(slider.value) - 1;
 
             //fetch current frame
-            let name_processed = video_name.split(".")[0]; 
+            let name_processed = window.current_video.split(".")[0]; 
             const response = await fetch(`${server_url}/image/${name_processed}/${frameIndex}.png`);
             const blob = await response.blob();
             const imageUrl = URL.createObjectURL(blob);
@@ -469,7 +479,7 @@
             //request to update the image
             var frameIndex = parseInt(slider.value) - 1;
             
-            let name_processed = video_name.split(".")[0]; 
+            let name_processed = window.current_video.split(".")[0]; 
             const imgresponse = await fetch(`${server_url}/image/${name_processed}/${frameIndex}.png`);
             const blob = await imgresponse.blob();
             const imageUrl = URL.createObjectURL(blob);
@@ -523,7 +533,7 @@
             //request to update the image
             var frameIndex = parseInt(slider.value) - 1;
             
-            let name_processed = video_name.split(".")[0]; 
+            let name_processed = window.current_video.split(".")[0]; 
             const imgresponse = await fetch(`${server_url}/image/${name_processed}/${frameIndex}.png`);
             const blob = await imgresponse.blob();
             const imageUrl = URL.createObjectURL(blob);
@@ -548,7 +558,7 @@
         //when reorganizing the detection's array, it is assumed that the detections are 
         //ordrered in terms of timestamp
         try {
-            const response = await fetch(`${server_url}/video/objects/${video_name}`);
+            const response = await fetch(`${server_url}/video/objects/${window.current_video}`);
             const body = await response.json();
             results = body["result"];
 
@@ -611,7 +621,7 @@
     depthEstimate.addEventListener("click", async () => {
         try {
             //compute the depth map
-            const response = await fetch(`${server_url}/video/depth/${video_name}`);
+            const response = await fetch(`${server_url}/video/depth/${window.current_video}`);
             const body = await response.json();
             console.log(body);
 
@@ -631,6 +641,7 @@
     });
 
 </script>
+<script src="video_selection.js"></script>
 <script src="similarity_scores_plot.js"></script>
 <script src="crop_script.js"></script>
 <script src="tsne_plot.js"></script>

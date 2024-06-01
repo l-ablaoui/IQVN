@@ -37,7 +37,7 @@ VIDEOS_DIR = "videos"
 MODEL_NAME = "openai/clip-vit-base-patch16"
 #MODEL_NAME = "google/owlvit-base-patch32"
 #MODEL_NAME = "google/owlv2-base-patch16-ensemble"
-SAMPLE_VIDEO_PATH = "videos/workplace_enac.mp4"
+current_video_path = "videos/cut5.mp4"
 
 IMAGE_CROP_QUERY = "<image-loaded>"
 OUTPUT_CROP_IMAGE = "images/search-image.png"
@@ -94,18 +94,24 @@ def compute_cosine_similarity(video_path, query_text, reduction = False):
                 np.save(output_path+f"/embedding_{i}.npy", embeddings[i])
                 pbar.update(1)
         
-        if reduction:
-            if not os.path.exists(f"{output_path}/tsne_reduction.npy"):
-                tsne_reduction = classifier.tsne_reduction(classifier.video_embeddings)
-                np.save(output_path+f"/tsne_reduction.npy", tsne_reduction)
+    if reduction:
+        if not os.path.exists(f"{output_path}/tsne_reduction.npy"):
+            if classifier.video_embeddings is None:
+                classifier()
+            tsne_reduction = classifier.tsne_reduction(classifier.video_embeddings)
+            np.save(output_path+f"/tsne_reduction.npy", tsne_reduction)
 
-            if not os.path.exists(f"{output_path}/pca_reduction.npy"):
-                pca_reduction = classifier.pca_reduction(classifier.video_embeddings)
-                np.save(output_path+f"/pca_reduction.npy", pca_reduction)
+        if not os.path.exists(f"{output_path}/pca_reduction.npy"):
+            if classifier.video_embeddings is None:
+                classifier()
+            pca_reduction = classifier.pca_reduction(classifier.video_embeddings)
+            np.save(output_path+f"/pca_reduction.npy", pca_reduction)
 
-            if not os.path.exists(f"{output_path}/umap_reduction.npy"):
-                umap_reduction = classifier.umap_reduction(classifier.video_embeddings)
-                np.save(output_path+f"/umap_reduction.npy", umap_reduction)
+        if not os.path.exists(f"{output_path}/umap_reduction.npy"):
+            if classifier.video_embeddings is None:
+                classifier()
+            umap_reduction = classifier.umap_reduction(classifier.video_embeddings)
+            np.save(output_path+f"/umap_reduction.npy", umap_reduction)
 
     #query type (text/image)
     if query_text == IMAGE_CROP_QUERY:
@@ -141,9 +147,22 @@ def compute_cosine_similarity(video_path, query_text, reduction = False):
         return similarity_scores
 
 
+def find_mp4_files(relative_path):
+    # Get the absolute path of the directory
+    abs_path = os.path.abspath(relative_path)
+    
+    # Use glob to find all .mp4 files in the directory
+    mp4_files = glob.glob(os.path.join(abs_path, '*.mp4'))
+    
+    # Extract the file names from the full paths
+    mp4_file_names = [os.path.basename(file) for file in mp4_files]
+    
+    return mp4_file_names
+
+
 @app.get("/search")
 async def search(query: str):
-    similarity_scores, tsne, pca, umap = compute_cosine_similarity(SAMPLE_VIDEO_PATH, query, True)
+    similarity_scores, tsne, pca, umap = compute_cosine_similarity(current_video_path, query, True)
     tsne_clusters = DBSCAN(eps=3, min_samples=10).fit(tsne).labels_
     pca_clusters = DBSCAN(eps=3, min_samples=10).fit(pca).labels_
     umap_clusters = DBSCAN(eps=3, min_samples=10).fit(umap).labels_
@@ -203,7 +222,7 @@ async def upload_png(image_data: dict):
 
     cv2.imwrite(OUTPUT_CROP_IMAGE, img)
 
-    similarity_scores, tsne, pca, umap = compute_cosine_similarity(SAMPLE_VIDEO_PATH, IMAGE_CROP_QUERY, reduction=True)
+    similarity_scores, tsne, pca, umap = compute_cosine_similarity(current_video_path, IMAGE_CROP_QUERY, reduction=True)
     tsne_clusters = DBSCAN(eps=3, min_samples=10).fit(tsne).labels_
     pca_clusters = DBSCAN(eps=3, min_samples=10).fit(pca).labels_
     umap_clusters = DBSCAN(eps=3, min_samples=10).fit(umap).labels_
@@ -219,6 +238,32 @@ async def upload_png(image_data: dict):
         "umap_clusters": [int(umap_clusters[i]) for i in range(len(umap_clusters))]
     }
 
+@app.get("/video/")
+async def get_video_names():
+    video_names = find_mp4_files("./videos")
+    video_names.sort()
+    return video_names
+
+@app.post("/select_video/")
+async def select_video(name_data: dict):
+    global current_video_path
+
+    video_name = name_data.get("video_name", "")
+    current_video_path = "./videos/" + video_name
+
+    vid = cv2.VideoCapture(current_video_path)
+    if vid.isOpened:
+        output_path = current_video_path.replace(".mp4", "")
+        if not os.path.exists(output_path):
+            os.mkdir(output_path)
+
+        if not os.path.exists(f"{output_path}/0.png"):
+            video2images(current_video_path)
+
+        return { 
+            "frame_count": int(vid.get(cv2.CAP_PROP_FRAME_COUNT)), 
+            "fps": int(vid.get(cv2.CAP_PROP_FPS))
+        }
 
 @app.get("/video/objects/{filename}")
 async def get_video(filename: str):

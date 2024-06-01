@@ -3,14 +3,26 @@ var video_name_selection = document.getElementById("video_names_selection");
 
 var load_video = async () => {
     try {
+        //update video name locally
         window.current_video = video_name_selection.value;
 
+        //update video name in server
         const response = await fetch(`${server_url}/select_video/`, 
         {method: 'POST', body: JSON.stringify({ video_name: window.current_video }), 
         headers: {'Content-Type': 'application/json'}});
         const body = await response.json();
+        console.log(body);
 
+        //update slider range
         slider.max = body["frame_count"];
+
+        //draw the video's first frame
+        current_index = parseInt(slider.value) - 1;
+        var name_processed = window.current_video.split(".")[0]; 
+        const imgresponse = await fetch(`${server_url}/image/${name_processed}/${current_index}.png`);
+        const blob = await imgresponse.blob();
+        const imageUrl = URL.createObjectURL(blob);
+        updateVideo(imageUrl);
     }
     catch (error) {
         console.error("Error loading video: ", error);
@@ -33,7 +45,6 @@ var update_video_selection = async () => {
         }
 
         window.current_video = video_name_selection.value;
-        console.log(window.current_video);
     }
     catch (error) {
         console.error("Error retrieving available videos: ", error);
@@ -41,5 +52,7 @@ var update_video_selection = async () => {
 };
 
 //init selection and load first video
-update_video_selection();
-load_video();
+update_video_selection().then(() => {
+    // Ensure load_video is called only after update_video_selection completes
+    load_video();
+});

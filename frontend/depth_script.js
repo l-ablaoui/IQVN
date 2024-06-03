@@ -1,7 +1,7 @@
 var updateDepthVideo = async (frameIndex) => {
     if (!window.depth) { return; }
     
-    var name_processed = video_name.split(".")[0]; 
+    var name_processed = window.current_video.split(".")[0]; 
     const imgresponse = await fetch(`${server_url}/image/depth-${name_processed}/depth_frame_${frameIndex}.png`);
     const blob = await imgresponse.blob();
     const imageUrl = URL.createObjectURL(blob);

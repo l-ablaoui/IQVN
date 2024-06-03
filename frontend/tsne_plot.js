@@ -326,7 +326,7 @@ tsnePlot.addEventListener("click", async (event) => {
         //if the user clicked inside the dot, update the frameIndex
         if (dist <= dotRadius * dotRadius) {
             //fetch current frame
-            var name_processed = video_name.split(".")[0]; 
+            var name_processed = window.current_video.split(".")[0]; 
             const response = await fetch(`${server_url}/image/${name_processed}/${i}.png`);
             const blob = await response.blob();
             const imageUrl = URL.createObjectURL(blob);

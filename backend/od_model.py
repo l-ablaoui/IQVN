@@ -8,14 +8,13 @@ from tqdm import tqdm
 
 class OD:
 
-    def __init__(self, capture_video, output_detection, output_results, model_name):
+    def __init__(self, capture_video, output_results, model_name):
         """
         Initializes the class with youtube url and output file.
         :param url: Has to be as youtube URL,on which prediction is made.
         :param out_file: A valid output file name.
         """
         self.capture_video = capture_video
-        self.output_detection = output_detection
         self.output_results = output_results
         self.model = self.load_model(model_name)
         self.classes = self.model.names
@@ -92,7 +91,7 @@ class OD:
 
         
 
-    def __call__(self, image=None, save_video=False):
+    def __call__(self, image=None):
         """
         This function is called when class is executed, it runs the loop to read the video frame by frame,
         and write the output into a new file.
@@ -106,17 +105,10 @@ class OD:
         cap = self.get_video_capture()
         assert cap.isOpened()
 
-        fps = int(cap.get(cv2.CAP_PROP_FPS))
         width = int(cap.get(cv2.CAP_PROP_FRAME_WIDTH))
         height = int(cap.get(cv2.CAP_PROP_FRAME_HEIGHT))
-
-        if save_video:
-            fourcc = cv2.VideoWriter_fourcc(*'XVID')
-            output_video = cv2.VideoWriter(self.output_detection, fourcc, fps, (width, height))
-
         
         frame_predictions = []
-        frame_number = 0
 
         with tqdm(total=int(cap.get(cv2.CAP_PROP_FRAME_COUNT)), desc="detecting objects: ") as pbar:
             while True:
@@ -126,30 +118,14 @@ class OD:
                 
                 frame = cv2.resize(frame, (width, height))
                 
-                start_time = time()
                 results = self.score_frame(frame)
-                frame = self.plot_boxes(results, frame)
-                
-                end_time = time()
-                fps = 1/np.round(end_time - start_time, 2)
-
-                if not save_video:
-                    cv2.imwrite(self.output_detection+f"/{frame_number}.png", frame)
-
-                if save_video:
-                    output_video.write(frame)
-
                 df_results = results[-1]
                 df_results['timestamp'] = cap.get(cv2.CAP_PROP_POS_MSEC)/1000.0
                 frame_predictions.append(df_results)
 
-                frame_number += 1
-
                 pbar.update(1)
 
         cap.release()
-        if save_video:
-            output_video.release()
         
         output_predictions = pd.concat(frame_predictions)
         output_predictions.to_csv(self.output_results, index=False)

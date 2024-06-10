@@ -163,9 +163,9 @@ def find_mp4_files(relative_path):
 @app.get("/search")
 async def search(query: str):
     similarity_scores, tsne, pca, umap = compute_cosine_similarity(current_video_path, query, True)
-    tsne_clusters = DBSCAN(eps=3, min_samples=10).fit(tsne).labels_
-    pca_clusters = DBSCAN(eps=3, min_samples=10).fit(pca).labels_
-    umap_clusters = DBSCAN(eps=3, min_samples=10).fit(umap).labels_
+    tsne_clusters = DBSCAN(eps=2, min_samples=5).fit(tsne).labels_
+    pca_clusters = DBSCAN(eps=2, min_samples=5).fit(pca).labels_
+    umap_clusters = DBSCAN(eps=2, min_samples=5).fit(umap).labels_
 
     return {
         "query": query, 
@@ -223,9 +223,9 @@ async def upload_png(image_data: dict):
     cv2.imwrite(OUTPUT_CROP_IMAGE, img)
 
     similarity_scores, tsne, pca, umap = compute_cosine_similarity(current_video_path, IMAGE_CROP_QUERY, reduction=True)
-    tsne_clusters = DBSCAN(eps=3, min_samples=10).fit(tsne).labels_
-    pca_clusters = DBSCAN(eps=3, min_samples=10).fit(pca).labels_
-    umap_clusters = DBSCAN(eps=3, min_samples=10).fit(umap).labels_
+    tsne_clusters = DBSCAN(eps=2, min_samples=5).fit(tsne).labels_
+    pca_clusters = DBSCAN(eps=2, min_samples=5).fit(pca).labels_
+    umap_clusters = DBSCAN(eps=2, min_samples=5).fit(umap).labels_
 
     return {
         "query": IMAGE_CROP_QUERY, 
@@ -269,9 +269,9 @@ async def select_video(name_data: dict):
 async def get_video(filename: str):
     video_path = os.path.join(VIDEOS_DIR, filename).replace("\\","/")
     name = filename.split(".")[0]
-    output_path = os.path.join(VIDEOS_DIR, f"prediction-{name}").replace("\\","/")
+    output_path = os.path.join(VIDEOS_DIR, f"{name}").replace("\\","/")
 
-    if not os.path.exists(output_path) or not os.path.exists(output_path+"/0.png"):
+    if not os.path.exists(output_path+"-output.csv"):
         await annotate_video(video_path, output_path)
 
     paths = glob.glob(output_path+"/*.png")
@@ -307,11 +307,7 @@ async def get_video_fps(filename: str):
 
 
 async def annotate_video(video_path, output_path):
-    if not os.path.exists(output_path):
-        os.mkdir(output_path)
-
-    detector = OD(capture_video=video_path, output_detection=output_path, 
-                  output_results=output_path+"-output.csv", model_name="yolov5s.pt")
+    detector = OD(capture_video=video_path, output_results=output_path+"-output.csv", model_name="yolov5s.pt")
     return detector()
 
 

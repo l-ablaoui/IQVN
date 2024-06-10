@@ -51,7 +51,7 @@ var plotObjects = (currentIndex) => {
             //draw circle
             ctx.fillStyle = window.REGULAR_COLOR;
             dotRadius = window.REGULAR_RADIUS;
-            fillCircle(ctx, {x: x, y: y}, dotRadius);
+            fill_circle(ctx, {x: x, y: y}, dotRadius);
         }
     }
 
@@ -71,12 +71,12 @@ var plotObjects = (currentIndex) => {
 
             ctx.fillStyle = window.EMPHASIS_COLOR;
             dotRadius = window.EMPHASIS_RADIUS;
-            fillCircle(ctx, {x: x, y: y}, dotRadius);
+            fill_circle(ctx, {x: x, y: y}, dotRadius);
         }
     }
 
     //update vertical line position
-    plotMarker(currentIndex, window.objs["maxTime"], objPlotOffsetLeft, objPlotOffsetRight, objPlotOffsetY, objPlot);
+    plot_marker(currentIndex, window.objs["maxTime"], objPlotOffsetLeft, objPlotOffsetRight, objPlotOffsetY, window.EMPHASIS_COLOR, 1, objPlot);
 };
 
 /*when clicking on an object marker of the active frame, adjust the cropped area to reflect the object's bounding box */
@@ -116,18 +116,18 @@ objPlot.addEventListener("click", (event) => {
     if (bb != null) {
         console.log(bb);
 
-        window.cropTopLeft.x = bb[0];
-        window.cropTopLeft.y = bb[1];
-        window.cropBotRight.x = bb[2];
-        window.cropBotRight.y = bb[3];
+        window.crop_top_left.x = bb[0];
+        window.crop_top_left.y = bb[1];
+        window.crop_bot_right.x = bb[2];
+        window.crop_bot_right.y = bb[3];
 
         //toggle cropping
-        window.isCropVisible = true;
+        window.is_crop_visible = true;
         document.getElementById("crop").style.display = "block";
         document.getElementById("cropLabel").style.display = "block";
 
         //draw the cropped area (calls drao from crop_script)
-        updateVideo(window.current_frame.src);
+        update_video(window.current_frame.src);
     }
     //drawCropped();
 });

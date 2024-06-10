@@ -33,8 +33,8 @@ var plotCurve = (currentIndex) => {
     }
 
     //selected points highlight
-    for (var i = 0; i < window.selectedPoints.length; ++i) {
-        var x = scorePlotOffsetLeft + (window.selectedPoints[i] / (scaledScores.length - 1)) * (plotWidth - scorePlotOffsetRight - scorePlotOffsetLeft);
+    for (var i = 0; i < window.selected_points.length; ++i) {
+        var x = scorePlotOffsetLeft + (window.selected_points[i] / (scaledScores.length - 1)) * (plotWidth - scorePlotOffsetRight - scorePlotOffsetLeft);
         ctx.beginPath();
         ctx.moveTo(x, scorePlotOffsetY);
         ctx.lineTo(x, plotHeight - scorePlotOffsetY);
@@ -57,5 +57,5 @@ var plotCurve = (currentIndex) => {
     ctx.stroke();
 
     //update vertical line position
-    plotMarker(currentIndex, window.scores.length, scorePlotOffsetLeft, scorePlotOffsetRight, scorePlotOffsetY, scorePlot);
+    plot_marker(currentIndex, window.scores.length, scorePlotOffsetLeft, scorePlotOffsetRight, scorePlotOffsetY, window.EMPHASIS_COLOR, 1, scorePlot);
 };

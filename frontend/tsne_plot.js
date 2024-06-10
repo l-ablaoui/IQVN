@@ -16,7 +16,7 @@ var tsne_plot_offset_y = 20;
 
 //selection stuff
 selection_state = "idle";
-var selection_center = { x: (window.selectionTopLeft.x + window.selectionBotRight.x) / 2, y: (window.selectionTopLeft.y + window.selectionBotRight.y) / 2 };
+var selection_center = { x: (window.selection_top_left.x + window.selection_bot_right.x) / 2, y: (window.selection_top_left.y + window.selection_bot_right.y) / 2 };
 var selection_mouse_down_point = selection_center;
 
 /*main drawing function for tsne reduced embeddings' scatter plot */
@@ -60,7 +60,7 @@ var plotTsneReduction = (current_index) => {
         ctx.fillStyle = color_map[i];
         dot_radius = radius_map[i];
         // Apply zoom/pan transformations to coordinates only and not to point radius (for visibility purposes)
-        fillCircle(ctx, {x: tsne_translate.x + x * tsne_scale, y: tsne_translate.y + y * tsne_scale}, dot_radius);
+        fill_circle(ctx, {x: tsne_translate.x + x * tsne_scale, y: tsne_translate.y + y * tsne_scale}, dot_radius);
     }
 
     x = tsne_plot_offset_x + (window.displayed_reduction[current_index]['x'] - min_x) / (max_x - min_x) * (plot_width - 2 * tsne_plot_offset_x);
@@ -68,13 +68,13 @@ var plotTsneReduction = (current_index) => {
 
     ctx.fillStyle = color_map[current_index];
     dot_radius = radius_map[current_index];
-    fillCircle(ctx, {x: tsne_translate.x + x * tsne_scale, y: tsne_translate.y + y * tsne_scale}, dot_radius);
+    fill_circle(ctx, {x: tsne_translate.x + x * tsne_scale, y: tsne_translate.y + y * tsne_scale}, dot_radius);
     ctx.arc(tsne_translate.x + x * tsne_scale + dot_radius, tsne_translate.y + y * tsne_scale, 0, dot_radius, 2 * Math.PI);
     ctx.lineWidth = 2;
     ctx.strokeStyle = "black";
     ctx.stroke();
 
-    if (window.isSelection) { drawRectangle(ctx, window.selectionTopLeft, window.selectionBotRight); }
+    if (window.is_selection) { drawRectangle(ctx, window.selection_top_left, window.selection_bot_right); }
 };
 
 var generate_radius_map = (indices) => {
@@ -353,10 +353,10 @@ tsnePlot.addEventListener("click", async (event) => {
             const blob = await response.blob();
             const imageUrl = URL.createObjectURL(blob);
 
-            updateVideo(imageUrl);
+            update_video(imageUrl);
 
             //update component
-            updateScores(i);
+            update_scores(i);
             return;
         }
     }
@@ -484,7 +484,7 @@ var update_selected = (current_index) => {
     var plot_height = tsnePlot.height;
 
     //clear all
-    window.selectedPoints = [];
+    window.selected_points = [];
 
     for (i = 0;i < window.displayed_reduction.length;++i) {
         //get center coordinates
@@ -492,10 +492,10 @@ var update_selected = (current_index) => {
         y = plot_height - tsne_plot_offset_y - (window.displayed_reduction[i]['y'] - min_y) / (max_y - min_y) * (plot_height - 2 * tsne_plot_offset_y);
 
         //checking if circle is in the selected area, taking into account the current zoom/pan and the big coloured dot that is the current frame embedding
-        if (is_circle_in_square(window.selectionTopLeft, window.selectionBotRight, 
+        if (is_circle_in_square(window.selection_top_left, window.selection_bot_right, 
             {x: tsne_translate.x + x * tsne_scale, y: tsne_translate.y + y * tsne_scale}, 
             (current_index == i)? 4 : 2)) {
-            window.selectedPoints.push(i);
+            window.selected_points.push(i);
         }
     }
 };
@@ -503,12 +503,12 @@ var update_selected = (current_index) => {
 var selection_mouse_down = (event) => {
     selection_mouse_down_point = {x: event.offsetX, y: event.offsetY};
     //Get the closest point
-    let dP1 = length2(selection_mouse_down_point, window.selectionTopLeft);
-    let dP2 = length2(selection_mouse_down_point, window.selectionBotRight);
+    let dP1 = length2(selection_mouse_down_point, window.selection_top_left);
+    let dP2 = length2(selection_mouse_down_point, window.selection_bot_right);
     let dC = length2(selection_mouse_down_point, selection_center);
 
-    let dPTopRight = length2(selection_mouse_down_point, { x: window.selectionBotRight.x, y: window.selectionTopLeft.y });
-    let dPBottomLeft = length2(selection_mouse_down_point, { x: window.selectionTopLeft.x, y: window.selectionBotRight.y });
+    let dPTopRight = length2(selection_mouse_down_point, { x: window.selection_bot_right.x, y: window.selection_top_left.y });
+    let dPBottomLeft = length2(selection_mouse_down_point, { x: window.selection_top_left.x, y: window.selection_bot_right.y });
 
     let list = [dP1, dP2, dC, dPTopRight, dPBottomLeft];
     //sort the list
@@ -530,29 +530,29 @@ var selection_mouse_move = (event) => {
     };
     switch (selection_state) {
         case "dP1":
-            window.selectionTopLeft = { x: window.selectionTopLeft.x + delta.x, y: window.selectionTopLeft.y + delta.y };
+            window.selection_top_left = { x: window.selection_top_left.x + delta.x, y: window.selection_top_left.y + delta.y };
             break;
 
         case "dP2":
-            window.selectionBotRight = { x: window.selectionBotRight.x + delta.x, y: window.selectionBotRight.y + delta.y };
+            window.selection_bot_right = { x: window.selection_bot_right.x + delta.x, y: window.selection_bot_right.y + delta.y };
             break;
 
         case "dC":
-            window.selectionTopLeft = { x: window.selectionTopLeft.x + delta.x, y: window.selectionTopLeft.y + delta.y };
-            window.selectionBotRight = { x: window.selectionBotRight.x + delta.x, y: window.selectionBotRight.y + delta.y };
+            window.selection_top_left = { x: window.selection_top_left.x + delta.x, y: window.selection_top_left.y + delta.y };
+            window.selection_bot_right = { x: window.selection_bot_right.x + delta.x, y: window.selection_bot_right.y + delta.y };
             break;
 
         case "dCTR":
-            window.selectionTopLeft = { x: window.selectionTopLeft.x, y: window.selectionTopLeft.y + delta.y };
-            window.selectionBotRight = { x: window.selectionBotRight.x + delta.x, y: window.selectionBotRight.y };
+            window.selection_top_left = { x: window.selection_top_left.x, y: window.selection_top_left.y + delta.y };
+            window.selection_bot_right = { x: window.selection_bot_right.x + delta.x, y: window.selection_bot_right.y };
             break;
 
         case "dCBL":
-            window.selectionTopLeft = { x: window.selectionTopLeft.x + delta.x, y: window.selectionTopLeft.y };
-            window.selectionBotRight = { x: window.selectionBotRight.x, y: window.selectionBotRight.y + delta.y };
+            window.selection_top_left = { x: window.selection_top_left.x + delta.x, y: window.selection_top_left.y };
+            window.selection_bot_right = { x: window.selection_bot_right.x, y: window.selection_bot_right.y + delta.y };
             break;
     }
-    selection_center = { x: (window.selectionTopLeft.x + window.selectionBotRight.x) / 2, y: (window.selectionTopLeft.y + window.selectionBotRight.y) / 2 };
+    selection_center = { x: (window.selection_top_left.x + window.selection_bot_right.x) / 2, y: (window.selection_top_left.y + window.selection_bot_right.y) / 2 };
     selection_mouse_down_point = mousePosition;
 
     // Redraw the content
@@ -583,8 +583,8 @@ resetTsne.addEventListener("click", () => {
     tsne_drag_offset = { x: 0, y: 0 };
 
     //reset selection
-    window.isSelection = false;
-    window.selectedPoints = [];
+    window.is_selection = false;
+    window.selected_points = [];
 
     tsnePlot.removeEventListener("mousemove", selection_mouse_move);
     tsnePlot.removeEventListener("mousedown", selection_mouse_down);
@@ -607,8 +607,8 @@ resetTsne.addEventListener("click", () => {
 var toggleSelection = document.getElementById("selectDots");
 
 toggleSelection.addEventListener("click", () => {
-    if (window.isSelection == false) {
-        window.isSelection = true;
+    if (window.is_selection == false) {
+        window.is_selection = true;
         tsnePlot.removeEventListener("mousemove", zom_pan_mouse_move);
         tsnePlot.removeEventListener("mousedown", zom_pan_mouse_down);
         tsnePlot.removeEventListener("mouseup", zom_pan_mouse_up);
@@ -624,7 +624,7 @@ toggleSelection.addEventListener("click", () => {
         plotCurve(current_index);
     }
     else {
-        window.isSelection = false;
+        window.is_selection = false;
         tsnePlot.removeEventListener("mousemove", selection_mouse_move);
         tsnePlot.removeEventListener("mousedown", selection_mouse_down);
         tsnePlot.removeEventListener("mouseup", selection_mouse_up);

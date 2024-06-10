@@ -1,35 +1,36 @@
 var tsnePlot = document.getElementById("tsnePlot");
-var tsneColorScale = document.getElementById("tsneColorMap");
+var tsne_color_scale = document.getElementById("tsneColorMap");
 
 //initial zoom setting
-var tsneScale = 1.0;
-var tsneTranslate = { x: 0, y: 0 };
-const tsneZoomSpeed = 0.1;
+var tsne_scale = 1.0;
+var tsne_translate = { x: 0, y: 0 };
+const tsne_zoom_speed = 0.1;
 
 // Variables for panning
-var isTsneDragging = false;
-var tsneDragOffset = { x: 0, y: 0 };
+var is_tsne_dragging = false;
+var tsne_drag_offset = { x: 0, y: 0 };
 
 //to keep space between plot and canvas boundaries
-var tsnePlotOffsetX = 20;
-var tsnePlotOffsetY = 20;
+var tsne_plot_offset_x = 20;
+var tsne_plot_offset_y = 20;
 
 //selection stuff
-selectionState = "idle";
-var selectionCenter = { x: (window.selectionTopLeft.x + window.selectionBotRight.x) / 2, y: (window.selectionTopLeft.y + window.selectionBotRight.y) / 2 };
-var selectionMouseDownPoint = selectionCenter;
+selection_state = "idle";
+var selection_center = { x: (window.selectionTopLeft.x + window.selectionBotRight.x) / 2, y: (window.selectionTopLeft.y + window.selectionBotRight.y) / 2 };
+var selection_mouse_down_point = selection_center;
 
 /*main drawing function for tsne reduced embeddings' scatter plot */
-var plotTsneReduction = (currentIndex) => {
+var plotTsneReduction = (current_index) => {
     if (window.displayed_reduction == null) { return; }
 
-    var colorMap = generateColorMap(currentIndex, window.cmap);
+    var color_map = generate_color_map(current_index, window.cmap);
+    var radius_map = generate_radius_map([current_index]);
 
     /*get min/max to later normalize reduction values*/
-    min_x = window.displayed_reduction[0]['x'];
-    max_x = window.displayed_reduction[0]['x'];
-    min_y = window.displayed_reduction[0]['y'];
-    max_y = window.displayed_reduction[0]['y'];
+    var min_x = window.displayed_reduction[0]['x'];
+    var max_x = window.displayed_reduction[0]['x'];
+    var min_y = window.displayed_reduction[0]['y'];
+    var max_y = window.displayed_reduction[0]['y'];
 
     for (i = 1;i < window.displayed_reduction.length;++i) {
         min_x = (min_x > window.displayed_reduction[i]['x'])? window.displayed_reduction[i]['x'] : min_x;
@@ -39,34 +40,36 @@ var plotTsneReduction = (currentIndex) => {
     }
 
     //tsnePlot width/length
-    var plotWidth = tsnePlot.width;
-    var plotHeight = tsnePlot.height;
+    var plot_width = tsnePlot.width;
+    var plot_height = tsnePlot.height;
     
     //reset the drawing
     var ctx = tsnePlot.getContext("2d");
-    ctx.clearRect(0, 0, plotWidth, plotHeight);  
+    ctx.clearRect(0, 0, plot_width, plot_height);  
     
+    var x, y, dot_radius;
+
     //draw the points (square shaped for now)
     for (i = 0;i < window.displayed_reduction.length;++i) {
         //draw current frame marker last to stand out
-        if (i == currentIndex) { continue; }
+        if (i == current_index) { continue; }
 
-        x = tsnePlotOffsetX + (window.displayed_reduction[i]['x'] - min_x) / (max_x - min_x) * (plotWidth - 2 * tsnePlotOffsetX);
-        y = plotHeight - tsnePlotOffsetY - (window.displayed_reduction[i]['y'] - min_y) / (max_y - min_y) * (plotHeight - 2 * tsnePlotOffsetY);
+        x = tsne_plot_offset_x + (window.displayed_reduction[i]['x'] - min_x) / (max_x - min_x) * (plot_width - 2 * tsne_plot_offset_x);
+        y = plot_height - tsne_plot_offset_y - (window.displayed_reduction[i]['y'] - min_y) / (max_y - min_y) * (plot_height - 2 * tsne_plot_offset_y);
 
-        ctx.fillStyle = colorMap[i];
-        dotRadius = window.REGULAR_RADIUS;
+        ctx.fillStyle = color_map[i];
+        dot_radius = radius_map[i];
         // Apply zoom/pan transformations to coordinates only and not to point radius (for visibility purposes)
-        fillCircle(ctx, {x: tsneTranslate.x + x * tsneScale, y: tsneTranslate.y + y * tsneScale}, dotRadius);
+        fillCircle(ctx, {x: tsne_translate.x + x * tsne_scale, y: tsne_translate.y + y * tsne_scale}, dot_radius);
     }
 
-    x = tsnePlotOffsetX + (window.displayed_reduction[currentIndex]['x'] - min_x) / (max_x - min_x) * (plotWidth - 2 * tsnePlotOffsetX);
-    y = plotHeight - tsnePlotOffsetY - (window.displayed_reduction[currentIndex]['y'] - min_y) / (max_y - min_y) * (plotHeight - 2 * tsnePlotOffsetY);
+    x = tsne_plot_offset_x + (window.displayed_reduction[current_index]['x'] - min_x) / (max_x - min_x) * (plot_width - 2 * tsne_plot_offset_x);
+    y = plot_height - tsne_plot_offset_y - (window.displayed_reduction[current_index]['y'] - min_y) / (max_y - min_y) * (plot_height - 2 * tsne_plot_offset_y);
 
-    ctx.fillStyle = colorMap[currentIndex];
-    dotRadius = window.EMPHASIS_RADIUS;
-    fillCircle(ctx, {x: tsneTranslate.x + x * tsneScale, y: tsneTranslate.y + y * tsneScale}, dotRadius);
-    ctx.arc(tsneTranslate.x + x * tsneScale + dotRadius, tsneTranslate.y + y * tsneScale, 0, dotRadius, 2 * Math.PI);
+    ctx.fillStyle = color_map[current_index];
+    dot_radius = radius_map[current_index];
+    fillCircle(ctx, {x: tsne_translate.x + x * tsne_scale, y: tsne_translate.y + y * tsne_scale}, dot_radius);
+    ctx.arc(tsne_translate.x + x * tsne_scale + dot_radius, tsne_translate.y + y * tsne_scale, 0, dot_radius, 2 * Math.PI);
     ctx.lineWidth = 2;
     ctx.strokeStyle = "black";
     ctx.stroke();
@@ -74,11 +77,29 @@ var plotTsneReduction = (currentIndex) => {
     if (window.isSelection) { drawRectangle(ctx, window.selectionTopLeft, window.selectionBotRight); }
 };
 
+var generate_radius_map = (indices) => {
+    radius_map = [];
+    if (window.displayed_reduction == null) { return radius_map; }
+
+    for (var i = 0; i < window.displayed_reduction.length; ++i) { 
+        var j;
+        for (j = 0;j < indices.length;++j) {
+            if (i == indices[j]) {
+                radius_map.push(window.EMPHASIS_RADIUS);
+                break;
+            }
+        }
+        if (j == indices.length) { radius_map.push(window.REGULAR_RADIUS); }
+    }
+
+    return radius_map;
+}
+
 /*color map stuff */
 //plot colormap
-var generateColorMap = (currentIndex, cmap) => {
-    colorMap = [];
-    if (window.displayed_reduction == null) { return colorMap; }
+var generate_color_map = (current_index, cmap) => {
+    color_map = [];
+    if (window.displayed_reduction == null) { return color_map; }
 
     switch (cmap) {
         case "time": {
@@ -87,20 +108,20 @@ var generateColorMap = (currentIndex, cmap) => {
             for (var i = 0; i < window.displayed_reduction.length; ++i) { 
                 var factor1 = (window.displayed_reduction.length - 1 - i) / (window.displayed_reduction.length - 1);
                 var factor2 = i / (window.displayed_reduction.length - 1);
-                colorMap.push((currentIndex != i)? 
+                color_map.push((current_index != i)? 
                     `rgb(${color1.red * factor1 + color2.red * factor2}, 
                     ${color1.green * factor1 + color2.green * factor2}, 
                     ${color1.blue * factor1 + color2.blue * factor2}` 
                     : window.EMPHASIS_COLOR); 
             }
-            drawColorScale(0, window.displayed_reduction.length, color1, color2);
+            draw_color_scale(0, window.displayed_reduction.length, color1, color2);
             break;
         }
 
         case "score": {
             //make sure scores exist and match the tsne reduction
-            if (window.scores == null) { generateColorMap(currentIndex, ""); }
-            if (window.scores.length != window.displayed_reduction.length) { generateColorMap(currentIndex, ""); }
+            if (window.scores == null) { generate_color_map(current_index, ""); }
+            if (window.scores.length != window.displayed_reduction.length) { generate_color_map(current_index, ""); }
 
             /*get min/max to normalize scores*/
             min_score = window.scores[0];
@@ -112,20 +133,21 @@ var generateColorMap = (currentIndex, cmap) => {
             }
 
             var color1 = {red: 255, green: 0, blue: 0};
-            var color2 = {red: 0, green: 255, blue: 0};
+            var color2 = {red: 0, green: 200, blue: 0};
             for (var i = 0; i < window.displayed_reduction.length; ++i) { 
                 var factor = (window.scores[i] - min_score) / (max_score - min_score);
-                colorMap.push(`rgb(${color1.red * (1 - factor) + color2.red * factor}, 
+                color_map.push(`rgba(${color1.red * (1 - factor) + color2.red * factor}, 
                     ${color1.green * (1 - factor) + color2.green * factor}, 
-                    ${color1.blue * (1 - factor) + color2.blue * factor}`); 
+                    ${color1.blue * (1 - factor) + color2.blue * factor},
+                    ${Math.sqrt(factor)}`); // the lower the score is the more transparent the color is, using root square to prevent drastic behavior
             }
-            drawColorScale(min_score, max_score, color1, color2);
+            draw_color_scale(min_score, max_score, color1, color2);
             break;
         }
 
         case "clusters": {
             //squash the color map 
-            tsneColorScale.height = 0;
+            tsne_color_scale.height = 0;
 
             //get currently displayed reduction DBSCAN clusters
             var current_clusters = (window.old_reduction == "tsne")? window.tsne_clusters :
@@ -141,7 +163,7 @@ var generateColorMap = (currentIndex, cmap) => {
             var nb_clusters = max_label + 1;
 
             //generating random colors
-            function generateHSLColors(numColors) {
+            function generate_HSL_colors(numColors) {
                 let colors = [];
                 const saturation = 70; // Saturation percentage
                 const lightness = 50;  // Lightness percentage
@@ -153,19 +175,19 @@ var generateColorMap = (currentIndex, cmap) => {
             
                 return colors;
             }
-            var colors = generateHSLColors(nb_clusters);
+            var colors = generate_HSL_colors(nb_clusters);
 
             //applying colors to clusters (-1/no cluster will be gray and current index red)
             for (var i = 0; i < window.displayed_reduction.length; ++i) { 
-                if (i == currentIndex) {
-                    colorMap.push(window.EMPHASIS_COLOR);
+                if (i == current_index) {
+                    color_map.push(window.EMPHASIS_COLOR);
                 }
                 else {
                     if (current_clusters[i] == -1) { 
-                        colorMap.push(window.REGULAR_COLOR);
+                        color_map.push(window.REGULAR_COLOR);
                     }
                     else {
-                        colorMap.push(colors[current_clusters[i]]);
+                        color_map.push(colors[current_clusters[i]]);
                     }
                 }
             }
@@ -175,47 +197,47 @@ var generateColorMap = (currentIndex, cmap) => {
 
         default: { //gray colormap with red as amphasis
             //squash the color map on default
-            tsneColorScale.height = 0;
-            for (var i = 0; i < window.displayed_reduction.length; ++i) { colorMap.push((currentIndex == i)? window.EMPHASIS_COLOR: window.REGULAR_COLOR); }
+            tsne_color_scale.height = 0;
+            for (var i = 0; i < window.displayed_reduction.length; ++i) { color_map.push((current_index == i)? window.EMPHASIS_COLOR: window.REGULAR_COLOR); }
             break;
         }
     }
 
-    return colorMap;
+    return color_map;
 }
 
-var drawColorScale = (minValue, maxValue, minColor, maxColor) => {
-    const ctx = tsneColorScale.getContext("2d");
-    tsneColorScale.height = 20;
-    tsneColorScale.width = 300;
+var draw_color_scale = (min_value, max_value, min_color, max_color) => {
+    const ctx = tsne_color_scale.getContext("2d");
+    tsne_color_scale.height = 20;
+    tsne_color_scale.width = 300;
 
-    minValue = Math.trunc(minValue * 100) / 100;
-    maxValue = Math.trunc(maxValue * 100) / 100;
+    min_value = Math.trunc(min_value * 100) / 100;
+    max_value = Math.trunc(max_value * 100) / 100;
 
-    const gradient = ctx.createLinearGradient(0, 0, tsneColorScale.width, 0);
-    gradient.addColorStop(0, `rgb(${minColor.red}, ${minColor.green}, ${minColor.blue})`);   // Blue at the left
-    gradient.addColorStop(1, `rgb(${maxColor.red}, ${maxColor.green}, ${maxColor.blue})`);  // Red at the right
+    const gradient = ctx.createLinearGradient(0, 0, tsne_color_scale.width, 0);
+    gradient.addColorStop(0, `rgb(${min_color.red}, ${min_color.green}, ${min_color.blue})`);   // Blue at the left
+    gradient.addColorStop(1, `rgb(${max_color.red}, ${max_color.green}, ${max_color.blue})`);  // Red at the right
     ctx.fillStyle = gradient;
-    ctx.fillRect(0, 0, tsneColorScale.width, tsneColorScale.height);
+    ctx.fillRect(0, 0, tsne_color_scale.width, tsne_color_scale.height);
 
     // Add min and max values
     ctx.fillStyle = 'black';
     ctx.font = '14px Arial';
     ctx.textAlign = 'center';
-    ctx.fillText(minValue, 15, tsneColorScale.height / 2 + 5); // Min value at the left
+    ctx.fillText(min_value, 15, tsne_color_scale.height / 2 + 5); // Min value at the left
     ctx.fillStyle = 'white';
-    ctx.fillText(maxValue, tsneColorScale.width - 15, tsneColorScale.height / 2 + 5); // Max value at the right
+    ctx.fillText(max_value, tsne_color_scale.width - 15, tsne_color_scale.height / 2 + 5); // Max value at the right
 }
 
-var animateReductionTransition = (old_reduction, new_reduction, duration) => {
+var animate_reduction_transition = (old_reduction, new_reduction, duration) => {
     //copying to make sure the reduction results aint touched
-    const startTime = performance.now();
-    const currentIndex = parseInt(slider.value) - 1;
+    const start_time = performance.now();
+    const current_index = parseInt(slider.value) - 1;
 
     function animate() {
-        const currentTime = performance.now();
-        const elapsedTime = currentTime - startTime;
-        const t = Math.min(elapsedTime / duration, 1); // Normalized time [0, 1]
+        const current_time = performance.now();
+        const elapsed_time = current_time - start_time;
+        const t = Math.min(elapsed_time / duration, 1); // Normalized time [0, 1]
   
         window.displayed_reduction = old_reduction.map((old_point, i) => {
             const new_point = new_reduction[i];
@@ -226,7 +248,7 @@ var animateReductionTransition = (old_reduction, new_reduction, duration) => {
         });
         
         // Draw scatter plot with currentData
-        plotTsneReduction(currentIndex);
+        plotTsneReduction(current_index);
 
         if (t < 1) {
             requestAnimationFrame(animate);
@@ -241,41 +263,41 @@ var animateReductionTransition = (old_reduction, new_reduction, duration) => {
 
 //selectors handling (colormap and reduction method)
 document.addEventListener("DOMContentLoaded", function() {
-    const colorRadioButtons = document.querySelectorAll('input[name="selectColorMap"]');
-    const reductionMethodButtons = document.querySelectorAll('input[name="selectReductionMethod"]');
+    const color_radio_buttons = document.querySelectorAll('input[name="selectColorMap"]');
+    const reduction_method_buttons = document.querySelectorAll('input[name="selectReductionMethod"]');
 
     // Function to handle the colormap change
-    const handleColorMapChange = () => {
-        const selectedValue = document.querySelector('input[name="selectColorMap"]:checked').value;
-        window.cmap = selectedValue;
+    const handle_color_map_change = () => {
+        const selected_value = document.querySelector('input[name="selectColorMap"]:checked').value;
+        window.cmap = selected_value;
 
         //redraw components
-        var currentIndex = parseInt(slider.value) - 1;
-        plotTsneReduction(currentIndex);
+        var current_index = parseInt(slider.value) - 1;
+        plotTsneReduction(current_index);
     };
 
     // Function to handle the reduction algorithm change
-    const handleReductionMethodChange = () => {
-        const selectedValue = document.querySelector('input[name="selectReductionMethod"]:checked').value;
+    const handle_reduction_method_change = () => {
+        const selected_value = document.querySelector('input[name="selectReductionMethod"]:checked').value;
         var old_reduction = (window.old_reduction == "tsne")? window.tsne_reduction :
                             (window.old_reduction == "pca")? window.pca_reduction : window.umap_reduction;
-        var new_reduction = (selectedValue == "tsne")? window.tsne_reduction :
-                            (selectedValue == "pca")? window.pca_reduction : window.umap_reduction;
+        var new_reduction = (selected_value == "tsne")? window.tsne_reduction :
+                            (selected_value == "pca")? window.pca_reduction : window.umap_reduction;
 
         //redraw component (animate position transition)
-        animateReductionTransition(old_reduction, new_reduction, 1000);
+        animate_reduction_transition(old_reduction, new_reduction, 1000);
 
         //update state after animation
-        window.old_reduction = selectedValue;
+        window.old_reduction = selected_value;
     };
 
     // Add change event listener to each radio button
-    colorRadioButtons.forEach(radio => {
-        radio.addEventListener('change', handleColorMapChange);
+    color_radio_buttons.forEach(radio => {
+        radio.addEventListener('change', handle_color_map_change);
     });
 
-    reductionMethodButtons.forEach(radio => {
-        radio.addEventListener('change', handleReductionMethodChange);
+    reduction_method_buttons.forEach(radio => {
+        radio.addEventListener('change', handle_reduction_method_change);
     });
 });
 
@@ -284,12 +306,12 @@ document.addEventListener("DOMContentLoaded", function() {
 tsnePlot.addEventListener("click", async (event) => {
     event.preventDefault();
     
-    const mouseX = event.offsetX;
-    const mouseY = event.offsetY;
+    const mouse_x = event.offsetX;
+    const mouse_y = event.offsetY;
 
     //tsnePlot width/length
-    var plotWidth = tsnePlot.width;
-    var plotHeight = tsnePlot.height;
+    var plot_width = tsnePlot.width;
+    var plot_height = tsnePlot.height;
 
     //get min/max to later normalize reduction values
     min_x = window.displayed_reduction[0]['x'];
@@ -305,26 +327,26 @@ tsnePlot.addEventListener("click", async (event) => {
     }
      
     //if clicking on the current frame index (big red dot), do nothing
-    var currentIndex = parseInt(slider.value) - 1;
-    var x = tsneTranslate.x + tsneScale * (tsnePlotOffsetX + (window.displayed_reduction[currentIndex]['x'] - min_x) / (max_x - min_x) * (plotWidth - 2 * tsnePlotOffsetX));
-    var y = tsneTranslate.y + tsneScale * (plotHeight - tsnePlotOffsetY - (window.displayed_reduction[currentIndex]['y'] - min_y) / (max_y - min_y) * (plotHeight - 2 * tsnePlotOffsetY));
+    var current_index = parseInt(slider.value) - 1;
+    var x = tsne_translate.x + tsne_scale * (tsne_plot_offset_x + (window.displayed_reduction[current_index]['x'] - min_x) / (max_x - min_x) * (plot_width - 2 * tsne_plot_offset_x));
+    var y = tsne_translate.y + tsne_scale * (plot_height - tsne_plot_offset_y - (window.displayed_reduction[current_index]['y'] - min_y) / (max_y - min_y) * (plot_height - 2 * tsne_plot_offset_y));
 
-    dotRadius = 4;
-    var dist = (mouseX - x) * (mouseX - x) + (mouseY - y) * (mouseY - y);
-    if (dist <= dotRadius * dotRadius) {
+    dot_radius = 4;
+    var dist = (mouse_x - x) * (mouse_x - x) + (mouse_y - y) * (mouse_y - y);
+    if (dist <= dot_radius * dot_radius) {
         return;
     }
 
     for (i = 0;i < window.displayed_reduction.length;++i) {
         //get each point's coordinates after current zoom/pan
-        var x = tsneTranslate.x + tsneScale * (tsnePlotOffsetX + (window.displayed_reduction[i]['x'] - min_x) / (max_x - min_x) * (plotWidth - 2 * tsnePlotOffsetX));
-        var y = tsneTranslate.y + tsneScale * (plotHeight - tsnePlotOffsetY - (window.displayed_reduction[i]['y'] - min_y) / (max_y - min_y) * (plotHeight - 2 * tsnePlotOffsetY));
+        var x = tsne_translate.x + tsne_scale * (tsne_plot_offset_x + (window.displayed_reduction[i]['x'] - min_x) / (max_x - min_x) * (plot_width - 2 * tsne_plot_offset_x));
+        var y = tsne_translate.y + tsne_scale * (plot_height - tsne_plot_offset_y - (window.displayed_reduction[i]['y'] - min_y) / (max_y - min_y) * (plot_height - 2 * tsne_plot_offset_y));
 
-        dotRadius = 2;
-        var dist = (mouseX - x) * (mouseX - x) + (mouseY - y) * (mouseY - y);
+        dot_radius = 2;
+        var dist = (mouse_x - x) * (mouse_x - x) + (mouse_y - y) * (mouse_y - y);
 
         //if the user clicked inside the dot, update the frameIndex
-        if (dist <= dotRadius * dotRadius) {
+        if (dist <= dot_radius * dot_radius) {
             //fetch current frame
             var name_processed = window.current_video.split(".")[0]; 
             const response = await fetch(`${server_url}/image/${name_processed}/${i}.png`);
@@ -341,99 +363,107 @@ tsnePlot.addEventListener("click", async (event) => {
 })
 
 /*zoom/pan handling */
-var zoomPanWheel = (event) => {
+var zom_pan_wheel = (event) => {
     event.preventDefault();
     
-    const mouseX = event.offsetX;
-    const mouseY = event.offsetY;
+    const mouse_x = event.offsetX;
+    const mouse_y = event.offsetY;
 
     const wheel = event.deltaY < 0 ? 1 : -1;
-    const zoomFactor = 1 + wheel * tsneZoomSpeed;
+    const zoom_factor = 1 + wheel * tsne_zoom_speed;
     
     // Calculate new scale but constrain it within a range
-    const newScale = Math.max(Math.min(tsneScale * zoomFactor, window.MAX_SCALE), window.MIN_SCALE);
+    const new_scale = Math.max(Math.min(tsne_scale * zoom_factor, window.MAX_SCALE), window.MIN_SCALE);
     
     // Adjust translation to keep the zoom centered on the cursor
-    tsneTranslate.x = mouseX - ((mouseX - tsneTranslate.x) / tsneScale) * newScale;
-    tsneTranslate.y = mouseY - ((mouseY - tsneTranslate.y) / tsneScale) * newScale;
+    tsne_translate.x = mouse_x - ((mouse_x - tsne_translate.x) / tsne_scale) * new_scale;
+    tsne_translate.y = mouse_y - ((mouse_y - tsne_translate.y) / tsne_scale) * new_scale;
 
     // Apply the new scale
-    tsneScale = newScale;
+    tsne_scale = new_scale;
 
     // Redraw the content
-    var currentIndex = parseInt(slider.value) - 1;
-    plotTsneReduction(currentIndex);
+    var current_index = parseInt(slider.value) - 1;
+    plotTsneReduction(current_index);
 };
-tsnePlot.addEventListener('wheel', zoomPanWheel);
+tsnePlot.addEventListener('wheel', zom_pan_wheel);
 
-var zoomPanMouseDown = (event) => {
-    isTsneDragging = true;
-    tsneDragOffset.x = event.offsetX - tsneTranslate.x;
-    tsneDragOffset.y = event.offsetY - tsneTranslate.y;
+var zom_pan_mouse_down = (event) => {
+    is_tsne_dragging = true;
+    tsne_drag_offset.x = event.offsetX - tsne_translate.x;
+    tsne_drag_offset.y = event.offsetY - tsne_translate.y;
 };
-tsnePlot.addEventListener('mousedown', zoomPanMouseDown); 
+tsnePlot.addEventListener('mousedown', zom_pan_mouse_down); 
 
-var zoomPanMouseUp = () => {
-    isTsneDragging = false;
+var zom_pan_mouse_up = () => {
+    is_tsne_dragging = false;
 };
-tsnePlot.addEventListener('mouseup', zoomPanMouseUp);
-tsnePlot.addEventListener('mouseout', zoomPanMouseUp);
+tsnePlot.addEventListener('mouseup', zom_pan_mouse_up);
+tsnePlot.addEventListener('mouseout', zom_pan_mouse_up);
 
-var zoomPanMouseMove = (event) => {
-    if (isTsneDragging) {
-        tsneTranslate.x = event.offsetX - tsneDragOffset.x;
-        tsneTranslate.y = event.offsetY - tsneDragOffset.y;
+var zom_pan_mouse_move = (event) => {
+    if (is_tsne_dragging) {
+        tsne_translate.x = event.offsetX - tsne_drag_offset.x;
+        tsne_translate.y = event.offsetY - tsne_drag_offset.y;
 
         //redraw context
-        currentIndex = parseInt(slider.value) - 1;
-        plotTsneReduction(currentIndex);
+        var current_index = parseInt(slider.value) - 1;
+        plotTsneReduction(current_index);
     }
 };
-tsnePlot.addEventListener('mousemove', zoomPanMouseMove);
+tsnePlot.addEventListener('mousemove', zom_pan_mouse_move);
 
 /*handling embedding selection */
 
 // Function to check if the circle intersects a rectangle edge
-var intersectsEdge = (p1, p2, c, r) => {
+var intersect_edges = (p1, p2, c, r) => {
     // Closest point on the edge to the circle's center
-    let closestX = Math.max(p1.x, Math.min(c.x, p2.x));
-    let closestY = Math.max(p1.y, Math.min(c.y, p2.y));
+    let closest_x = Math.max(p1.x, Math.min(c.x, p2.x));
+    let closest_y = Math.max(p1.y, Math.min(c.y, p2.y));
 
     // Distance from the circle's center to the closest point on the edge
-    let distanceSq = length2(c, { x: closestX, y: closestY });
+    let distanceSq = length2(c, { x: closest_x, y: closest_y });
 
     return distanceSq <= r * r;
 }
 
-// utility function to check if the dots are inside the selection area
-var isCircleInSquare = (p1, p2, c, r) => {
+/**
+ * utility function to check if a circle is inside or intersects with a rectangle
+ * @param {*} p1 top left corner of the rectangle
+ * @param {*} p2 bottom right corner of the rectangle
+ * @param {*} c center of the circle
+ * @param {*} r radius of the circle
+ * @returns true if the circle is completely contained within the rectangle or 
+ * if one the edges of the rectangle intersect with the circle
+ */
+var is_circle_in_square = (p1, p2, c, r) => {
     /*circle completely inside */
     // Ensure p1 is the top-left corner and p2 is the bottom-right corner
-    var rectLeft = Math.min(p1.x, p2.x);
-    var rectRight = Math.max(p1.x, p2.x);
-    var rectTop = Math.min(p1.y, p2.y);
-    var rectBottom = Math.max(p1.y, p2.y);
+    var rect_left = Math.min(p1.x, p2.x);
+    var rect_right = Math.max(p1.x, p2.x);
+    var rect_top = Math.min(p1.y, p2.y);
+    var rect_bottom = Math.max(p1.y, p2.y);
 
     // Check if the circle is completely inside the rectangle
-    var isCompletelyInside = 
-        (c.x - r >= rectLeft) &&
-        (c.x + r <= rectRight) &&
-        (c.y - r >= rectTop) &&
-        (c.y + r <= rectBottom);
+    var is_completely_inside = 
+        (c.x - r >= rect_left) &&
+        (c.x + r <= rect_right) &&
+        (c.y - r >= rect_top) &&
+        (c.y + r <= rect_bottom);
 
     // Check intersection with each of the four edges of the rectangle
     var intersects =
-        intersectsEdge(p1, p2, c, r) || // Top edge
-        intersectsEdge(p1, p2, c, r) || // Bottom edge
-        intersectsEdge(p1, p2, c, r) || // Left edge
-        intersectsEdge(p1, p2, c, r); // Right edge
+        intersect_edges(p1, p2, c, r) || // Top edge
+        intersect_edges(p1, p2, c, r) || // Bottom edge
+        intersect_edges(p1, p2, c, r) || // Left edge
+        intersect_edges(p1, p2, c, r); // Right edge
 
     // if the circle is completely inside or starts intersecting with the rectangle, it is selected
-    return intersects || isCompletelyInside;
+    return intersects || is_completely_inside;
 };
 
 // update the selection indices global vector
-var updateSelected = (currentIndex) => {
+var update_selected = (current_index) => {
     if (window.displayed_reduction == null) { return; }
 
     /*get min/max to later normalize reduction values*/
@@ -450,55 +480,55 @@ var updateSelected = (currentIndex) => {
     }
 
     //tsnePlot width/length
-    var plotWidth = tsnePlot.width;
-    var plotHeight = tsnePlot.height;
+    var plot_width = tsnePlot.width;
+    var plot_height = tsnePlot.height;
 
     //clear all
     window.selectedPoints = [];
 
     for (i = 0;i < window.displayed_reduction.length;++i) {
         //get center coordinates
-        x = tsnePlotOffsetX + (window.displayed_reduction[i]['x'] - min_x) / (max_x - min_x) * (plotWidth - 2 * tsnePlotOffsetX);
-        y = plotHeight - tsnePlotOffsetY - (window.displayed_reduction[i]['y'] - min_y) / (max_y - min_y) * (plotHeight - 2 * tsnePlotOffsetY);
+        x = tsne_plot_offset_x + (window.displayed_reduction[i]['x'] - min_x) / (max_x - min_x) * (plot_width - 2 * tsne_plot_offset_x);
+        y = plot_height - tsne_plot_offset_y - (window.displayed_reduction[i]['y'] - min_y) / (max_y - min_y) * (plot_height - 2 * tsne_plot_offset_y);
 
         //checking if circle is in the selected area, taking into account the current zoom/pan and the big coloured dot that is the current frame embedding
-        if (isCircleInSquare(window.selectionTopLeft, window.selectionBotRight, 
-            {x: tsneTranslate.x + x * tsneScale, y: tsneTranslate.y + y * tsneScale}, 
-            (currentIndex == i)? 4 : 2)) {
+        if (is_circle_in_square(window.selectionTopLeft, window.selectionBotRight, 
+            {x: tsne_translate.x + x * tsne_scale, y: tsne_translate.y + y * tsne_scale}, 
+            (current_index == i)? 4 : 2)) {
             window.selectedPoints.push(i);
         }
     }
 };
 
-var selectionMouseDown = (event) => {
-    selectionMouseDownPoint = {x: event.offsetX, y: event.offsetY};
+var selection_mouse_down = (event) => {
+    selection_mouse_down_point = {x: event.offsetX, y: event.offsetY};
     //Get the closest point
-    let dP1 = length2(selectionMouseDownPoint, window.selectionTopLeft);
-    let dP2 = length2(selectionMouseDownPoint, window.selectionBotRight);
-    let dC = length2(selectionMouseDownPoint, selectionCenter);
+    let dP1 = length2(selection_mouse_down_point, window.selectionTopLeft);
+    let dP2 = length2(selection_mouse_down_point, window.selectionBotRight);
+    let dC = length2(selection_mouse_down_point, selection_center);
 
-    let dPTopRight = length2(selectionMouseDownPoint, { x: window.selectionBotRight.x, y: window.selectionTopLeft.y });
-    let dPBottomLeft = length2(selectionMouseDownPoint, { x: window.selectionTopLeft.x, y: window.selectionBotRight.y });
+    let dPTopRight = length2(selection_mouse_down_point, { x: window.selectionBotRight.x, y: window.selectionTopLeft.y });
+    let dPBottomLeft = length2(selection_mouse_down_point, { x: window.selectionTopLeft.x, y: window.selectionBotRight.y });
 
     let list = [dP1, dP2, dC, dPTopRight, dPBottomLeft];
     //sort the list
     let minIndex = list.indexOf(Math.min(...list)); //Usage of the spread operator
 
-    if (minIndex == 0) selectionState = "dP1";
-    if (minIndex == 1) selectionState = "dP2";
-    if (minIndex == 2) selectionState = "dC";
-    if (minIndex == 3) selectionState = "dCTR";
-    if (minIndex == 4) selectionState = "dCBL";
+    if (minIndex == 0) selection_state = "dP1";
+    if (minIndex == 1) selection_state = "dP2";
+    if (minIndex == 2) selection_state = "dC";
+    if (minIndex == 3) selection_state = "dCTR";
+    if (minIndex == 4) selection_state = "dCBL";
 };
 
-var selectionMouseMove = (event) => {
-    if (selectionState == "idle") { return; }
+var selection_mouse_move = (event) => {
+    if (selection_state == "idle") { return; }
     var mousePosition = {x: event.offsetX, y: event.offsetY};
     var delta = {
-        x: mousePosition.x - selectionMouseDownPoint.x,
-        y: mousePosition.y - selectionMouseDownPoint.y,
+        x: mousePosition.x - selection_mouse_down_point.x,
+        y: mousePosition.y - selection_mouse_down_point.y,
     };
-    switch (selectionState) {
+    switch (selection_state) {
         case "dP1":
             window.selectionTopLeft = { x: window.selectionTopLeft.x + delta.x, y: window.selectionTopLeft.y + delta.y };
             break;
@@ -522,24 +552,24 @@ var selectionMouseMove = (event) => {
             window.selectionBotRight = { x: window.selectionBotRight.x, y: window.selectionBotRight.y + delta.y };
             break;
     }
-    selectionCenter = { x: (window.selectionTopLeft.x + window.selectionBotRight.x) / 2, y: (window.selectionTopLeft.y + window.selectionBotRight.y) / 2 };
-    selectionMouseDownPoint = mousePosition;
+    selection_center = { x: (window.selectionTopLeft.x + window.selectionBotRight.x) / 2, y: (window.selectionTopLeft.y + window.selectionBotRight.y) / 2 };
+    selection_mouse_down_point = mousePosition;
 
     // Redraw the content
-    var currentIndex = parseInt(slider.value) - 1;
-    plotTsneReduction(currentIndex);
-    updateSelected(currentIndex);
-    plotCurve(currentIndex);
+    var current_index = parseInt(slider.value) - 1;
+    plotTsneReduction(current_index);
+    update_selected(current_index);
+    plotCurve(current_index);
 }
 
-var selectionMouseUp = () => { 
-    selectionState = "idle"; 
+var selection_mouse_up = () => { 
+    selection_state = "idle"; 
 
     // Redraw the content
-    var currentIndex = parseInt(slider.value) - 1;
-    plotTsneReduction(currentIndex);
-    updateSelected(currentIndex);
-    plotCurve(currentIndex);
+    var current_index = parseInt(slider.value) - 1;
+    plotTsneReduction(current_index);
+    update_selected(current_index);
+    plotCurve(current_index);
 }
 
 /*zoom/pan reset option (or reset all?)*/
@@ -547,30 +577,30 @@ var resetTsne = document.getElementById("resetTsnePlot");
 
 resetTsne.addEventListener("click", () => {
     //back to initial settings
-    tsneScale = 1.0;
-    tsneTranslate = { x: 0, y: 0 };
-    isTsneDragging = false;
-    tsneDragOffset = { x: 0, y: 0 };
+    tsne_scale = 1.0;
+    tsne_translate = { x: 0, y: 0 };
+    is_tsne_dragging = false;
+    tsne_drag_offset = { x: 0, y: 0 };
 
     //reset selection
     window.isSelection = false;
     window.selectedPoints = [];
 
-    tsnePlot.removeEventListener("mousemove", selectionMouseMove);
-    tsnePlot.removeEventListener("mousedown", selectionMouseDown);
-    tsnePlot.removeEventListener("mouseup", selectionMouseUp);
-    tsnePlot.removeEventListener("mouseout", selectionMouseUp);
+    tsnePlot.removeEventListener("mousemove", selection_mouse_move);
+    tsnePlot.removeEventListener("mousedown", selection_mouse_down);
+    tsnePlot.removeEventListener("mouseup", selection_mouse_up);
+    tsnePlot.removeEventListener("mouseout", selection_mouse_up);
 
-    tsnePlot.addEventListener("mousedown", zoomPanMouseDown);
-    tsnePlot.addEventListener("mouseup", zoomPanMouseUp);
-    tsnePlot.addEventListener("mouseout", zoomPanMouseUp);
-    tsnePlot.addEventListener("mousemove", zoomPanMouseMove);
-    tsnePlot.addEventListener("wheel", zoomPanWheel);
+    tsnePlot.addEventListener("mousedown", zom_pan_mouse_down);
+    tsnePlot.addEventListener("mouseup", zom_pan_mouse_up);
+    tsnePlot.addEventListener("mouseout", zom_pan_mouse_up);
+    tsnePlot.addEventListener("mousemove", zom_pan_mouse_move);
+    tsnePlot.addEventListener("wheel", zom_pan_wheel);
 
     //redraw context
-    currentIndex = parseInt(slider.value) - 1;
-    plotTsneReduction(currentIndex);
-    plotCurve(currentIndex);
+    var current_index = parseInt(slider.value) - 1;
+    plotTsneReduction(current_index);
+    plotCurve(current_index);
 });
 
 /*zoomPan/selection toggle option */
@@ -579,34 +609,34 @@ var toggleSelection = document.getElementById("selectDots");
 toggleSelection.addEventListener("click", () => {
     if (window.isSelection == false) {
         window.isSelection = true;
-        tsnePlot.removeEventListener("mousemove", zoomPanMouseMove);
-        tsnePlot.removeEventListener("mousedown", zoomPanMouseDown);
-        tsnePlot.removeEventListener("mouseup", zoomPanMouseUp);
-        tsnePlot.removeEventListener("mouseout", zoomPanMouseUp);
-        tsnePlot.removeEventListener("wheel", zoomPanWheel);
+        tsnePlot.removeEventListener("mousemove", zom_pan_mouse_move);
+        tsnePlot.removeEventListener("mousedown", zom_pan_mouse_down);
+        tsnePlot.removeEventListener("mouseup", zom_pan_mouse_up);
+        tsnePlot.removeEventListener("mouseout", zom_pan_mouse_up);
+        tsnePlot.removeEventListener("wheel", zom_pan_wheel);
 
-        tsnePlot.addEventListener("mousedown", selectionMouseDown);
-        tsnePlot.addEventListener("mouseup", selectionMouseUp);
-        tsnePlot.addEventListener("mousemove", selectionMouseMove);
+        tsnePlot.addEventListener("mousedown", selection_mouse_down);
+        tsnePlot.addEventListener("mouseup", selection_mouse_up);
+        tsnePlot.addEventListener("mousemove", selection_mouse_move);
 
-        var currentIndex = parseInt(slider.value) - 1;
-        updateSelected(currentIndex);
-        plotCurve(currentIndex);
+        var current_index = parseInt(slider.value) - 1;
+        update_selected(current_index);
+        plotCurve(current_index);
     }
     else {
         window.isSelection = false;
-        tsnePlot.removeEventListener("mousemove", selectionMouseMove);
-        tsnePlot.removeEventListener("mousedown", selectionMouseDown);
-        tsnePlot.removeEventListener("mouseup", selectionMouseUp);
-        tsnePlot.removeEventListener("mouseout", selectionMouseUp);
+        tsnePlot.removeEventListener("mousemove", selection_mouse_move);
+        tsnePlot.removeEventListener("mousedown", selection_mouse_down);
+        tsnePlot.removeEventListener("mouseup", selection_mouse_up);
+        tsnePlot.removeEventListener("mouseout", selection_mouse_up);
 
-        tsnePlot.addEventListener("mousedown", zoomPanMouseDown);
-        tsnePlot.addEventListener("mouseup", zoomPanMouseUp);
-        tsnePlot.addEventListener("mouseout", zoomPanMouseUp);
-        tsnePlot.addEventListener("mousemove", zoomPanMouseMove);
-        tsnePlot.addEventListener("wheel", zoomPanWheel);
+        tsnePlot.addEventListener("mousedown", zom_pan_mouse_down);
+        tsnePlot.addEventListener("mouseup", zom_pan_mouse_up);
+        tsnePlot.addEventListener("mouseout", zom_pan_mouse_up);
+        tsnePlot.addEventListener("mousemove", zom_pan_mouse_move);
+        tsnePlot.addEventListener("wheel", zom_pan_wheel);
     }
     //redraw context
-    currentIndex = parseInt(slider.value) - 1;
-    plotTsneReduction(currentIndex);
+    var current_index = parseInt(slider.value) - 1;
+    plotTsneReduction(current_index);
 });

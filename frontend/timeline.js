@@ -89,35 +89,39 @@ timeline.height = timeline.offsetHeight;
 
 //mouse mouvement listeners
 timeline.addEventListener("mousedown", () => { is_timeline_dragging = true; });
-timeline.addEventListener("mousemove", (event) => { is_timeline_dragging && update_frame_index_onclick(timeline, 0, 0, 0, slider.max, event); } );
+timeline.addEventListener("mousemove", (event) => { is_timeline_dragging && update_frame_index_onclick(timeline, 0, 0, 0, window.max_index, event); } );
 timeline.addEventListener("mouseup", (event) => {
-    update_frame_index_onclick(timeline, 0, 0, 0, slider.max, event);
+    update_frame_index_onclick(timeline, 0, 0, 0, window.max_index, event);
     is_timeline_dragging = false;
 });
-timeline.addEventListener("mouseout", (event) => {
-    update_frame_index_onclick(timeline, 0, 0, 0, slider.max, event);
-    is_timeline_dragging = false;
-});
+timeline.addEventListener("mouseout", () => { is_timeline_dragging = false; });
 
 //keys interaction
-timeline.addEventListener("keydown", (event) => {
-    console.log("working!");
+//this insures the timeline gets focused on click
+timeline.addEventListener("click", () => { timeline.focus(); })
+timeline.addEventListener("keydown", async (event) => {
     switch (event.code) {
-        case "ArrowRight": 
-        case "ArrowUp":
+        case "ArrowLeft":
+        case "ArrowDown":
         case "KeyA":
         case "KeyW":
             window.current_index = Math.max(window.current_index - 1, 0);
-            update_video(window.current_index);
-            update_scores(window.current_index);
             break;
-        case "ArrowLeft":
-        case "ArrowDown":
+        case "ArrowRight": 
+        case "ArrowUp":
         case "KeyD":
         case "KeyS":
             window.current_index = Math.min(window.current_index + 1, window.max_index);
-            update_video(window.current_index);
-            update_scores(window.current_index);
             break;
+        case "default":
+            return;
     }
+    var name_processed = window.current_video.split(".")[0]; 
+    const response = await fetch(`${server_url}/image/${name_processed}/${window.current_index}.png`);
+    const blob = await response.blob();
+    const imageUrl = URL.createObjectURL(blob);
+
+    window.current_frame.src = imageUrl;
+    update_video(window.current_frame.src);
+    update_scores(window.current_index);
 });

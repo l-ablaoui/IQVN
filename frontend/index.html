@@ -22,8 +22,7 @@
                 <select id="video_names_selection" style="width:84%" name="video_names"></select>
             </div>
             <canvas class="row" style="min-width:70%; max-width:100%; max-height:80%; margin:auto;" id="video"></canvas>
-            <canvas class="row" style="width:100%; height:10%; border:1px solid lightgray; margin:auto;" id="timeline"></canvas>
-            <input class="row" style="width:100%;" type="range" id="slider" min="1" step="1" value="1">
+            <canvas class="row" tabindex="0" style="width:100%; height:10%; border:1px solid lightgray; margin:auto;" id="timeline"></canvas> <!--tabindex makes the element focusable-->
             <div class="row">
                 <label class="col text-left" id="cropLabel">Cropped area: </label>
             </div>
@@ -153,7 +152,6 @@
 <script>
     /*variables declaration*/
     //document components
-    var slider = document.getElementById("slider");
    //TODO var videoLoadButton = document.getElementById("videoButton");
     var searchText = document.getElementById("searchT");
     var searchImage = document.getElementById("searchI");
@@ -197,55 +195,55 @@
     }
 
     //Plot the vertical line that indicates the current frame on the curve
-    var plot_marker = (currentIndex, max, offsetLeft, offsetRight, offsetY, color, line_width, svg) => {
-        var plotWidth = svg.width;
-        var plotHeight = svg.height;
+    var plot_marker = (current_index, max, offset_left, offset_right, offset_y, color, line_width, svg) => {
+        var plot_width = svg.width;
+        var plot_height = svg.height;
         var ctx = svg.getContext("2d");
-        var x = offsetLeft + (currentIndex / (max - 1)) * (plotWidth - offsetLeft - offsetRight);
+        var x = offset_left + (current_index / (max - 1)) * (plot_width - offset_left - offset_right);
         
         ctx.beginPath();
-        ctx.moveTo(x, offsetY);
-        ctx.lineTo(x, plotHeight - offsetY);
+        ctx.moveTo(x, offset_y);
+        ctx.lineTo(x, plot_height - offset_y);
         ctx.strokeStyle = color;
         ctx.lineWidth = line_width;
         ctx.stroke();
     };
 
-    var plotAxes = (offsetLeft, offsetRight, offsetY, svg) => {
+    var plot_axes = (offset_left, offset_right, offset_y, svg) => {
         var lenX = svg.width;
         var lenY = svg.height;
         var ctx = svg.getContext("2d");
 
         //draw x axis
         ctx.beginPath();
-        ctx.moveTo(offsetLeft, lenY - offsetY);
-        ctx.lineTo(lenX - offsetRight, lenY - offsetY);
+        ctx.moveTo(offset_left, lenY - offset_y);
+        ctx.lineTo(lenX - offset_right, lenY - offset_y);
         ctx.strokeStyle = "black";
         ctx.lineWidth = 1;
         ctx.stroke();
 
         //draw arrow at the end of the x axis
         ctx.beginPath();
-        ctx.moveTo(lenX - offsetRight, lenY - offsetY);
-        ctx.lineTo(lenX - offsetRight - 5, lenY - offsetY + 5);
-        ctx.lineTo(lenX - offsetRight - 5, lenY - offsetY - 5);
+        ctx.moveTo(lenX - offset_right, lenY - offset_y);
+        ctx.lineTo(lenX - offset_right - 5, lenY - offset_y + 5);
+        ctx.lineTo(lenX - offset_right - 5, lenY - offset_y - 5);
         ctx.closePath();
         ctx.fillStyle = "black";
         ctx.fill();
 
         //draw y axis
         ctx.beginPath();
-        ctx.moveTo(offsetLeft, offsetY);
-        ctx.lineTo(offsetLeft, lenY - offsetY);
+        ctx.moveTo(offset_left, offset_y);
+        ctx.lineTo(offset_left, lenY - offset_y);
         ctx.strokeStyle = "black";
         ctx.lineWidth = 1;
         ctx.stroke();
 
         //draw arrow at the end of the y axis
         ctx.beginPath();
-        ctx.moveTo(offsetLeft, offsetY);
-        ctx.lineTo(offsetLeft + 5, offsetY + 5);
-        ctx.lineTo(offsetLeft - 5, offsetY + 5);
+        ctx.moveTo(offset_left, offset_y);
+        ctx.lineTo(offset_left + 5, offset_y + 5);
+        ctx.lineTo(offset_left - 5, offset_y + 5);
         ctx.closePath();
         ctx.fillStyle = "black";
         ctx.fill();
@@ -282,14 +280,14 @@
     }
 
     // Update score curve and vertical line position
-    var update_scores = (frameIndex) => {
-        if (parseInt(slider.value) - 1 != frameIndex) { slider.value = frameIndex + 1; }
+    var update_scores = (frame_index) => {
+        if (window.current_index != frame_index) { window.current_index = frame_index; }
         // Update plot
-        plot_timeline(frameIndex, slider.max, 30);
-        plotObjects(frameIndex);
-        plotCurve(frameIndex);
-        plotTsneReduction(frameIndex);
-        updateDepthVideo(frameIndex);
+        plot_timeline(frame_index, window.max_index, 30);
+        plot_objects(frame_index);
+        plot_score_curve(frame_index);
+        plot_tsne_reduction(frame_index);
+        update_depth_video(frame_index);
         //TODO update other plots or frames later (possible in here)
     };
 
@@ -314,33 +312,32 @@
         timeline.height = timeline.offsetHeight;
 
         //redraw everything
-        var frameIndex = parseInt(slider.value) - 1;
-        update_video(frameIndex);
-        update_scores(frameIndex);
+        update_video(window.current_frame.src);
+        update_scores(window.current_index);
     });
 
-    var update_frame_index_onclick = async (svg, offsetLeft, offsetRight, offsetY, nb_values, event) => {
+    var update_frame_index_onclick = async (svg, offset_left, offset_right, offset_y, nb_values, event) => {
         const mouseX = event.offsetX;
-        const mouseY = event.offsetY;
+        const mouseY = event.offset_y;
 
-        plotWidth = svg.width;
-        plotHeight = svg.height;
+        plot_width = svg.width;
+        plot_height = svg.height;
 
         //case clicked on the offset
-        if (offsetY > mouseY || mouseY > plotHeight - offsetY) { return; }
-        if (offsetLeft > mouseX || mouseX > plotWidth - offsetRight) { return; }
+        if (offset_y > mouseY || mouseY > plot_height - offset_y) { return; }
+        if (offset_left > mouseX || mouseX > plot_width - offset_right) { return; }
 
-        var frameIndex = Math.trunc((mouseX - offsetLeft) / (plotWidth - offsetRight - offsetLeft) * (nb_values - 1));
+        var frame_index = Math.trunc((mouseX - offset_left) / (plot_width - offset_right - offset_left) * (nb_values - 1));
 
         //fetch current frame
         var name_processed = window.current_video.split(".")[0]; 
-        const response = await fetch(`${server_url}/image/${name_processed}/${frameIndex}.png`);
+        const response = await fetch(`${server_url}/image/${name_processed}/${frame_index}.png`);
         const blob = await response.blob();
         const imageUrl = URL.createObjectURL(blob);
 
         window.current_frame.src = imageUrl;
         update_video(window.current_frame.src);
-        update_scores(frameIndex);
+        update_scores(frame_index);
     }
 
     toggleCrop.addEventListener("click", () => {
@@ -371,8 +368,7 @@
             obj_plot.width = obj_plot.offsetWidth;
             obj_plot.height = obj_plot.width * 0.7;
 
-            var currentIndex = parseInt(slider.value) - 1;
-            plotObjects(currentIndex);
+            plot_objects(window.current_index);
         } else {
             x.style.display = "none";
             toggleObj.value = "▲ Detected objects";
@@ -390,8 +386,7 @@
             score_plot.width = score_plot.offsetWidth;
             score_plot.height = score_plot.width * 0.5;
 
-            var currentIndex = parseInt(slider.value) - 1;
-            plotCurve(currentIndex);
+            plot_score_curve(window.current_index);
         } else {
             x.style.display = "none";
             toggleScores.value = "▲ Similarity scores chart";
@@ -409,8 +404,7 @@
             tsne_plot.width = tsne_plot.offsetWidth;
             tsne_plot.height = tsne_plot.width;
 
-            var currentIndex = parseInt(slider.value) - 1;
-            plotTsneReduction(currentIndex);
+            plot_tsne_reduction(window.current_index);
         } else {
             x.style.display = "none";
             toggleTsne.value = "▲ Video embeddings scatter plot in reduced embedding space";
@@ -422,36 +416,13 @@
         if (depthDiv.style.display == "none") {
             depthDiv.style.display = "block";
             toggleDepth.value = "▼ Depth map";
-            var frameIndex = parseInt(slider.value) - 1;
-            await updateDepthVideo(frameIndex);
+            
+            await update_depth_video(window.current_index);
         } 
         else {
             toggleDepth.value = "▲ Depth map";
             depthDiv.style.display = "none";
         }
-    });
-
-    //update everything at call, re-draw video and re-draw all curves/plots
-    slider.addEventListener("input", async () => {
-        try {
-            //getting frame index from slider value
-            var frameIndex = parseInt(slider.value) - 1;
-
-            //fetch current frame
-            let name_processed = window.current_video.split(".")[0]; 
-            const response = await fetch(`${server_url}/image/${name_processed}/${frameIndex}.png`);
-            const blob = await response.blob();
-            const imageUrl = URL.createObjectURL(blob);
-
-            //update component
-            update_video(imageUrl);
-
-            //update plots
-            update_scores(frameIndex);
-        }
-        catch (error) {
-            console.error("Error loading similarity scores:", error);
-        };
     });
 
     //Text-based search, expecting an array of scores plus a reduction array from the server
@@ -481,27 +452,30 @@
 
             console.log(body);
 
-            //adjust the slider's max value
-            slider.max = window.scores.length;
-            
-            //request to update the image
-            var frameIndex = parseInt(slider.value) - 1;
+            //adjust the max value
+            window.max_index = window.scores.length;
             
             let name_processed = window.current_video.split(".")[0]; 
-            const imgresponse = await fetch(`${server_url}/image/${name_processed}/${frameIndex}.png`);
+            const imgresponse = await fetch(`${server_url}/image/${name_processed}/${window.current_index}.png`);
             const blob = await imgresponse.blob();
             const imageUrl = URL.createObjectURL(blob);
+            window.current_frame.src = imageUrl
 
             //update component
-            update_video(imageUrl);
+            update_video(window.current_frame.src);
 
             //show buttons for toggling scores/reduction
             toggleScores.style.display = "block";
             toggleTsne.style.display = "block";
-            scorePlot.addEventListener("click", (event) => update_frame_index_onclick(scorePlot, scorePlotOffsetLeft, scorePlotOffsetRight, scorePlotOffsetY, slider.max, event));
+            scorePlot.addEventListener("click", (event) => update_frame_index_onclick(scorePlot, 
+                                                            scorePlotOffsetLeft,
+                                                            scorePlotOffsetRight,
+                                                            scorePlotOffsetY,
+                                                            window.max_index,
+                                                            event));
 
             //update the curve plot
-            update_scores(frameIndex);
+            update_scores(window.current_index);
         } 
         catch (error) {
             console.error("Error loading similarity scores: ", error);
@@ -534,28 +508,29 @@
             window.displayed_reduction = window.tsne_reduction;
 
             console.log(body);
-
-            //adjust the slider's max value
-            slider.max = window.scores.length;
             
             //request to update the image
-            var frameIndex = parseInt(slider.value) - 1;
-            
             let name_processed = window.current_video.split(".")[0]; 
-            const imgresponse = await fetch(`${server_url}/image/${name_processed}/${frameIndex}.png`);
+            const imgresponse = await fetch(`${server_url}/image/${name_processed}/${window.current_index}.png`);
             const blob = await imgresponse.blob();
             const imageUrl = URL.createObjectURL(blob);
 
+            window.current_frame.src = imageUrl;
             //update component
-            update_video(imageUrl);
+            update_video(window.current_frame);
 
             //show buttons for toggling window.scores/reduction
             toggleScores.style.display = "block";
             toggleTsne.style.display = "block";
-            scorePlot.addEventListener("click", (event) => update_frame_index_onclick(scorePlot, scorePlotOffsetLeft, scorePlotOffsetRight, scorePlotOffsetY, slider.max, event));
+            scorePlot.addEventListener("click", (event) => update_frame_index_onclick(scorePlot, 
+                                                                scorePlotOffsetLeft,
+                                                                scorePlotOffsetRight,
+                                                                scorePlotOffsetY,
+                                                                window.max_index,
+                                                                event));
 
             //update the curve plot
-            update_scores(frameIndex);
+            update_scores(window.current_index);
         }
         catch (error) {
             console.error("Error loading similarity window.scores: ", error);
@@ -569,9 +544,6 @@
             const response = await fetch(`${server_url}/video/objects/${window.current_video}`);
             const body = await response.json();
             results = body["result"];
-
-            //update slider capacity
-            slider.max = body["frames"]
 
             classes = [];
             //organizing the final array by timestamp
@@ -616,10 +588,9 @@
 
             //show button for toggling obj chart
             toggleObj.style.display = "block";
-            //objPlot.addEventListener("click", (event) => update_frame_index_onclick(objPlot, scorePlotOffsetLeft, scorePlotOffsetRight, scorePlotOffsetY, slider.max, event));
+            //objPlot.addEventListener("click", (event) => update_frame_index_onclick(objPlot, scorePlotOffsetLeft, scorePlotOffsetRight, scorePlotOffsetY, window.max_index, event));
 
-            frameIndex = parseInt(slider.value) - 1;
-            update_scores(frameIndex);
+            update_scores(window.current_index);
         }
         catch (error) {
             console.error("Error detecting objects: ", error);
@@ -633,12 +604,8 @@
             const body = await response.json();
             console.log(body);
 
-            //update slider values
-            slider.max = body["frames"];
-
             //display the depth map of the current frame only
-            frameIndex = parseInt(slider.value) - 1;
-            updateDepthVideo(frameIndex);
+            update_depth_video(window.current_index);
 
             toggleDepth.style.display = "block";
             window.depth = true;

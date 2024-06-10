@@ -20,7 +20,7 @@ var selection_center = { x: (window.selection_top_left.x + window.selection_bot_
 var selection_mouse_down_point = selection_center;
 
 /*main drawing function for tsne reduced embeddings' scatter plot */
-var plotTsneReduction = (current_index) => {
+var plot_tsne_reduction = (current_index) => {
     if (window.displayed_reduction == null) { return; }
 
     var color_map = generate_color_map(current_index, window.cmap);
@@ -232,7 +232,6 @@ var draw_color_scale = (min_value, max_value, min_color, max_color) => {
 var animate_reduction_transition = (old_reduction, new_reduction, duration) => {
     //copying to make sure the reduction results aint touched
     const start_time = performance.now();
-    const current_index = parseInt(slider.value) - 1;
 
     function animate() {
         const current_time = performance.now();
@@ -248,7 +247,7 @@ var animate_reduction_transition = (old_reduction, new_reduction, duration) => {
         });
         
         // Draw scatter plot with currentData
-        plotTsneReduction(current_index);
+        plot_tsne_reduction(window.current_index);
 
         if (t < 1) {
             requestAnimationFrame(animate);
@@ -261,44 +260,41 @@ var animate_reduction_transition = (old_reduction, new_reduction, duration) => {
     animate();    
 };
 
-//selectors handling (colormap and reduction method)
-document.addEventListener("DOMContentLoaded", function() {
-    const color_radio_buttons = document.querySelectorAll('input[name="selectColorMap"]');
-    const reduction_method_buttons = document.querySelectorAll('input[name="selectReductionMethod"]');
+/*selectors handling (colormap and reduction method)*/
+const color_radio_buttons = document.querySelectorAll('input[name="selectColorMap"]');
+const reduction_method_buttons = document.querySelectorAll('input[name="selectReductionMethod"]');
 
-    // Function to handle the colormap change
-    const handle_color_map_change = () => {
-        const selected_value = document.querySelector('input[name="selectColorMap"]:checked').value;
-        window.cmap = selected_value;
+// Function to handle the colormap change
+const handle_color_map_change = () => {
+    const selected_value = document.querySelector('input[name="selectColorMap"]:checked').value;
+    window.cmap = selected_value;
 
-        //redraw components
-        var current_index = parseInt(slider.value) - 1;
-        plotTsneReduction(current_index);
-    };
+    //redraw components
+    plot_tsne_reduction(window.current_index);
+};
 
-    // Function to handle the reduction algorithm change
-    const handle_reduction_method_change = () => {
-        const selected_value = document.querySelector('input[name="selectReductionMethod"]:checked').value;
-        var old_reduction = (window.old_reduction == "tsne")? window.tsne_reduction :
-                            (window.old_reduction == "pca")? window.pca_reduction : window.umap_reduction;
-        var new_reduction = (selected_value == "tsne")? window.tsne_reduction :
-                            (selected_value == "pca")? window.pca_reduction : window.umap_reduction;
+// Function to handle the reduction algorithm change
+const handle_reduction_method_change = () => {
+    const selected_value = document.querySelector('input[name="selectReductionMethod"]:checked').value;
+    var old_reduction = (window.old_reduction == "tsne")? window.tsne_reduction :
+                        (window.old_reduction == "pca")? window.pca_reduction : window.umap_reduction;
+    var new_reduction = (selected_value == "tsne")? window.tsne_reduction :
+                        (selected_value == "pca")? window.pca_reduction : window.umap_reduction;
 
-        //redraw component (animate position transition)
-        animate_reduction_transition(old_reduction, new_reduction, 1000);
+    //redraw component (animate position transition)
+    animate_reduction_transition(old_reduction, new_reduction, 1000);
 
-        //update state after animation
-        window.old_reduction = selected_value;
-    };
+    //update state after animation
+    window.old_reduction = selected_value;
+};
 
-    // Add change event listener to each radio button
-    color_radio_buttons.forEach(radio => {
-        radio.addEventListener('change', handle_color_map_change);
-    });
+// Add change event listener to each radio button
+color_radio_buttons.forEach(radio => {
+    radio.addEventListener('change', handle_color_map_change);
+});
 
-    reduction_method_buttons.forEach(radio => {
-        radio.addEventListener('change', handle_reduction_method_change);
-    });
+reduction_method_buttons.forEach(radio => {
+    radio.addEventListener('change', handle_reduction_method_change);
 });
 
 /*On click handling for navigating the video frames*/
@@ -327,9 +323,8 @@ tsnePlot.addEventListener("click", async (event) => {
     }
      
     //if clicking on the current frame index (big red dot), do nothing
-    var current_index = parseInt(slider.value) - 1;
-    var x = tsne_translate.x + tsne_scale * (tsne_plot_offset_x + (window.displayed_reduction[current_index]['x'] - min_x) / (max_x - min_x) * (plot_width - 2 * tsne_plot_offset_x));
-    var y = tsne_translate.y + tsne_scale * (plot_height - tsne_plot_offset_y - (window.displayed_reduction[current_index]['y'] - min_y) / (max_y - min_y) * (plot_height - 2 * tsne_plot_offset_y));
+    var x = tsne_translate.x + tsne_scale * (tsne_plot_offset_x + (window.displayed_reduction[window.current_index]['x'] - min_x) / (max_x - min_x) * (plot_width - 2 * tsne_plot_offset_x));
+    var y = tsne_translate.y + tsne_scale * (plot_height - tsne_plot_offset_y - (window.displayed_reduction[window.current_index]['y'] - min_y) / (max_y - min_y) * (plot_height - 2 * tsne_plot_offset_y));
 
     dot_radius = 4;
     var dist = (mouse_x - x) * (mouse_x - x) + (mouse_y - y) * (mouse_y - y);
@@ -353,6 +348,7 @@ tsnePlot.addEventListener("click", async (event) => {
             const blob = await response.blob();
             const imageUrl = URL.createObjectURL(blob);
 
+            window.current_frame.src = imageUrl;
             update_video(imageUrl);
 
             //update component
@@ -383,8 +379,7 @@ var zom_pan_wheel = (event) => {
     tsne_scale = new_scale;
 
     // Redraw the content
-    var current_index = parseInt(slider.value) - 1;
-    plotTsneReduction(current_index);
+    plot_tsne_reduction(window.current_index);
 };
 tsnePlot.addEventListener('wheel', zom_pan_wheel);
 
@@ -407,8 +402,7 @@ var zom_pan_mouse_move = (event) => {
         tsne_translate.y = event.offsetY - tsne_drag_offset.y;
 
         //redraw context
-        var current_index = parseInt(slider.value) - 1;
-        plotTsneReduction(current_index);
+        plot_tsne_reduction(window.current_index);
     }
 };
 tsnePlot.addEventListener('mousemove', zom_pan_mouse_move);
@@ -556,20 +550,18 @@ var selection_mouse_move = (event) => {
     selection_mouse_down_point = mousePosition;
 
     // Redraw the content
-    var current_index = parseInt(slider.value) - 1;
-    plotTsneReduction(current_index);
-    update_selected(current_index);
-    plotCurve(current_index);
+    plot_tsne_reduction(window.current_index);
+    update_selected(window.current_index);
+    plot_score_curve(window.current_index);
 }
 
 var selection_mouse_up = () => { 
     selection_state = "idle"; 
 
     // Redraw the content
-    var current_index = parseInt(slider.value) - 1;
-    plotTsneReduction(current_index);
-    update_selected(current_index);
-    plotCurve(current_index);
+    plot_tsne_reduction(window.current_index);
+    update_selected(window.current_index);
+    plot_score_curve(window.current_index);
 }
 
 /*zoom/pan reset option (or reset all?)*/
@@ -598,9 +590,8 @@ resetTsne.addEventListener("click", () => {
     tsnePlot.addEventListener("wheel", zom_pan_wheel);
 
     //redraw context
-    var current_index = parseInt(slider.value) - 1;
-    plotTsneReduction(current_index);
-    plotCurve(current_index);
+    plot_tsne_reduction(window.current_index);
+    plot_score_curve(window.current_index);
 });
 
 /*zoomPan/selection toggle option */
@@ -619,9 +610,8 @@ toggleSelection.addEventListener("click", () => {
         tsnePlot.addEventListener("mouseup", selection_mouse_up);
         tsnePlot.addEventListener("mousemove", selection_mouse_move);
 
-        var current_index = parseInt(slider.value) - 1;
-        update_selected(current_index);
-        plotCurve(current_index);
+        update_selected(window.current_index);
+        plot_score_curve(window.current_index);
     }
     else {
         window.is_selection = false;
@@ -637,6 +627,5 @@ toggleSelection.addEventListener("click", () => {
         tsnePlot.addEventListener("wheel", zom_pan_wheel);
     }
     //redraw context
-    var current_index = parseInt(slider.value) - 1;
-    plotTsneReduction(current_index);
+    plot_tsne_reduction(window.current_index);
 });

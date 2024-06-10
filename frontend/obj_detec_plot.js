@@ -1,44 +1,44 @@
 var objPlot = document.getElementById("objPlot");
 
 //to keep space between plot and canvas boundaries
-var objPlotOffsetLeft = 50;
-var objPlotOffsetRight = 20;
-var objPlotOffsetY = 20;
+var obj_plot_offset_left = 50;
+var obj_plot_offset_right = 20;
+var obj_plot_offset_y = 20;
 
 /*main drawing function for detected objects plot*/
-var plotObjects = (currentIndex) => {
+var plot_objects = (current_index) => {
     if (window.objs == null) { return; }
 
     //canvas width/length
-    var plotWidth = objPlot.width;
-    var plotHeight = objPlot.height;
+    var plot_width = objPlot.width;
+    var plot_height = objPlot.height;
 
     //reset the drawing
     var ctx = objPlot.getContext("2d");
-    ctx.clearRect(0, 0, plotWidth, plotHeight);
+    ctx.clearRect(0, 0, plot_width, plot_height);
 
-    plotAxes(objPlotOffsetLeft, objPlotOffsetRight, objPlotOffsetY, objPlot);
+    plot_axes(obj_plot_offset_left, obj_plot_offset_right, obj_plot_offset_y, objPlot);
 
     // Draw class names on y-axis
     for (var i = 0; i < window.objs["classes"].length; ++i) {
-        const yPos = plotHeight - objPlotOffsetY - (i / window.objs["classes"].length) * (plotHeight - 2 * objPlotOffsetY);
-        ctx.fillText(window.objs["classes"][i]["label"], objPlotOffsetLeft / 10, yPos);
+        const yPos = plot_height - obj_plot_offset_y - (i / window.objs["classes"].length) * (plot_height - 2 * obj_plot_offset_y);
+        ctx.fillText(window.objs["classes"][i]["label"], obj_plot_offset_left / 10, yPos);
     }
 
     //for each timestamp, draw circles on the level of the object label
-    var currentFrameObjIndex = -1;
+    var current_frame_obj_index = -1;
     for (var k = 0; k < window.objs["results"].length; ++k) {
         var objects = window.objs["results"][k];
 
         //draw current frame dots last to stand out
-        if (objects[0]["timestamp"] == currentIndex) { 
-            currentFrameObjIndex = k;
+        if (objects[0]["timestamp"] == current_index) { 
+            current_frame_obj_index = k;
             continue; 
         }
         for (var i = 0;i < objects.length;++i) {
             //xpos reflects the timestamp
             timestamp = objects[i]["timestamp"];
-            const x = objPlotOffsetLeft + (timestamp / window.objs["maxTime"]) * (plotWidth - objPlotOffsetLeft - objPlotOffsetRight);
+            const x = obj_plot_offset_left + (timestamp / window.objs["maxTime"]) * (plot_width - obj_plot_offset_left - obj_plot_offset_right);
             
             //matching label with plot line (ypos)
             label = objects[i]["label"];
@@ -46,7 +46,7 @@ var plotObjects = (currentIndex) => {
             for (;j < window.objs["classes"].length; ++j) {
                 if (label == window.objs["classes"][j]["index"]) { break; }
             } 
-            const y = plotHeight - objPlotOffsetY - (j / window.objs["classes"].length) * (plotHeight - objPlotOffsetY * 2);
+            const y = plot_height - obj_plot_offset_y - (j / window.objs["classes"].length) * (plot_height - obj_plot_offset_y * 2);
 
             //draw circle
             ctx.fillStyle = window.REGULAR_COLOR;
@@ -56,18 +56,18 @@ var plotObjects = (currentIndex) => {
     }
 
     //current frame dots drawing (if any)
-    if (currentFrameObjIndex != -1) {
-        var objects = window.objs["results"][currentFrameObjIndex];
+    if (current_frame_obj_index != -1) {
+        var objects = window.objs["results"][current_frame_obj_index];
 
         for (var i = 0; i < objects.length;++i) {
-            const x = objPlotOffsetLeft + (currentIndex / window.objs["maxTime"]) * (plotWidth - objPlotOffsetRight - objPlotOffsetLeft);
+            const x = obj_plot_offset_left + (current_index / window.objs["maxTime"]) * (plot_width - obj_plot_offset_right - obj_plot_offset_left);
 
             label = objects[i]["label"];
             var j = 0;
             for (;j < window.objs["classes"].length; ++j) {
                 if (label == window.objs["classes"][j]["index"]) { break; }
             } 
-            const y = plotHeight - objPlotOffsetY - (j / window.objs["classes"].length) * (plotHeight - objPlotOffsetY * 2);
+            const y = plot_height - obj_plot_offset_y - (j / window.objs["classes"].length) * (plot_height - obj_plot_offset_y * 2);
 
             ctx.fillStyle = window.EMPHASIS_COLOR;
             dotRadius = window.EMPHASIS_RADIUS;
@@ -76,7 +76,7 @@ var plotObjects = (currentIndex) => {
     }
 
     //update vertical line position
-    plot_marker(currentIndex, window.objs["maxTime"], objPlotOffsetLeft, objPlotOffsetRight, objPlotOffsetY, window.EMPHASIS_COLOR, 1, objPlot);
+    plot_marker(current_index, window.objs["maxTime"], obj_plot_offset_left, obj_plot_offset_right, obj_plot_offset_y, window.EMPHASIS_COLOR, 1, objPlot);
 };
 
 /*when clicking on an object marker of the active frame, adjust the cropped area to reflect the object's bounding box */
@@ -85,15 +85,14 @@ objPlot.addEventListener("click", (event) => {
     const mouseY = event.offsetY;
 
     //canvas width/length
-    var plotWidth = objPlot.width;
-    var plotHeight = objPlot.height;
+    var plot_width = objPlot.width;
+    var plot_height = objPlot.height;
 
     //if there are no detected objects at the current frame, skip
-    currentFrame = parseInt(slider.value) - 1;
-    if (!(currentFrame in window.objs["results"])) { return; }
+    if (!(window.current_index in window.objs["results"])) { return; }
 
     //get detected objects' coordinates in the plot and seeing if the clicked area corresponds to one of em
-    var objects = window.objs["results"][currentFrame];
+    var objects = window.objs["results"][window.current_index];
     bb = null;
     for (var i = 0; i < objects.length;++i) {
         //get coordinates of current object on the chart
@@ -102,8 +101,8 @@ objPlot.addEventListener("click", (event) => {
         for (;j < window.objs["classes"].length; ++j) {
             if (label == window.objs["classes"][j]["index"]) { break; }
         } 
-        const y = plotHeight - objPlotOffsetY - (j / window.objs["classes"].length) * (plotHeight - objPlotOffsetY * 2);
-        const x = objPlotOffsetLeft + (currentFrame / window.objs["maxTime"]) * (plotWidth - objPlotOffsetRight - objPlotOffsetLeft);
+        const y = plot_height - obj_plot_offset_y - (j / window.objs["classes"].length) * (plot_height - obj_plot_offset_y * 2);
+        const x = obj_plot_offset_left + (window.current_index / window.objs["maxTime"]) * (plot_width - obj_plot_offset_right - obj_plot_offset_left);
 
         //check if clicked area is in the circle
         if ((mouseX - x) * (mouseX - x) + (mouseY - y) * (mouseY - y) <= 4 * 4) {

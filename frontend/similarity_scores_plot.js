@@ -4,7 +4,7 @@ var scorePlotOffsetRight = 0;
 var scorePlotOffsetY = 20;
 
 //Plot the score curve
-var plotCurve = (currentIndex) => {
+var plot_score_curve = (currentIndex) => {
     var scorePlot = document.getElementById("scorePlot");
 
     if (window.scores == null) { return; }
@@ -22,7 +22,7 @@ var plotCurve = (currentIndex) => {
     var ctx = scorePlot.getContext("2d");
     ctx.clearRect(0, 0, plotWidth, plotHeight);
 
-    plotAxes(scorePlotOffsetLeft, scorePlotOffsetRight, scorePlotOffsetY, scorePlot);
+    plot_axes(scorePlotOffsetLeft, scorePlotOffsetRight, scorePlotOffsetY, scorePlot);
 
     // Draw scale values on y-axis
     for (let i = 0; i < 5; i += 1) {

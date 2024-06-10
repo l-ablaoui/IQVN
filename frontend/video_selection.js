@@ -13,18 +13,22 @@ var load_video = async () => {
         const body = await response.json();
         console.log(body);
 
-        //update slider range
-        slider.max = body["frame_count"];
+        //update timeline range
+        window.max_index = body["frame_count"];
         window.fps = body["fps"];
 
+        //reset index
+        window.current_index = 0;
+
         //draw the video's first frame
-        var current_index = parseInt(slider.value) - 1;
         var name_processed = window.current_video.split(".")[0]; 
-        const imgresponse = await fetch(`${server_url}/image/${name_processed}/${current_index}.png`);
+        const imgresponse = await fetch(`${server_url}/image/${name_processed}/${window.current_index}.png`);
         const blob = await imgresponse.blob();
         const imageUrl = URL.createObjectURL(blob);
+
+        window.current_frame.src = imageUrl;
         update_video(imageUrl);
-        update_scores(current_index);
+        update_scores(window.current_index);
     }
     catch (error) {
         console.error("Error loading video: ", error);

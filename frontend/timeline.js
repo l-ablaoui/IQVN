@@ -1,19 +1,19 @@
-var plot_marker_triangle = (current_index, max_index, svg) => {
-    var ctx = svg.getContext("2d");
+let plot_marker_triangle = (current_index, max_index, svg) => {
+    let ctx = svg.getContext("2d");
 
-    var plot_width = svg.width;
-    var plot_height = svg.height;
+    let plot_width = svg.width;
+    let plot_height = svg.height;
     const triangle_length = plot_height / 20;
 
     //convert index to canvas x
-    var plot_x = current_index / (max_index - 1) * plot_width;
+    let plot_x = current_index / (max_index - 1) * plot_width;
 
     //define coordinates
-    var top_left = { x: plot_x - 4, y: 0 };
-    var top_right = { x: plot_x + 4, y: 0 };
-    var mid_left = { x: plot_x - 4, y: triangle_length };
-    var mid_right = { x: plot_x + 4, y: triangle_length };
-    var bottom_center = { x: plot_x, y: triangle_length * 2 };
+    let top_left = { x: plot_x - 4, y: 0 };
+    let top_right = { x: plot_x + 4, y: 0 };
+    let mid_left = { x: plot_x - 4, y: triangle_length };
+    let mid_right = { x: plot_x + 4, y: triangle_length };
+    let bottom_center = { x: plot_x, y: triangle_length * 2 };
 
     // Start drawing the triangle
     ctx.beginPath();
@@ -29,16 +29,16 @@ var plot_marker_triangle = (current_index, max_index, svg) => {
     ctx.fill();
 };
 
-var plot_timestamps = (max_index, fps, svg) => {
-    var plot_width = svg.width;
-    var plot_height = svg.height;
+let plot_timestamps = (max_index, fps, svg) => {
+    let plot_width = svg.width;
+    let plot_height = svg.height;
 
-    var ctx = svg.getContext("2d");
+    let ctx = svg.getContext("2d");
 
     //check how fine-grained the timestamp has to be and plot markers accordingly
-    var unit = 10;
-    var i = 1;
-    var nb_markers = max_index / fps / unit;
+    let unit = 10;
+    let i = 1;
+    let nb_markers = max_index / fps / unit;
     while (nb_markers >= 10) {
         unit = i * 30;
         nb_markers = max_index / fps / unit;
@@ -47,8 +47,8 @@ var plot_timestamps = (max_index, fps, svg) => {
     const y = plot_height * 0.9;
 
     //plot markers
-    for (var i = 0;i < nb_markers;++i) {
-        var x = i * unit * fps / max_index * plot_width;
+    for (let i = 0;i < nb_markers;++i) {
+        let x = i * unit * fps / max_index * plot_width;
 
         //draw line every "unit" seconds
         ctx.beginPath();
@@ -65,23 +65,34 @@ var plot_timestamps = (max_index, fps, svg) => {
     }
 };
 
-var plot_timeline = (current_index, max_index, fps) => {
-    var timeline = document.getElementById("timeline");
-    var ctx = timeline.getContext("2d");
+let plot_timeline = (current_index, max_index, fps) => {
+    let timeline = document.getElementById("timeline");
+    let ctx = timeline.getContext("2d");
 
-    var plot_width = timeline.width;
-    var plot_height = timeline.height;
+    let plot_width = timeline.width;
+    let plot_height = timeline.height;
 
     ctx.clearRect(0, 0, plot_width, plot_height);  
 
+    plot_timestamps(max_index, fps, timeline);
+    //plot selected points highlight
+    if (window.scores != null && window.selected_points != null) {
+        for (let i = 0; i < window.selected_points.length; ++i) {
+            let x = window.selected_points[i] / (window.scores.length - 1) * plot_width;
+            ctx.beginPath();
+            ctx.moveTo(x, plot_height / 3);
+            ctx.lineTo(x, plot_height * 2 / 3);
+            ctx.strokeStyle = "rgba(100,200,255,0.3)";
+            ctx.stroke();
+        }
+    }
     plot_marker_triangle(current_index, max_index, timeline);
     plot_marker(current_index, max_index, 0, 0, 0, "black", 0.5, timeline);
-    plot_timestamps(max_index, window.fps, timeline);
 };
 
-var is_timeline_dragging = false;
+let is_timeline_dragging = false;
 
-var timeline = document.getElementById("timeline");
+let timeline = document.getElementById("timeline");
 
 //first draw of component fixing dimensions
 timeline.width = timeline.offsetWidth;
@@ -116,12 +127,12 @@ timeline.addEventListener("keydown", async (event) => {
         case "default":
             return;
     }
-    var name_processed = window.current_video.split(".")[0]; 
+    let name_processed = window.current_video.split(".")[0]; 
     const response = await fetch(`${server_url}/image/${name_processed}/${window.current_index}.png`);
     const blob = await response.blob();
-    const imageUrl = URL.createObjectURL(blob);
+    const image_url = URL.createObjectURL(blob);
 
-    window.current_frame.src = imageUrl;
+    window.current_frame.src = image_url;
     update_video(window.current_frame.src);
     update_scores(window.current_index);
 });

@@ -1,7 +1,7 @@
 //get all videos in "backend/videos" to select between 
-var video_name_selection = document.getElementById("video_names_selection");
+let video_name_selection = document.getElementById("video_names_selection");
 
-var load_video = async () => {
+let load_video = async () => {
     try {
         //update video name locally
         window.current_video = video_name_selection.value;
@@ -13,16 +13,22 @@ var load_video = async () => {
         const body = await response.json();
         console.log(body);
 
-        //update slider range
-        slider.max = body["frame_count"];
+        //update timeline range
+        window.max_index = body["frame_count"];
+        window.fps = body["fps"];
+
+        //reset index
+        window.current_index = 0;
 
         //draw the video's first frame
-        current_index = parseInt(slider.value) - 1;
-        var name_processed = window.current_video.split(".")[0]; 
-        const imgresponse = await fetch(`${server_url}/image/${name_processed}/${current_index}.png`);
+        let name_processed = window.current_video.split(".")[0]; 
+        const imgresponse = await fetch(`${server_url}/image/${name_processed}/${window.current_index}.png`);
         const blob = await imgresponse.blob();
-        const imageUrl = URL.createObjectURL(blob);
-        updateVideo(imageUrl);
+        const image_url = URL.createObjectURL(blob);
+
+        window.current_frame.src = image_url;
+        update_video(image_url);
+        update_scores(window.current_index);
     }
     catch (error) {
         console.error("Error loading video: ", error);
@@ -31,14 +37,14 @@ var load_video = async () => {
 
 video_name_selection.addEventListener("change", load_video);
 
-var update_video_selection = async () => {
+let update_video_selection = async () => {
     try {
         const response = await fetch(`${server_url}/video/`);
         const video_names = await response.json();
         console.log(video_names);
 
-        for (var i = 0;i < video_names.length;++i) {
-            var name_option = document.createElement("option");
+        for (let i = 0;i < video_names.length;++i) {
+            let name_option = document.createElement("option");
             name_option.value = video_names[i];
             name_option.text = video_names[i].substring(0, video_names[i].lastIndexOf('.'));
             video_name_selection.add(name_option);

@@ -1,8 +1,10 @@
+backend/images/*.png
 backend/videos/**/*.mp4
 backend/videos/*.mp4
 backend/videos/**/*.png
 backend/videos/*.png
 backend/videos/**/*.npy
+backend/videos/*.csv
 backend/__pycache__/*
 __pycache__/*
 .DS_Store

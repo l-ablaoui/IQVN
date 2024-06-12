@@ -68,7 +68,6 @@ def video2images(video_path):
 
     vid.release()
         
-        
 def compute_cosine_similarity(video_path, query_text, reduction = False):    
     output_path = video_path.replace(".mp4", "")
     if not os.path.exists(output_path):
@@ -146,7 +145,6 @@ def compute_cosine_similarity(video_path, query_text, reduction = False):
     else:
         return similarity_scores
 
-
 def find_mp4_files(relative_path):
     # Get the absolute path of the directory
     abs_path = os.path.abspath(relative_path)
@@ -159,6 +157,24 @@ def find_mp4_files(relative_path):
     
     return mp4_file_names
 
+async def annotate_video(video_path, output_path):
+    detector = OD(capture_video=video_path, output_results=output_path+"-output.csv", model_name="yolov5s.pt")
+    return detector()
+
+async def crop_image(image, bbox):
+    x_min, y_min, x_max, y_max = bbox
+    x_min, y_min, x_max, y_max = int(x_min), int(y_min), int(x_max), int(y_max)
+    cropped_image = image[y_min:y_max, x_min:x_max]
+    
+    return cropped_image
+
+async def get_depth_video(video_path, output_path):
+    if not os.path.exists(output_path):
+        os.mkdir(output_path)
+
+    depth_estimator = DepthMapEstimation(video_path=video_path)
+    depth_estimator.get_depth_video()
+    depth_estimator.save_depth_video(save_path=output_path, save_video=False)
 
 @app.get("/search")
 async def search(query: str):
@@ -178,29 +194,18 @@ async def search(query: str):
         "umap_clusters": [int(umap_clusters[i]) for i in range(len(umap_clusters))]
     }
 
-
 @app.get("/search/image/{folder}/{image_path}")
 async def image_search(folder: str, image_path: str, xmin: int, xmax: int, ymin: int, ymax: int):
     image = cv2.imread("videos/"+folder+"/"+image_path)
     cropped_image = await crop_image(image, [xmin, ymin, xmax, ymax])
+    if not os.path.exists("images/"):
+        os.mkdir("images")
     cv2.imwrite(OUTPUT_CROP_IMAGE, cropped_image)
 
     return {
         "path": "images",
         "name": "search-image.png"
     }
-
-
-@app.get("/image/{filename}")
-async def get_image(filename: str):
-    image_path = os.path.join(IMAGES_DIR, filename).replace("\\","/")
-    output_path = os.path.join(IMAGES_DIR, "annotated-"+filename).replace("\\","/")
-
-    if not os.path.exists(output_path):
-        await annotate_image(image_path)
-
-    return FileResponse(output_path)
-
 
 @app.get("/image/{prediction_path}/{filename}")
 async def get_image(prediction_path: str, filename: str):
@@ -209,7 +214,6 @@ async def get_image(prediction_path: str, filename: str):
     else:
         img_path = os.path.join(VIDEOS_DIR, f"{prediction_path}").replace("\\","/")+f"/{filename}"
     return FileResponse(img_path)
-
 
 @app.post("/upload_png/")
 async def upload_png(image_data: dict):
@@ -220,6 +224,8 @@ async def upload_png(image_data: dict):
     image_array = np.frombuffer(image_bytes, dtype=np.uint8)
     img = cv2.imdecode(image_array, cv2.IMREAD_COLOR)
 
+    if not os.path.exists("images/"):
+        os.mkdir("images")
     cv2.imwrite(OUTPUT_CROP_IMAGE, img)
 
     similarity_scores, tsne, pca, umap = compute_cosine_similarity(current_video_path, IMAGE_CROP_QUERY, reduction=True)
@@ -304,30 +310,4 @@ async def get_video_fps(filename: str):
         return { "fps": -1 }
     else:
         return { "fps": int(vid.get(cv2.CAP_PROP_FPS)) }
-
-
-async def annotate_video(video_path, output_path):
-    detector = OD(capture_video=video_path, output_results=output_path+"-output.csv", model_name="yolov5s.pt")
-    return detector()
-
-
-async def annotate_image(image_path):
-    detector = OD(capture_video="", output_detection='', output_results="", model_name='yolov5s.pt')
-    detector(image=image_path)
-
-
-async def crop_image(image, bbox):
-    x_min, y_min, x_max, y_max = bbox
-    x_min, y_min, x_max, y_max = int(x_min), int(y_min), int(x_max), int(y_max)
-    cropped_image = image[y_min:y_max, x_min:x_max]
     
-    return cropped_image
-
-
-async def get_depth_video(video_path, output_path):
-    if not os.path.exists(output_path):
-        os.mkdir(output_path)
-
-    depth_estimator = DepthMapEstimation(video_path=video_path)
-    depth_estimator.get_depth_video()
-    depth_estimator.save_depth_video(save_path=output_path, save_video=False)

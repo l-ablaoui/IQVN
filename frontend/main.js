@@ -380,12 +380,23 @@ text_search_button.addEventListener('click', async () => {
         window.umap_clusters = body['umap_clusters'];
         
         window.displayed_reduction = window.tsne_reduction;
-        window.reduction_min_x = Math.min(...window.displayed_reduction.map(point => point.x));
-        window.reduction_min_y = Math.max(...window.displayed_reduction.map(point => point.x));
-        window.reduction_max_x = Math.min(...window.displayed_reduction.map(point => point.y));
-        window.reduction_max_y = Math.max(...window.displayed_reduction.map(point => point.y));
-        window.reduction_tree = build_tree();
-        console.log(typeof window.reduction_tree);
+        window.old_reduction = window.tsne_reduction;
+
+        // Get min/max to normalize reduction values 
+        window.reduction_min_x = window.displayed_reduction[0]["x"];
+        window.reduction_max_x = window.displayed_reduction[0]["x"];
+        window.reduction_min_y = window.displayed_reduction[0]["y"];
+        window.reduction_max_y = window.displayed_reduction[0]["y"];
+
+        for (let i = 1; i < window.displayed_reduction.length; ++i) {
+            window.reduction_min_x = Math.min(window.reduction_min_x, window.displayed_reduction[i]["x"]);
+            window.reduction_max_x = Math.max(window.reduction_max_x, window.displayed_reduction[i]["x"]);
+            window.reduction_min_y = Math.min(window.reduction_min_y, window.displayed_reduction[i]["y"]);
+            window.reduction_max_y = Math.max(window.reduction_max_y, window.displayed_reduction[i]["y"]);
+        }
+
+        //build kdtree to accelerate selection
+        build_tree();
 
         console.log(body);
 
@@ -443,12 +454,23 @@ image_search_button.addEventListener('click', async () => {
         window.umap_clusters = body['umap_clusters'];
 
         window.displayed_reduction = window.tsne_reduction;
-        window.reduction_min_x = Math.min(...window.displayed_reduction.map(point => point.x));
-        window.reduction_min_y = Math.max(...window.displayed_reduction.map(point => point.x));
-        window.reduction_max_x = Math.min(...window.displayed_reduction.map(point => point.y));
-        window.reduction_max_y = Math.max(...window.displayed_reduction.map(point => point.y));
-        window.reduction_tree = build_tree();
-        console.log(typeof window.reduction_tree);
+        window.old_reduction = window.tsne_reduction;
+        
+        // Get min/max to normalize reduction values 
+        window.reduction_min_x = window.displayed_reduction[0]["x"];
+        window.reduction_max_x = window.displayed_reduction[0]["x"];
+        window.reduction_min_y = window.displayed_reduction[0]["y"];
+        window.reduction_max_y = window.displayed_reduction[0]["y"];
+
+        for (let i = 1; i < window.displayed_reduction.length; ++i) {
+            window.reduction_min_x = Math.min(window.reduction_min_x, window.displayed_reduction[i]["x"]);
+            window.reduction_max_x = Math.max(window.reduction_max_x, window.displayed_reduction[i]["x"]);
+            window.reduction_min_y = Math.min(window.reduction_min_y, window.displayed_reduction[i]["y"]);
+            window.reduction_max_y = Math.max(window.reduction_max_y, window.displayed_reduction[i]["y"]);
+        }
+
+        //build kdtree to accelerate selection
+        build_tree();
 
         console.log(body);
         

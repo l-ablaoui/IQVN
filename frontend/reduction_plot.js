@@ -27,16 +27,17 @@ let plot_dimension_reduction = (current_index) => {
     let radius_map = generate_radius_map([current_index]);
 
     /*get min/max to later normalize reduction values*/
-    let min_x = window.displayed_reduction[0]['x'];
-    let max_x = window.displayed_reduction[0]['x'];
-    let min_y = window.displayed_reduction[0]['y'];
-    let max_y = window.displayed_reduction[0]['y'];
+    /* Get min/max to normalize reduction values */
+    let min_x = window.displayed_reduction[0]["x"];
+    let max_x = window.displayed_reduction[0]["x"];
+    let min_y = window.displayed_reduction[0]["y"];
+    let max_y = window.displayed_reduction[0]["y"];
 
-    for (let i = 1;i < window.displayed_reduction.length;++i) {
-        min_x = (min_x > window.displayed_reduction[i]['x'])? window.displayed_reduction[i]['x'] : min_x;
-        max_x = (max_x < window.displayed_reduction[i]['x'])? window.displayed_reduction[i]['x'] : max_x;
-        min_y = (min_y > window.displayed_reduction[i]['y'])? window.displayed_reduction[i]['y'] : min_y;
-        max_y = (max_y < window.displayed_reduction[i]['y'])? window.displayed_reduction[i]['y'] : max_y;
+    for (let i = 1; i < window.displayed_reduction.length; ++i) {
+        min_x = Math.min(min_x, window.displayed_reduction[i]["x"]);
+        max_x = Math.max(max_x, window.displayed_reduction[i]["x"]);
+        min_y = Math.min(min_y, window.displayed_reduction[i]["y"]);
+        max_y = Math.max(max_y, window.displayed_reduction[i]["y"]);
     }
 
     //reduction_plot width/length
@@ -257,11 +258,22 @@ let animate_reduction_transition = (old_reduction, new_reduction, duration) => {
         } 
         else {
             window.displayed_reduction = new_reduction;
-            window.reduction_min_x = Math.min(...window.displayed_reduction.map(point => point.x));
-            window.reduction_min_y = Math.max(...window.displayed_reduction.map(point => point.x));
-            window.reduction_max_x = Math.min(...window.displayed_reduction.map(point => point.y));
-            window.reduction_max_y = Math.max(...window.displayed_reduction.map(point => point.y));
-            window.reduction_tree = build_tree();
+            
+            // Get min/max to normalize reduction values 
+            window.reduction_min_x = window.displayed_reduction[0]["x"];
+            window.reduction_max_x = window.displayed_reduction[0]["x"];
+            window.reduction_min_y = window.displayed_reduction[0]["y"];
+            window.reduction_max_y = window.displayed_reduction[0]["y"];
+
+            for (let i = 1; i < window.displayed_reduction.length; ++i) {
+                window.reduction_min_x = Math.min(window.reduction_min_x, window.displayed_reduction[i]["x"]);
+                window.reduction_max_x = Math.max(window.reduction_max_x, window.displayed_reduction[i]["x"]);
+                window.reduction_min_y = Math.min(window.reduction_min_y, window.displayed_reduction[i]["y"]);
+                window.reduction_max_y = Math.max(window.reduction_max_y, window.displayed_reduction[i]["y"]);
+            }
+
+            //build kdtree to accelerate selection
+            build_tree();
         }
     }
   
@@ -284,9 +296,9 @@ const handle_color_map_change = () => {
 // Function to handle the reduction algorithm change
 const handle_reduction_method_change = () => {
     const selected_value = document.querySelector('input[name="select_reduction_method"]:checked').value;
-    const old_reduction = (window.old_reduction == "tsne")? window.reduction_reduction :
+    const old_reduction = (window.old_reduction == "tsne")? window.tsne_reduction :
                         (window.old_reduction == "pca")? window.pca_reduction : window.umap_reduction;
-    const new_reduction = (selected_value == "tsne")? window.reduction_reduction :
+    const new_reduction = (selected_value == "tsne")? window.tsne_reduction :
                         (selected_value == "pca")? window.pca_reduction : window.umap_reduction;
 
     //redraw component (animate position transition)
@@ -494,39 +506,36 @@ let update_selected = (current_index) => {
     //clear all
     window.selected_points = [];
 
-    // Calculate the normalized range of the selection area
-    let selection_top_left_normalized = {
-        x: (window.selection_top_left.x - reduction_translate.x) / reduction_scale,
-        y: (window.selection_top_left.y - reduction_translate.y) / reduction_scale
-    };
-
-    let selection_bot_right_normalized = {
-        x: (window.selection_bot_right.x - reduction_translate.x) / reduction_scale,
-        y: (window.selection_bot_right.y - reduction_translate.y) / reduction_scale
-    };
-
     // Define the range query function
-    function range_query(node) {
+    function range_query (node) {
         if (!node) return;
 
         // Check if the point is within the selection area
-        let x = reduction_plot_offset_x + (node.x - window.min_x) / (window.max_x - window.min_x) * (plot_width - 2 * reduction_plot_offset_x);
-        let y = plot_height - reduction_plot_offset_y - (node.y - window.min_y) / (window.max_y - window.min_y) * (plot_height - 2 * reduction_plot_offset_y);
+        let x = reduction_plot_offset_x + (node.obj.x - window.min_x) / (window.max_x - window.min_x) * (plot_width - 2 * reduction_plot_offset_x);
+        let y = plot_height - reduction_plot_offset_y - (node.obj.y - window.min_y) / (window.max_y - window.min_y) * (plot_height - 2 * reduction_plot_offset_y);
 
         if (is_circle_in_square(
             window.selection_top_left, 
             window.selection_bot_right, 
             { x: reduction_translate.x + x * reduction_scale, y: reduction_translate.y + y * reduction_scale }, 
             (current_index == node.index) ? 4 : 2)) {
-            window.selected_points.push(node.index);
+            window.selected_points.push(node.obj.index);
         }
 
         // Recursively query left and right subtrees
-        if (node.left && node.left.point.x <= selection_bot_right_normalized.x) {
-            range_query(node.left);
+        if (node.left) {
+            let left_x = reduction_plot_offset_x + (node.left.obj.x - window.min_x) / (window.max_x - window.min_x) * (plot_width - 2 * reduction_plot_offset_x);
+
+            if ((reduction_translate.x + left_x * reduction_scale) >= window.selection_top_left.x) {
+                range_query(node.left);
+            }
         }
-        if (node.right && node.right.point.x >= selection_top_left_normalized.x) {
-            range_query(node.right);
+        if (node.right) {
+            let right_x = reduction_plot_offset_x + (node.right.obj.x - window.min_x) / (window.max_x - window.min_x) * (plot_width - 2 * reduction_plot_offset_x);
+
+            if ((reduction_translate.x + right_x * reduction_scale) <= window.selection_bot_right.x) {
+                range_query(node.right);
+            }
         }
     }
 

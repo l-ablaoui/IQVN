@@ -17,7 +17,7 @@ let toggle_crop = document.getElementById("toggle_crop");
 //hiding canvas and buttons at first
 document.getElementById("obj_div").style.display = "none";
 document.getElementById("score_div").style.display = "none";
-document.getElementById("tsne_div").style.display = "none";
+document.getElementById("reduction_div").style.display = "none";
 document.getElementById("depth_div").style.display = "none";
 document.getElementById("crop").style.display = "none";
 document.getElementById("crop_label").style.display = "none";
@@ -167,10 +167,19 @@ let update_scores = (frame_index) => {
     plot_timeline(frame_index, window.max_index, window.fps);
     plot_objects(frame_index);
     plot_score_curve(frame_index);
-    plot_tsne_reduction(frame_index);
+    plot_dimension_reduction(frame_index);
     update_depth_video(frame_index);
     //TODO update other plots or frames later (possible in here)
 };
+
+//kdtree stuff
+let build_tree = () => {
+    // Convert the displayed_reduction array into an array of points
+    let points = window.displayed_reduction.map((point, index) => ({ x: point.x, y: point.y, index }));
+
+    // Create the KD-tree
+    window.reduction_tree = new kdTree(points, length2, ["x", "y"]);
+}
 
 /***********/
 /*Listeners*/
@@ -312,7 +321,7 @@ toggle_scores.addEventListener("click", () => {
 });
 
 toggle_reduction.addEventListener("click", () => {
-    let x = document.getElementById("tsne_div");
+    let x = document.getElementById("reduction_div");
     if (x.style.display === "none") {
         x.style.display = "block";
         toggle_reduction.value = "▼ Video embeddings scatter plot in reduced embedding space";
@@ -322,7 +331,7 @@ toggle_reduction.addEventListener("click", () => {
         tsne_plot.width = tsne_plot.offsetWidth;
         tsne_plot.height = tsne_plot.width;
 
-        plot_tsne_reduction(window.current_index);
+        plot_dimension_reduction(window.current_index);
     } else {
         x.style.display = "none";
         toggle_reduction.value = "▲ Video embeddings scatter plot in reduced embedding space";
@@ -371,6 +380,12 @@ text_search_button.addEventListener('click', async () => {
         window.umap_clusters = body['umap_clusters'];
         
         window.displayed_reduction = window.tsne_reduction;
+        window.reduction_min_x = Math.min(...window.displayed_reduction.map(point => point.x));
+        window.reduction_min_y = Math.max(...window.displayed_reduction.map(point => point.x));
+        window.reduction_max_x = Math.min(...window.displayed_reduction.map(point => point.y));
+        window.reduction_max_y = Math.max(...window.displayed_reduction.map(point => point.y));
+        window.reduction_tree = build_tree();
+        console.log(typeof window.reduction_tree);
 
         console.log(body);
 
@@ -428,6 +443,12 @@ image_search_button.addEventListener('click', async () => {
         window.umap_clusters = body['umap_clusters'];
 
         window.displayed_reduction = window.tsne_reduction;
+        window.reduction_min_x = Math.min(...window.displayed_reduction.map(point => point.x));
+        window.reduction_min_y = Math.max(...window.displayed_reduction.map(point => point.x));
+        window.reduction_max_x = Math.min(...window.displayed_reduction.map(point => point.y));
+        window.reduction_max_y = Math.max(...window.displayed_reduction.map(point => point.y));
+        window.reduction_tree = build_tree();
+        console.log(typeof window.reduction_tree);
 
         console.log(body);
         

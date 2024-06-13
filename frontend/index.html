@@ -50,7 +50,7 @@
                 </div>
             </div>  
             <input type="button" id="toggle_reduction" style="width:100%;" value="▲ Video embeddings scatter plot in reduced embedding space" class="row btn btn-sm btn-info"/>
-            <div class="row" id="tsne_div" width="100%">
+            <div class="row" id="reduction_div" width="100%">
                 <div class="row">
                     <div class="col-sm justify-content-center">
                         <input type="radio" name="select_reduction_method" value="tsne" checked />
@@ -67,7 +67,7 @@
                 </div>
                 <canvas class="row" id="reduction_plot" style="display:block; width:100%;" ></canvas>
                 <div class="row justify-content-center">
-                    <canvas class="text-center" id="tsne_color_map" height="0px"></canvas>
+                    <canvas class="text-center" id="reduction_color_map" height="0px"></canvas>
                 </div>
                 <div class="row">
                     <div class="col-sm justify-content-center">
@@ -140,19 +140,32 @@
     //dimension reduction stuff
     window.old_reduction = "tsne";
     window.displayed_reduction = null;
+    window.reduction_tree = null;
+    window.reduction_min_x = Infinity;
+    window.reduction_max_x = -Infinity;
+    window.reduction_min_y = Infinity;
+    window.reduction_max_y = -Infinity;
+
     window.tsne_reduction = null;
     window.pca_reduction = null;
     window.umap_reduction = null;
+
     window.tsne_clusters = null;
     window.pca_clusters = null;
     window.umap_clusters = null;
+</script>
+
+<!--includes-->
+<script src="kd-tree-javascript/kdTree-min.js"></script>
+<script>
+    console.log(typeof kdTree);  // Should log 'function' or 'object' if loaded correctly
 </script>
 <!--main script-->
 <script src="main.js"></script>
 <script src="video_selection.js"></script>
 <script src="similarity_scores_plot.js"></script>
 <script src="crop_script.js"></script>
-<script src="tsne_plot.js"></script>
+<script src="reduction_plot.js"></script>
 <script src="obj_detec_plot.js"></script>
 <script src="depth_script.js"></script>
 <script src="timeline.js"></script>

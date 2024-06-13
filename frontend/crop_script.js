@@ -8,10 +8,6 @@ let crop_state = "idle";
 let crop_center = { x: (window.crop_top_left.x + window.crop_bot_right.x) / 2, y: (window.crop_top_left.y + window.crop_bot_right.y) / 2 };
 let crop_mouse_down = crop_center;
 
-let length2 = (p1, p2) => {
-    return (p1.x - p2.x) * (p1.x - p2.x) + (p1.y - p2.y) * (p1.y - p2.y);
-}
-
 video.addEventListener("mousedown", (event) => {
     crop_mouse_down = {x: event.offsetX, y: event.offsetY};
     //Get the closest point

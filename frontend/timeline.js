@@ -127,12 +127,17 @@ timeline.addEventListener("keydown", async (event) => {
         case "default":
             return;
     }
-    let name_processed = window.current_video.split(".")[0]; 
-    const response = await fetch(`${server_url}/image/${name_processed}/${window.current_index}.png`);
-    const blob = await response.blob();
-    const image_url = URL.createObjectURL(blob);
-
-    window.current_frame.src = image_url;
-    update_video(window.current_frame.src);
-    update_scores(window.current_index);
+    try {
+        let name_processed = window.current_video.split(".")[0]; 
+        const response = await fetch(`${server_url}/image/${name_processed}/${window.current_index}.png`);
+        const blob = await response.blob();
+        const image_url = URL.createObjectURL(blob);
+    
+        window.current_frame.src = image_url;
+        update_video(window.current_frame.src);
+        update_scores(window.current_index);
+    }
+    catch (error) {
+        console.error("Error getting video frame ", window.current_frame, " : ", error);
+    }
 });

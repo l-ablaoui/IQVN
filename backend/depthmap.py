@@ -83,6 +83,30 @@ class DepthMapEstimation:
                 pbar.update(1)
         print("Done")
 
-    def __call__(self, save_path):
-        self.get_depth_video()
-        self.save_depth_video(save_path, False)
+    def __call__(self, save_path, save_video=False):
+        vid = self.load_video() #load video
+        
+        self.fps = vid.get(cv2.CAP_PROP_FPS) #keeping fps for output saving purposes
+        frameCount = int(vid.get(cv2.CAP_PROP_FRAME_COUNT))
+        frameWidth = int(vid.get(cv2.CAP_PROP_FRAME_WIDTH))
+        frameHeight = int(vid.get(cv2.CAP_PROP_FRAME_HEIGHT))
+
+        fourcc = cv2.VideoWriter_fourcc(*'mp4v')
+        if save_video:
+            out = cv2.VideoWriter(f"{save_path}.mp4", fourcc, self.fps, (frameWidth, frameHeight), isColor=False)
+
+        #TODO Declare output video in the save_path, same fps, height and width but grayscaled    
+
+        with tqdm(total=frameCount, desc="Processing video depth map: ") as pbar:
+            for i in range(frameCount):
+                okay, frame = vid.read()
+                if not okay:
+                    break
+                depth_frame = self.get_image_depth(cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)) #inference on RGB frames
+                if save_video:
+                    out.write(cv2.cvtColor(depth_frame, cv2.COLOR_RGB2GRAY))
+                else:
+                    cv2.imwrite(save_path+f"/depth_frame_{i}.png", depth_frame)
+
+                #TODO save frame by frame in the depth video
+                pbar.update(1)

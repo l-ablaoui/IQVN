@@ -20,6 +20,10 @@ let load_video = async () => {
         //reset index
         window.current_index = 0;
 
+        //reset selected points and timeline
+        window.selected_points = [[]];
+        window.current_selection = 0;
+
         //draw the video's first frame
         let name_processed = window.current_video.split(".")[0]; 
         const imgresponse = await fetch(`${server_url}/image/${name_processed}/${window.current_index}.png`);

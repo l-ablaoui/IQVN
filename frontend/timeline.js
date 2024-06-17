@@ -9,10 +9,10 @@ let plot_marker_triangle = (current_index, max_index, svg) => {
     let plot_x = current_index / (max_index - 1) * plot_width;
 
     //define coordinates
-    let top_left = { x: plot_x - 4, y: 0 };
-    let top_right = { x: plot_x + 4, y: 0 };
-    let mid_left = { x: plot_x - 4, y: triangle_length };
-    let mid_right = { x: plot_x + 4, y: triangle_length };
+    let top_left = { x: plot_x - triangle_length * 2 / 3, y: 0 };
+    let top_right = { x: plot_x + triangle_length * 2 / 3, y: 0 };
+    let mid_left = { x: plot_x - triangle_length * 2 / 3, y: triangle_length };
+    let mid_right = { x: plot_x + triangle_length * 2 / 3, y: triangle_length };
     let bottom_center = { x: plot_x, y: triangle_length * 2 };
 
     // Start drawing the triangle
@@ -65,6 +65,23 @@ let plot_timestamps = (max_index, fps, svg) => {
     }
 };
 
+let plot_current_timer = (current_index, max_index, fps, svg) => {
+    let plot_width = svg.width;
+    let plot_height = svg.height;
+
+    let ctx = svg.getContext("2d");
+
+    let offset = plot_height / 30 + 5;
+    if (current_index >= max_index / 2) { offset = - offset - 20; }
+    let timestamp = current_index / fps;
+
+    let x = current_index / max_index * plot_width;
+    ctx.beginPath();
+    ctx.fillStyle = "darkgray";
+    ctx.font = "10px arial";
+    ctx.fillText(`${Math.trunc((timestamp) / 60)}:${Math.trunc((timestamp)) % 60}`, x + offset, plot_height * 0.1);
+}
+
 let plot_timeline = (current_index, max_index, fps) => {
     let timeline = document.getElementById("timeline");
     let ctx = timeline.getContext("2d");
@@ -90,12 +107,13 @@ let plot_timeline = (current_index, max_index, fps) => {
                     ${SELECTION_COLORS[i].red},
                     ${SELECTION_COLORS[i].green},
                     ${SELECTION_COLORS[i].blue},
-                    0.7)`;
+                    ${(window.current_selection == i)? 0.8 : 0.4})`;
                 ctx.stroke();
             }
         }
     }
     plot_marker_triangle(current_index, max_index, timeline);
+    plot_current_timer(current_index, max_index, fps, timeline);
     plot_marker(current_index, max_index, 0, 0, 0, "black", 0.5, timeline);
 };
 
@@ -343,5 +361,12 @@ perform.addEventListener("click", () => {
     
     update_selection_list();
     update_selection2_list();
+    update_scores(window.current_index);
+});
+
+let reset_all = document.getElementById("reset_all");
+reset_all.addEventListener("click", () => {
+    window.selected_points = [[]];
+    window.current_selection = 0;
     update_scores(window.current_index);
 });

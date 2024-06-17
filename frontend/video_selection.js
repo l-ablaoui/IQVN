@@ -24,6 +24,18 @@ let load_video = async () => {
         window.selected_points = [[]];
         window.current_selection = 0;
 
+        //toggle all score divs if they are visible
+        document.getElementById("obj_div").style.display = "none";
+        document.getElementById("score_div").style.display = "none";
+        document.getElementById("tsne_div").style.display = "none";
+        document.getElementById("depth_div").style.display = "none";
+        document.getElementById("crop").style.display = "none";
+        document.getElementById("crop_label").style.display = "none";
+        document.getElementById("toggle_obj").style.display = "none";
+        document.getElementById("toggle_scores").style.display = "none";
+        document.getElementById("toggle_reduction").style.display = "none";
+        document.getElementById("toggle_depth").style.display = "none";
+
         //draw the video's first frame
         let name_processed = window.current_video.split(".")[0]; 
         const imgresponse = await fetch(`${server_url}/image/${name_processed}/${window.current_index}.png`);

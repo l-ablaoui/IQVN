@@ -3,21 +3,24 @@ let score_plot_offset_left = 35;
 let score_plot_offset_right = 0;
 let score_plot_offset_y = 20;
 let is_thresholding = false;
-let threshold = 0.5;
+let threshold = 0.8;
 let is_threshold_dragging = false;
+let selected_score_spikes = [];
 
 let generate_score_color_map = () => {
     let color_map = [];
 
     for (let i = 0;i < window.scores.length;++i) {
         let found = false;
-        for (let j = 0;j < window.selected_points.length;++j) {
-            if (i == window.selected_points[j]) {
+        for (let j = 0;j < window.selected_points[window.current_selection].length;++j) {
+            if (i == window.selected_points[window.current_selection][j]) {
                 found = true;
                 break;
             }
         }
-        color_map.push((found)? "royalblue" : window.REGULAR_COLOR);
+        color_map.push((found)? `rgb(${SELECTION_COLORS[window.current_selection].red},
+                                ${SELECTION_COLORS[window.current_selection].green},
+                                ${SELECTION_COLORS[window.current_selection].blue})` : window.REGULAR_COLOR);
     }
 
     return color_map;
@@ -142,7 +145,9 @@ let threshold_mouse_move = (event, offset_y, svg) => {
     let plot_height = svg.height;
 
     threshold = 1 - Math.max(0, Math.min(1, (mouse_y - offset_y) / (plot_height - 2 * offset_y)));
-    window.selected_points = get_scores_above_threshold(threshold);
+    selected_score_spikes = [];
+    selected_score_spikes = get_scores_above_threshold(threshold);
+    window.selected_points[window.current_selection] = union(selected_score_spikes, selected_tsne_dots);
     update_scores(window.current_index);
 }
 
@@ -153,7 +158,8 @@ let threshold_mouse_up = (event, offset_y, svg) => {
     let plot_height = svg.height;
 
     threshold = 1 - Math.max(0, Math.min(1, (mouse_y - offset_y) / (plot_height - 2 * offset_y)));
-    window.selected_points = get_scores_above_threshold(threshold);
+    selected_score_spikes = get_scores_above_threshold(threshold);
+    window.selected_points[window.current_selection] = union(selected_score_spikes, selected_tsne_dots);
     update_scores(window.current_index);
 }
 
@@ -174,7 +180,9 @@ select_threshold.addEventListener("click", () => {
         score_plot.addEventListener("mousedown", threshold_mouse_down);
         score_plot.addEventListener("mousemove", threshold_final_mouse_move);
         score_plot.addEventListener("mouseup", threshold_final_mouse_up);
-        window.selected_points = get_scores_above_threshold(threshold);
+        selected_score_spikes = [];
+        selected_score_spikes = get_scores_above_threshold(threshold);
+        window.selected_points[window.current_selection] = union(selected_score_spikes, selected_tsne_dots);
         is_thresholding = true;
     }
     update_scores(window.current_index);
@@ -189,6 +197,6 @@ reset_score_plot.addEventListener("click", () => {
         is_thresholding = false;
     }
     is_thresholding = false;
-    window.selected_points = [];
+    window.selected_points[window.current_selection] = [];
     update_scores(window.current_index);
 });

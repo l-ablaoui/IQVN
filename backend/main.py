@@ -168,13 +168,12 @@ async def crop_image(image, bbox):
     
     return cropped_image
 
-async def get_depth_video(video_path, output_path):
+async def compute_depth_map(video_path, output_path):
     if not os.path.exists(output_path):
         os.mkdir(output_path)
 
     depth_estimator = DepthMapEstimation(video_path=video_path)
-    depth_estimator.get_depth_video()
-    depth_estimator.save_depth_video(save_path=output_path, save_video=False)
+    depth_estimator(save_path=output_path)
 
 @app.get("/search")
 async def search(query: str):
@@ -296,7 +295,7 @@ async def get_depth_video(filename: str):
     output_path = os.path.join(VIDEOS_DIR, f"depth-{name}").replace("\\","/")
 
     if not os.path.exists(output_path) or not os.path.exists(output_path+"/depth_frame_0.png"):
-        await get_depth_video(video_path, output_path)
+        await compute_depth_map(video_path, output_path)
 
     paths = glob.glob(output_path+"/depth_frame_*.png")
     return { "frames": len(paths) }

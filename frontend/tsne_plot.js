@@ -1,5 +1,6 @@
 let reduction_plot = document.getElementById("reduction_plot");
 let tsne_color_scale = document.getElementById("tsne_color_map");
+let selected_tsne_dots = [];
 
 //initial zoom setting
 let tsne_scale = 1.0;
@@ -489,7 +490,7 @@ let update_selected = (current_index) => {
     let plot_height = reduction_plot.height;
 
     //clear all
-    window.selected_points = [];
+    selected_tsne_dots = [];
 
     for (i = 0;i < window.displayed_reduction.length;++i) {
         //get center coordinates
@@ -500,9 +501,10 @@ let update_selected = (current_index) => {
         if (is_circle_in_square(window.selection_top_left, window.selection_bot_right, 
             {x: tsne_translate.x + x * tsne_scale, y: tsne_translate.y + y * tsne_scale}, 
             (current_index == i)? 4 : 2)) {
-            window.selected_points.push(i);
+            selected_tsne_dots.push(i);
         }
     }
+    window.selected_points[window.current_selection] = union(selected_tsne_dots, selected_score_spikes);
 };
 
 let selection_mouse_down = (event) => {
@@ -586,7 +588,7 @@ reset_reduction_plot.addEventListener("click", () => {
 
     //reset selection
     window.is_selection = false;
-    window.selected_points = [];
+    window.selected_points[window.current_selection] = [];
 
     reduction_plot.removeEventListener("mousemove", selection_mouse_move);
     reduction_plot.removeEventListener("mousedown", selection_mouse_down);

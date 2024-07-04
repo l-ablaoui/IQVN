@@ -223,7 +223,7 @@ new_selection.addEventListener("click", () => {
     selections.add(name_option);
     selections.selectedIndex = window.current_selection;
 
-    selected_tsne_dots = window.selected_points[window.current_selection];
+    selected_reduction_dots = window.selected_points[window.current_selection];
     selected_score_spikes = [];
 
     update_selection2_list();
@@ -303,7 +303,7 @@ selections.addEventListener("change", () => {
 
     //FOR NOW, when the user changes queries in timeline, the old selected points are all put in the tsne area
     //modifying the tsne selection modifies all the selection, modifying the selected score spikes triggers a union
-    selected_tsne_dots = window.selected_points[window.current_selection];
+    selected_reduction_dots = window.selected_points[window.current_selection];
     selected_score_spikes = [];
     
     update_selection2_list();

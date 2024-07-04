@@ -27,7 +27,7 @@ let load_video = async () => {
         //toggle all score divs if they are visible
         document.getElementById("obj_div").style.display = "none";
         document.getElementById("score_div").style.display = "none";
-        document.getElementById("tsne_div").style.display = "none";
+        document.getElementById("reduction_div").style.display = "none";
         document.getElementById("depth_div").style.display = "none";
         document.getElementById("crop").style.display = "none";
         document.getElementById("crop_label").style.display = "none";

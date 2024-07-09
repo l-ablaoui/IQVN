@@ -260,19 +260,6 @@ let animate_reduction_transition = (old_reduction, new_reduction, duration) => {
         } 
         else {
             window.displayed_reduction = new_reduction;
-            
-            // Get min/max to normalize reduction values 
-            window.reduction_min_x = window.displayed_reduction[0]["x"];
-            window.reduction_max_x = window.displayed_reduction[0]["x"];
-            window.reduction_min_y = window.displayed_reduction[0]["y"];
-            window.reduction_max_y = window.displayed_reduction[0]["y"];
-
-            for (let i = 1; i < window.displayed_reduction.length; ++i) {
-                window.reduction_min_x = Math.min(window.reduction_min_x, window.displayed_reduction[i]["x"]);
-                window.reduction_max_x = Math.max(window.reduction_max_x, window.displayed_reduction[i]["x"]);
-                window.reduction_min_y = Math.min(window.reduction_min_y, window.displayed_reduction[i]["y"]);
-                window.reduction_max_y = Math.max(window.reduction_max_y, window.displayed_reduction[i]["y"]);
-            }
         }
     }
   
@@ -324,10 +311,17 @@ reduction_plot.addEventListener("click", async (event) => {
     let plot_height = reduction_plot.height;
     
     //get min/max to later normalize reduction values
-    let min_x = window.reduction_min_x;
-    let max_x = window.reduction_max_x;
-    let min_y = window.reduction_min_y;
-    let max_y = window.reduction_max_x;
+    let min_x = window.displayed_reduction[0]["x"];
+    let max_x = window.displayed_reduction[0]["x"];
+    let min_y = window.displayed_reduction[0]["y"];
+    let max_y = window.displayed_reduction[0]["y"];
+
+    for (let i = 1; i < window.displayed_reduction.length; ++i) {
+        min_x = Math.min(window.reduction_min_x, window.displayed_reduction[i]["x"]);
+        max_x = Math.max(window.reduction_max_x, window.displayed_reduction[i]["x"]);
+        min_y = Math.min(window.reduction_min_y, window.displayed_reduction[i]["y"]);
+        max_y = Math.max(window.reduction_max_y, window.displayed_reduction[i]["y"]);
+    }
      
     //if clicking on the current frame index (big red dot), do nothing
     let x = reduction_translate.x + reduction_scale * 
@@ -339,7 +333,7 @@ reduction_plot.addEventListener("click", async (event) => {
             (window.displayed_reduction[window.current_index]['y'] - min_y) / 
             (max_y - min_y) * (plot_height - 2 * reduction_plot_offset_y));
 
-    dot_radius = 4;
+    let dot_radius = window.EMPHASIS_RADIUS;
     let dist = (mouse_x - x) * (mouse_x - x) + (mouse_y - y) * (mouse_y - y);
     if (dist <= dot_radius * dot_radius) {
         return;
@@ -357,7 +351,7 @@ reduction_plot.addEventListener("click", async (event) => {
                     (window.displayed_reduction[i]['y'] - min_y) / 
                     (max_y - min_y) * (plot_height - 2 * reduction_plot_offset_y));
     
-            dot_radius = 2;
+            dot_radius = window.REGULAR_RADIUS;
             let dist = (mouse_x - x) * (mouse_x - x) + (mouse_y - y) * (mouse_y - y);
     
             //if the user clicked inside the dot, update the frameIndex
@@ -486,10 +480,17 @@ let update_selected = (current_index) => {
     if (window.displayed_reduction == null) { return; }
 
     /*get min/max to later normalize reduction values*/
-    let min_x = window.reduction_min_x;
-    let max_x = window.reduction_max_x;
-    let min_y = window.reduction_min_y;
-    let max_y = window.reduction_max_x;
+    let min_x = window.displayed_reduction[0]["x"];
+    let max_x = window.displayed_reduction[0]["x"];
+    let min_y = window.displayed_reduction[0]["y"];
+    let max_y = window.displayed_reduction[0]["y"];
+
+    for (let i = 1; i < window.displayed_reduction.length; ++i) {
+        min_x = Math.min(window.reduction_min_x, window.displayed_reduction[i]["x"]);
+        max_x = Math.max(window.reduction_max_x, window.displayed_reduction[i]["x"]);
+        min_y = Math.min(window.reduction_min_y, window.displayed_reduction[i]["y"]);
+        max_y = Math.max(window.reduction_max_y, window.displayed_reduction[i]["y"]);
+    }
 
     //reduction_plot width/length
     let plot_width = reduction_plot.width;
@@ -506,7 +507,7 @@ let update_selected = (current_index) => {
         //checking if circle is in the selected area, taking into account the current zoom/pan and the big coloured dot that is the current frame embedding
         if (is_circle_in_square(window.selection_top_left, window.selection_bot_right, 
             {x: reduction_translate.x + x * reduction_scale, y: reduction_translate.y + y * reduction_scale}, 
-            (current_index == i)? 4 : 2)) {
+            (current_index == i)? window.EMPHASIS_RADIUS : window.REGULAR_RADIUS)) {
             selected_reduction_dots.push(i);
         }
     }

@@ -506,62 +506,18 @@ let update_selected = (current_index) => {
     //clear all
     window.selected_points = [];
 
-    // Define the range query function
-    function range_query (node, depth) {
-        if (!node) return;
+    for (i = 0;i < window.displayed_reduction.length;++i) {
+        //get center coordinates
+        x = reduction_plot_offset_x + (window.displayed_reduction[i]['x'] - min_x) / (max_x - min_x) * (plot_width - 2 * reduction_plot_offset_x);
+        y = plot_height - reduction_plot_offset_y - (window.displayed_reduction[i]['y'] - min_y) / (max_y - min_y) * (plot_height - 2 * reduction_plot_offset_y);
 
-        // Check if the point is within the selection area
-        let x = reduction_plot_offset_x + (node.obj.x - window.min_x) / (window.max_x - window.min_x) * (plot_width - 2 * reduction_plot_offset_x);
-        let y = plot_height - reduction_plot_offset_y - (node.obj.y - window.min_y) / (window.max_y - window.min_y) * (plot_height - 2 * reduction_plot_offset_y);
-
-        if (is_circle_in_square(
-            window.selection_top_left, 
-            window.selection_bot_right, 
-            { x: reduction_translate.x + x * reduction_scale, y: reduction_translate.y + y * reduction_scale }, 
-            (current_index == node.index) ? 4 : 2)) {
-            window.selected_points.push(node.obj.index);
-
-            //recursive call either ways
-            range_query(node.left, depth + 1);
-            range_query(node.right, depth + 1);
-        }
-        else {
-            //check intersting branches here
-            if (node.left) {
-                if (depth % 2 == 0) {
-                    let left_x = reduction_plot_offset_x + (node.left.obj.x - window.min_x) / (window.max_x - window.min_x) * (plot_width - 2 * reduction_plot_offset_x);
-
-                    if ((reduction_translate.x + left_x * reduction_scale) + 4 >= window.selection_top_left.x) {
-                        range_query(node.left, depth + 1);
-                    }
-                }
-                else {
-                    let left_y = plot_height - reduction_plot_offset_y - (node.left.obj.y - window.min_y) / (window.max_y - window.min_y) * (plot_height - 2 * reduction_plot_offset_y);
-                    if ((reduction_translate.y + left_y * reduction_scale) + 4 >= window.selection_top_left.y) {
-                        range_query(node.left, depth + 1);
-                    }
-                }
-            }
-            if (node.right) {
-                if (depth % 2 == 0) {
-                    let right_x = reduction_plot_offset_x + (node.right.obj.x - window.min_x) / (window.max_x - window.min_x) * (plot_width - 2 * reduction_plot_offset_x);
-
-                    if ((reduction_translate.x + right_x * reduction_scale) - 4 <= window.selection_bot_right.x) {
-                        range_query(node.right, depth + 1);
-                    }
-                }
-                else {
-                    let right_y = plot_height - reduction_plot_offset_y - (node.right.obj.y - window.min_y) / (window.max_y - window.min_y) * (plot_height - 2 * reduction_plot_offset_y);
-                    if ((reduction_translate.y + right_y * reduction_scale) - 4 <= window.selection_bot_right.y) {
-                        range_query(node.right, depth + 1);
-                    }
-                }
-            }
+        //checking if circle is in the selected area, taking into account the current zoom/pan and the big coloured dot that is the current frame embedding
+        if (is_circle_in_square(window.selection_top_left, window.selection_bot_right, 
+            {x: reduction_translate.x + x * reduction_scale, y: reduction_translate.y + y * reduction_scale}, 
+            (current_index == i)? 4 : 2)) {
+            window.selected_points.push(i);
         }
     }
-
-    // Perform range query
-    range_query(window.reduction_tree.root, 0);
 };
 
 let selection_mouse_down = (event) => {

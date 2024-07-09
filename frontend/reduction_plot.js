@@ -97,6 +97,20 @@ let generate_radius_map = (indices) => {
 }
 
 /*color map stuff */
+//generating random colors
+function generate_HSL_colors (nb_colors) {
+    let colors = [];
+    const saturation = 70; // Saturation percentage
+    const lightness = 50;  // Lightness percentage
+
+    for (let i = 0; i < nb_colors; i++) {
+        const hue = Math.floor((360 / nb_colors) * i);
+        colors.push(`hsl(${hue}, ${saturation}%, ${lightness}%)`);
+    }
+
+    return colors;
+}
+
 //plot colormap
 let generate_color_map = (current_index, cmap) => {
     color_map = [];
@@ -163,19 +177,6 @@ let generate_color_map = (current_index, cmap) => {
             }
             let nb_clusters = max_label + 1;
 
-            //generating random colors
-            function generate_HSL_colors(nb_colors) {
-                let colors = [];
-                const saturation = 70; // Saturation percentage
-                const lightness = 50;  // Lightness percentage
-            
-                for (let i = 0; i < nb_colors; i++) {
-                    const hue = Math.floor((360 / nb_colors) * i);
-                    colors.push(`hsl(${hue}, ${saturation}%, ${lightness}%)`);
-                }
-            
-                return colors;
-            }
             let colors = generate_HSL_colors(nb_clusters);
 
             //applying colors to clusters (-1/no cluster will be gray and current index red)
@@ -473,10 +474,10 @@ let update_selected = (current_index) => {
     if (window.displayed_reduction == null) { return; }
 
     /*get min/max to later normalize reduction values*/
-    min_x = window.displayed_reduction[0]['x'];
-    max_x = window.displayed_reduction[0]['x'];
-    min_y = window.displayed_reduction[0]['y'];
-    max_y = window.displayed_reduction[0]['y'];
+    let min_x = window.displayed_reduction[0]['x'];
+    let max_x = window.displayed_reduction[0]['x'];
+    let min_y = window.displayed_reduction[0]['y'];
+    let max_y = window.displayed_reduction[0]['y'];
 
     for (i = 1;i < window.displayed_reduction.length;++i) {
         min_x = (min_x > window.displayed_reduction[i]['x'])? window.displayed_reduction[i]['x'] : min_x;
@@ -492,7 +493,7 @@ let update_selected = (current_index) => {
     //clear all
     selected_reduction_dots = [];
 
-    for (i = 0;i < window.displayed_reduction.length;++i) {
+    for (let i = 0;i < window.displayed_reduction.length;++i) {
         //get center coordinates
         x = reduction_plot_offset_x + (window.displayed_reduction[i]['x'] - min_x) / (max_x - min_x) * (plot_width - 2 * reduction_plot_offset_x);
         y = plot_height - reduction_plot_offset_y - (window.displayed_reduction[i]['y'] - min_y) / (max_y - min_y) * (plot_height - 2 * reduction_plot_offset_y);
@@ -640,3 +641,76 @@ toggle_selection.addEventListener("click", () => {
     //redraw context
     plot_reduction(window.current_index);
 });
+
+/* plot hovering handle*/
+let cluster_frame_div = document.getElementById("cluster_frame_div");
+
+let cluster_frame_mouse_hover = async (event) => {
+    //update position
+    const mouse_x = event.offsetX;
+    const mouse_y = event.offsetY;
+    cluster_frame_div.style.left = mouse_x + 'px';
+    cluster_frame_div.style.top = mouse_y + 'px';
+
+    //update displayed cluster frame
+    if (window.displayed_reduction == null) { return; }
+
+    /*get min/max to later normalize reduction values*/
+    let min_x = window.displayed_reduction[0]['x'];
+    let max_x = window.displayed_reduction[0]['x'];
+    let min_y = window.displayed_reduction[0]['y'];
+    let max_y = window.displayed_reduction[0]['y'];
+
+    for (i = 1;i < window.displayed_reduction.length;++i) {
+        min_x = (min_x > window.displayed_reduction[i]['x'])? window.displayed_reduction[i]['x'] : min_x;
+        max_x = (max_x < window.displayed_reduction[i]['x'])? window.displayed_reduction[i]['x'] : max_x;
+        min_y = (min_y > window.displayed_reduction[i]['y'])? window.displayed_reduction[i]['y'] : min_y;
+        max_y = (max_y < window.displayed_reduction[i]['y'])? window.displayed_reduction[i]['y'] : max_y;
+    }
+
+    //reduction_plot width/length
+    let plot_width = reduction_plot.width;
+    let plot_height = reduction_plot.height;
+
+    for (let i = 0;i < window.displayed_reduction.length;++i) {
+        //get center coordinates
+        let x = reduction_plot_offset_x + (window.displayed_reduction[i]['x'] - min_x) / (max_x - min_x) * (plot_width - 2 * reduction_plot_offset_x);
+        let y = plot_height - reduction_plot_offset_y - (window.displayed_reduction[i]['y'] - min_y) / (max_y - min_y) * (plot_height - 2 * reduction_plot_offset_y);
+        let radius = (i == window.current_index)? 4 : 2;
+
+        //checking if the current circle is howevered
+        if ((x - mouse_x) * (x - mouse_x) + (y - mouse_y) * (y - mouse_y) <= radius) {
+            try {
+                let name_processed = window.current_video.split(".")[0]; 
+                const response = await fetch(`${server_url}/image/${name_processed}/${i}.png`);
+                const blob = await response.blob();
+                const image_url = URL.createObjectURL(blob);
+
+                let cluster_frame = document.getElementById("cluster_frame");
+                cluster_frame.src = image_url;
+            }
+            catch (error) {
+                console.error("failed retrieving frame ", i, ": ", error);
+            }
+            
+        }
+    }
+    window.selected_points[window.current_selection] = union(selected_reduction_dots, selected_score_spikes);
+};
+
+let cluster_frame_mouse_enter = (event) => {
+    cluster_frame_div.style.display = "block";
+    const mouse_x = event.offsetX;
+    const mouse_y = event.offsetY;
+
+    cluster_frame_div.style.left = mouse_x + 'px';
+    cluster_frame_div.style.top = mouse_y + 'px';
+};
+
+let cluster_frame_mouse_out = () => {
+    cluster_frame_div.style.display = "none";
+};
+
+reduction_plot.addEventListener("mouseenter", cluster_frame_mouse_enter);
+reduction_plot.addEventListener("mouseout", cluster_frame_mouse_out);
+reduction_plot.addEventListener("mousemove", cluster_frame_mouse_hover);

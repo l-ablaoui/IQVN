@@ -147,7 +147,7 @@ let threshold_mouse_move = (event, offset_y, svg) => {
     threshold = 1 - Math.max(0, Math.min(1, (mouse_y - offset_y) / (plot_height - 2 * offset_y)));
     selected_score_spikes = [];
     selected_score_spikes = get_scores_above_threshold(threshold);
-    window.selected_points[window.current_selection] = union(selected_score_spikes, selected_tsne_dots);
+    window.selected_points[window.current_selection] = union(selected_score_spikes, selected_reduction_dots);
     update_scores(window.current_index);
 }
 
@@ -159,7 +159,7 @@ let threshold_mouse_up = (event, offset_y, svg) => {
 
     threshold = 1 - Math.max(0, Math.min(1, (mouse_y - offset_y) / (plot_height - 2 * offset_y)));
     selected_score_spikes = get_scores_above_threshold(threshold);
-    window.selected_points[window.current_selection] = union(selected_score_spikes, selected_tsne_dots);
+    window.selected_points[window.current_selection] = union(selected_score_spikes, selected_reduction_dots);
     update_scores(window.current_index);
 }
 
@@ -182,7 +182,7 @@ select_threshold.addEventListener("click", () => {
         score_plot.addEventListener("mouseup", threshold_final_mouse_up);
         selected_score_spikes = [];
         selected_score_spikes = get_scores_above_threshold(threshold);
-        window.selected_points[window.current_selection] = union(selected_score_spikes, selected_tsne_dots);
+        window.selected_points[window.current_selection] = union(selected_score_spikes, selected_reduction_dots);
         is_thresholding = true;
     }
     update_scores(window.current_index);

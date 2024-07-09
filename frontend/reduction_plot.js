@@ -28,11 +28,18 @@ let plot_dimension_reduction = (current_index) => {
     let radius_map = generate_radius_map([current_index]);
 
     /*get min/max to later normalize reduction values*/
-    /* Get min/max to normalize reduction values */
-    let min_x = window.reduction_min_x;
-    let max_x = window.reduction_max_x;
-    let min_y = window.reduction_min_y;
-    let max_y = window.reduction_max_x;
+    //Get min/max to normalize reduction values in real time due to array change during animation
+    let min_x = window.displayed_reduction[0]["x"];
+    let max_x = window.displayed_reduction[0]["x"];
+    let min_y = window.displayed_reduction[0]["y"];
+    let max_y = window.displayed_reduction[0]["y"];
+
+    for (let i = 1;i < window.displayed_reduction.length;++i) {
+        min_x = (min_x > window.displayed_reduction[i]["x"])? window.displayed_reduction[i]["x"] : min_x;
+        max_x = (max_x < window.displayed_reduction[i]["x"])? window.displayed_reduction[i]["x"] : max_x;
+        min_y = (min_y > window.displayed_reduction[i]["y"])? window.displayed_reduction[i]["y"] : min_y;
+        max_y = (max_y < window.displayed_reduction[i]["y"])? window.displayed_reduction[i]["y"] : max_y;
+    }
 
     //reduction_plot width/length
     let plot_width = reduction_plot.width;
@@ -91,6 +98,20 @@ let generate_radius_map = (indices) => {
 }
 
 /*color map stuff */
+//generating random colors
+function generate_HSL_colors(nb_colors) {
+    let colors = [];
+    const saturation = 70; // Saturation percentage
+    const lightness = 50;  // Lightness percentage
+
+    for (let i = 0; i < nb_colors; i++) {
+        const hue = Math.floor((360 / nb_colors) * i);
+        colors.push(`hsl(${hue}, ${saturation}%, ${lightness}%)`);
+    }
+
+    return colors;
+}
+
 //plot colormap
 let generate_color_map = (current_index, cmap) => {
     color_map = [];
@@ -145,7 +166,7 @@ let generate_color_map = (current_index, cmap) => {
             reduction_color_scale.height = 0;
 
             //get currently displayed reduction DBSCAN clusters
-            let current_clusters = (window.old_reduction == "tsne")? window.reduction_clusters :
+            let current_clusters = (window.old_reduction == "tsne")? window.tsne_clusters :
                                 (window.old_reduction == "pca")? window.pca_clusters : window.umap_clusters;
             
             //get the number of clusters 
@@ -157,19 +178,6 @@ let generate_color_map = (current_index, cmap) => {
             }
             let nb_clusters = max_label + 1;
 
-            //generating random colors
-            function generate_HSL_colors(nb_colors) {
-                let colors = [];
-                const saturation = 70; // Saturation percentage
-                const lightness = 50;  // Lightness percentage
-            
-                for (let i = 0; i < nb_colors; i++) {
-                    const hue = Math.floor((360 / nb_colors) * i);
-                    colors.push(`hsl(${hue}, ${saturation}%, ${lightness}%)`);
-                }
-            
-                return colors;
-            }
             let colors = generate_HSL_colors(nb_clusters);
 
             //applying colors to clusters (-1/no cluster will be gray and current index red)

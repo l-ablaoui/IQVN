@@ -135,7 +135,7 @@ window.addEventListener("resize", () => {
     //update components' relative sizes
     let score_plot = document.getElementById("score_plot");
     score_plot.width = score_plot.offsetWidth;
-    score_plot.height = score_plot.width * 0.5;
+    score_plot.height = score_plot.width * 0.4;
 
     let reduction_plot = document.getElementById("reduction_plot");
     reduction_plot.width = reduction_plot.offsetWidth;
@@ -222,7 +222,7 @@ toggle_scores.addEventListener("click", () => {
         let score_plot = document.getElementById("score_plot");
         score_plot.style.display = "block";
         score_plot.width = score_plot.offsetWidth;
-        score_plot.height = score_plot.width * 0.5;
+        score_plot.height = score_plot.width * 0.4;
 
         plot_score_curve(window.current_index);
     } else {

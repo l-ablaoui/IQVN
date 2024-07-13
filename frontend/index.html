@@ -8,7 +8,7 @@
 <title>Semantic and Interactive Navigation In Videos</title>
 </head>
 <body>
-<div class="container adaptable" >
+<div class="container-fluid adaptable" >
     <div class="row adaptable" >
         <div class="col-sm x_halved y_scrollable" > <!-- inputs (video, crop, query) -->
             <div class="row x_adaptable">
@@ -108,7 +108,7 @@
                     <input type="button" id="reset_reduction_plot" value="reset" class="col-sm btn btn-sm btn-secondary button_space"/>
                 </div>
                 <div id="cluster_frame_div">
-                    <img src="" alt="cluster -1" id="cluster_frame" class="x_adaptable" />
+                    <img src="" alt="cluster -1" id="cluster_frame" />
                 </div>
             </div>
             <input type="button" id="toggle_depth" value="▲ Depth map" class="row btn btn-sm btn-info x_adaptable"/>
@@ -152,10 +152,10 @@
     window.selected_points = [[]];
     window.current_selection = 0;
     const SELECTION_COLORS = [ 
-        {red: 65, green: 105, blue: 255}, 
-        {red: 178, green: 34, blue: 34}, 
-        {red: 225, green: 185, blue: 65}, 
-        {red: 34, green: 139, blue: 34}
+        {red: 65, green: 105, blue: 255}, //royalblue
+        {red: 178, green: 34, blue: 34},  //brickred
+        {red: 225, green: 185, blue: 65}, //honeyyellow
+        {red: 34, green: 139, blue: 34} //forestgreen
     ];
 
     //query result slot

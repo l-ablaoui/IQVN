@@ -11,35 +11,164 @@ const reduction_zoom_speed = 0.1;
 let is_reduction_dragging = false;
 let reduction_drag_offset = { x: 0, y: 0 };
 
-//to keep space between plot and canvas boundaries
-let reduction_plot_offset_x = 20;
-let reduction_plot_offset_y = 20;
-
 //selection stuff
 let selection_state = "idle";
-let selection_center = { x: (window.selection_top_left.x + window.selection_bot_right.x) / 2, y: (window.selection_top_left.y + window.selection_bot_right.y) / 2 };
+let selection_center = { x: (window.selection_top_left.x + window.selection_bot_right.x) / 2, 
+    y: (window.selection_top_left.y + window.selection_bot_right.y) / 2 };
 let selection_mouse_down_point = selection_center;
 
-/*main drawing function for reduction reduced embeddings' scatter plot */
+// Normalize the reduction plot coordinates
+const normalize_coordinates = () => {
+    let min_x = window.displayed_reduction[0]['x'];
+    let max_x = window.displayed_reduction[0]['x'];
+    let min_y = window.displayed_reduction[0]['y'];
+    let max_y = window.displayed_reduction[0]['y'];
+
+    window.displayed_reduction.forEach(point => {
+        min_x = Math.min(min_x, point['x']);
+        max_x = Math.max(max_x, point['x']);
+        min_y = Math.min(min_y, point['y']);
+        max_y = Math.max(max_y, point['y']);
+    });
+
+    return { min_x, max_x, min_y, max_y };
+};
+
+const get_reduction_plot_coordinates = (min_point, max_point, plot_dim, i) => {
+    let x = (reduction_plot_offset_x + (window.displayed_reduction[i]['x'] - min_point.x) / 
+            (max_point.x - min_point.x) * (plot_dim.width - 2 * reduction_plot_offset_x));
+    x = reduction_translate.x + reduction_scale * x;
+
+    let y = (plot_dim.height - reduction_plot_offset_y - (window.displayed_reduction[i]['y'] - min_point.y) / 
+            (max_point.y - min_point.y) * (plot_dim.height - 2 * reduction_plot_offset_y));
+    y = reduction_translate.y + reduction_scale * y; 
+        
+    return { x, y };
+};
+
+const sort_cluster_frames = (centroids) => {
+    centroids.sort((c1, c2) => c1["x"] - c2["x"]);
+    let first_half = centroids.slice(0, centroids.length / 2).sort((c1, c2) => c1["y"] - c2["y"]);
+    let second_half = centroids.slice(centroids.length / 2, centroids.length).sort((c1, c2) => c1["y"] - c2["y"]);
+
+    for (let i = 0;i < centroids.length;++i) {
+        if (i < centroids.length / 2) {
+            centroids[i] = first_half[i];
+        }
+        else {
+            centroids[i] = second_half[i - centroids.length / 2];
+        }
+    }
+
+    return centroids;
+};
+
+const draw_cluster_frames = (color_map, min_x, min_y, max_x, max_y) => {
+    let ctx = reduction_plot.getContext("2d");
+    let plot_width = reduction_plot.width;
+    let plot_height = reduction_plot.height;
+
+    //get currently displayed reduction
+    let current_cluster_frames = (window.old_reduction == "tsne")? window.tsne_cluster_frames :
+        (window.old_reduction == "pca")? window.pca_cluster_frames: window.umap_cluster_frames;
+    if (current_cluster_frames.length < 2) { return; }
+
+    //get centroids and sort them so that each half of the images gets printed left and right
+    let centroids = [];
+    
+    current_cluster_frames.forEach((point) => {
+        let i = point[0];
+        let img_src = point[1];
+        let p = get_reduction_plot_coordinates({x: min_x, y: min_y}, {x: max_x, y: max_y}, 
+            {width: plot_width, height: plot_height}, i);
+        centroids.push({idx: i, src: img_src, x: p.x, y: p.y});
+    });
+    centroids = sort_cluster_frames(centroids);
+    
+    let l = current_cluster_frames.length / 2;
+    
+    //keep the proportions of the original frame
+    const video = document.getElementById("video");
+    const original_frame_width = video.width;
+    const original_frame_height = video.height;
+
+    let small_frame_height = plot_height / l - l * 0.5; // - l * 2 is to keep a little margin between frames
+    let small_frame_width = original_frame_width * small_frame_height / original_frame_height;
+    
+    //if the width of the frame is too much to draw on the margin, reduce it to
+    //the max the margin can take and adjust the height accordingly
+    if (small_frame_width > reduction_plot_offset_x - 10) {
+        new_small_width = reduction_plot_offset_x - 10;
+        small_frame_height = small_frame_height * new_small_width / small_frame_width;
+        small_frame_width = new_small_width;
+    }
+
+    for (let i = 0;i < l;++i) {
+        //center the image in terms of width
+        const x = reduction_plot_offset_x / 2 - small_frame_width / 2;
+        const y = i * plot_height / l;
+        const img = new Image();
+        img.src = centroids[i]["src"];
+        img.onload = () => {
+            ctx.drawImage(img, x, y, small_frame_width, small_frame_height);
+
+            // Draw border for each image
+            ctx.strokeStyle = color_map[centroids[i]["idx"]];
+            ctx.beginPath();
+            ctx.moveTo(x, y);
+            ctx.lineTo(x + small_frame_width, y);
+            ctx.lineTo(x + small_frame_width, y + small_frame_height);
+            ctx.lineTo(x, y + small_frame_height);
+            ctx.lineTo(x, y);
+            ctx.stroke();
+
+            // Draw the line from centroid to the label
+            ctx.strokeStyle = color_map[centroids[i]["idx"]];
+            ctx.beginPath();
+            ctx.moveTo(centroids[i]["x"], centroids[i]["y"]);
+            ctx.lineTo(x + small_frame_width, y + small_frame_height / 2); // Adjust to point to the center of the label
+            ctx.stroke();
+        };
+    }
+
+    if (current_cluster_frames.length % 2 != 0) { ++l; }
+    for (let i = l;i < current_cluster_frames.length;++i) {
+        const x = plot_width - reduction_plot_offset_x / 2 - small_frame_width / 2;
+        const y = (i - l) * plot_height / l;
+        const img = new Image();
+        img.src = centroids[i]["src"];
+        img.onload = () => {
+            ctx.drawImage(img, x, y, small_frame_width, small_frame_height);
+
+            // Draw border for each image
+            ctx.strokeStyle = color_map[centroids[i]["idx"]];
+            ctx.beginPath();
+            ctx.moveTo(x, y);
+            ctx.lineTo(x + small_frame_width, y);
+            ctx.lineTo(x + small_frame_width, y + small_frame_height);
+            ctx.lineTo(x, y + small_frame_height);
+            ctx.lineTo(x, y);
+            ctx.stroke();
+
+            // Draw the line from centroid to the label
+            ctx.strokeStyle = color_map[centroids[i]["idx"]];
+            ctx.beginPath();
+            ctx.moveTo(centroids[i]["x"], centroids[i]["y"]);
+            ctx.lineTo(x, y + small_frame_height / 2); // Adjust to point to the center of the label
+            ctx.stroke();
+        };
+    }
+};
+
+/*main drawing function for tsne reduced embeddings' scatter plot */
 let plot_dimension_reduction = (current_index) => {
     if (window.displayed_reduction == null) { return; }
 
     let color_map = generate_color_map(current_index, window.cmap);
     let radius_map = generate_radius_map([current_index]);
 
-    /*get min/max to later normalize reduction values*/
-    //Get min/max to normalize reduction values in real time due to array change during animation
-    let min_x = window.displayed_reduction[0]["x"];
-    let max_x = window.displayed_reduction[0]["x"];
-    let min_y = window.displayed_reduction[0]["y"];
-    let max_y = window.displayed_reduction[0]["y"];
-
-    for (let i = 1;i < window.displayed_reduction.length;++i) {
-        min_x = (min_x > window.displayed_reduction[i]["x"])? window.displayed_reduction[i]["x"] : min_x;
-        max_x = (max_x < window.displayed_reduction[i]["x"])? window.displayed_reduction[i]["x"] : max_x;
-        min_y = (min_y > window.displayed_reduction[i]["y"])? window.displayed_reduction[i]["y"] : min_y;
-        max_y = (max_y < window.displayed_reduction[i]["y"])? window.displayed_reduction[i]["y"] : max_y;
-    }
+    //get min/max to later normalize reduction values
+    let { min_x, max_x, min_y, max_y } =  normalize_coordinates();
 
     //reduction_plot width/length
     let plot_width = reduction_plot.width;
@@ -49,34 +178,51 @@ let plot_dimension_reduction = (current_index) => {
     let ctx = reduction_plot.getContext("2d");
     ctx.clearRect(0, 0, plot_width, plot_height);  
     
-    let x, y, dot_radius;
+    let dot_radius;
 
     //draw the points (square shaped for now)
-    for (let i = 0;i < window.displayed_reduction.length;++i) {
+    for (i = 0;i < window.displayed_reduction.length;++i) {
+        if (i >= window.max_index || i > window.displayed_reduction.length) {
+                console.error("reduction plot error: loop index (", i, ") is higher",  
+                " than array length (registered: ", window.max_index, "/actual: ", 
+                window.displayed_reduction.length, ")"
+            );
+            update_scores(0);
+            return;
+        }
         //draw current frame marker last to stand out
         if (i == current_index) { continue; }
 
-        x = reduction_plot_offset_x + (window.displayed_reduction[i]['x'] - min_x) / (max_x - min_x) * (plot_width - 2 * reduction_plot_offset_x);
-        y = plot_height - reduction_plot_offset_y - (window.displayed_reduction[i]['y'] - min_y) / (max_y - min_y) * (plot_height - 2 * reduction_plot_offset_y);
+        let {x, y} = get_reduction_plot_coordinates({ x: min_x, y: min_y }, { x: max_x, y: max_y }, 
+            { width: plot_width, height: plot_height}, i);
 
         ctx.fillStyle = color_map[i];
         dot_radius = radius_map[i];
+
         // Apply zoom/pan transformations to coordinates only and not to point radius (for visibility purposes)
-        fill_circle(ctx, {x: reduction_translate.x + x * reduction_scale, y: reduction_translate.y + y * reduction_scale}, dot_radius);
+        fill_circle(ctx, {x: x, y: y}, dot_radius);
     }
 
-    x = reduction_plot_offset_x + (window.displayed_reduction[current_index]['x'] - min_x) / (max_x - min_x) * (plot_width - 2 * reduction_plot_offset_x);
-    y = plot_height - reduction_plot_offset_y - (window.displayed_reduction[current_index]['y'] - min_y) / (max_y - min_y) * (plot_height - 2 * reduction_plot_offset_y);
+    let {x, y} = get_reduction_plot_coordinates({ x: min_x, y: min_y }, { x: max_x, y: max_y }, 
+        { width: plot_width, height: plot_height}, current_index);
 
     ctx.fillStyle = color_map[current_index];
     dot_radius = radius_map[current_index];
-    fill_circle(ctx, {x: reduction_translate.x + x * reduction_scale, y: reduction_translate.y + y * reduction_scale}, dot_radius);
-    ctx.arc(reduction_translate.x + x * reduction_scale + dot_radius, reduction_translate.y + y * reduction_scale, 0, dot_radius, 2 * Math.PI);
+    fill_circle(ctx, {x: x, y: y}, dot_radius);
+    ctx.arc(x + dot_radius, y, 0, dot_radius, 2 * Math.PI);
     ctx.lineWidth = 2;
     ctx.strokeStyle = "black";
     ctx.stroke();
 
     if (window.is_selection) { draw_rectangle(ctx, window.selection_top_left, window.selection_bot_right); }
+
+    ctx.fillStyle = "white";
+    ctx.fillRect(0, 0, reduction_plot_offset_x - window.EMPHASIS_RADIUS, plot_height);
+
+    ctx.fillStyle = "white";
+    ctx.fillRect(plot_width - reduction_plot_offset_x + window.EMPHASIS_RADIUS, 0, reduction_plot_offset_x, plot_height);
+
+    draw_cluster_frames(color_map, min_x, min_y, max_x, max_y);
 };
 
 let generate_radius_map = (indices) => {
@@ -99,7 +245,7 @@ let generate_radius_map = (indices) => {
 
 /*color map stuff */
 //generating random colors
-function generate_HSL_colors(nb_colors) {
+function generate_HSL_colors (nb_colors) {
     let colors = [];
     const saturation = 70; // Saturation percentage
     const lightness = 50;  // Lightness percentage
@@ -135,13 +281,14 @@ let generate_color_map = (current_index, cmap) => {
         }
 
         case "score": {
-            //make sure scores exist and match the reduction reduction
+
+            //make sure scores exist and match the reduction 
             if (window.scores == null) { generate_color_map(current_index, ""); }
             if (window.scores.length != window.displayed_reduction.length) { generate_color_map(current_index, ""); }
 
             /*get min/max to normalize scores*/
-            min_score = window.scores[0];
-            max_score = window.scores[0];
+            let min_score = window.scores[0];
+            let max_score = window.scores[0];
 
             for (let i = 1;i < window.scores.length;++i) {
                 min_score = (min_score > window.scores[i])? window.scores[i] : min_score;
@@ -155,8 +302,10 @@ let generate_color_map = (current_index, cmap) => {
                 color_map.push(`rgba(${color1.red * (1 - factor) + color2.red * factor}, 
                     ${color1.green * (1 - factor) + color2.green * factor}, 
                     ${color1.blue * (1 - factor) + color2.blue * factor},
-                    ${Math.sqrt(factor)}`); // the lower the score is the more transparent the color is, using root square to prevent drastic behavior
+                    ${Math.sqrt(factor)}`); // the lower the score is the more transparent the color is, 
+                                            //using root square to prevent drastic behavior    
             }
+            color_map[window.current_index] = window.EMPHASIS_COLOR;
             draw_color_scale(min_score, max_score, color1, color2);
             break;
         }
@@ -264,6 +413,7 @@ let animate_reduction_transition = (old_reduction, new_reduction, duration) => {
     }
   
     animate();    
+    window.displayed_reduction = new_reduction;
 };
 
 /*selectors handling (colormap and reduction method)*/
@@ -295,89 +445,96 @@ const handle_reduction_method_change = () => {
 };
 
 // Add change event listener to each radio button
-color_radio_buttons.forEach(radio => { radio.addEventListener('change', handle_color_map_change); });
-reduction_method_buttons.forEach(radio => { radio.addEventListener('change', handle_reduction_method_change); });
+color_radio_buttons.forEach(radio => { 
+    radio.addEventListener('change', handle_color_map_change); 
+});
+reduction_method_buttons.forEach(radio => { 
+    radio.addEventListener('change', handle_reduction_method_change); 
+});
 
 /*On click handling for navigating the video frames*/
 /*compare mouse coordinates with each dot of the plot and see if it touches any, must consider the zoom/pan */
 reduction_plot.addEventListener("click", async (event) => {
-    event.preventDefault();
+    //prevent overlap with drag interaction
+    if (is_reduction_dragging) { return; }
     
+    event.preventDefault();
+
     const mouse_x = event.offsetX;
     const mouse_y = event.offsetY;
 
     //reduction_plot width/length
     let plot_width = reduction_plot.width;
     let plot_height = reduction_plot.height;
-    
-    //get min/max to later normalize reduction values
-    let min_x = window.displayed_reduction[0]["x"];
-    let max_x = window.displayed_reduction[0]["x"];
-    let min_y = window.displayed_reduction[0]["y"];
-    let max_y = window.displayed_reduction[0]["y"];
 
-    for (let i = 1; i < window.displayed_reduction.length; ++i) {
-        min_x = Math.min(window.reduction_min_x, window.displayed_reduction[i]["x"]);
-        max_x = Math.max(window.reduction_max_x, window.displayed_reduction[i]["x"]);
-        min_y = Math.min(window.reduction_min_y, window.displayed_reduction[i]["y"]);
-        max_y = Math.max(window.reduction_max_y, window.displayed_reduction[i]["y"]);
+    //if touching the offsets, ignore
+    if (mouse_x < reduction_plot_offset_x - window.EMPHASIS_RADIUS 
+        || mouse_x > plot_width - reduction_plot_offset_x + window.EMPHASIS_RADIUS) { 
+        return; 
     }
+
+    //get min/max to later normalize reduction values
+    let { min_x, max_x, min_y, max_y } =  normalize_coordinates();
      
     //if clicking on the current frame index (big red dot), do nothing
-    let x = reduction_translate.x + reduction_scale * 
-        (reduction_plot_offset_x + 
-            (window.displayed_reduction[window.current_index]['x'] - min_x) / 
-            (max_x - min_x) * (plot_width - 2 * reduction_plot_offset_x));
-    let y = reduction_translate.y + reduction_scale * 
-        (plot_height - reduction_plot_offset_y - 
-            (window.displayed_reduction[window.current_index]['y'] - min_y) / 
-            (max_y - min_y) * (plot_height - 2 * reduction_plot_offset_y));
+    let {x, y} = get_reduction_plot_coordinates({ x: min_x, y: min_y }, { x: max_x, y: max_y }, 
+        { width: plot_width, height: plot_height}, current_index);
 
-    let dot_radius = window.EMPHASIS_RADIUS;
+    let dot_radius = 4;
+
     let dist = (mouse_x - x) * (mouse_x - x) + (mouse_y - y) * (mouse_y - y);
     if (dist <= dot_radius * dot_radius) {
         return;
     }
 
-    try {
-        for (let i = 0;i < window.displayed_reduction.length;++i) {
-            //get each point's coordinates after current zoom/pan
-            let x = reduction_translate.x + reduction_scale * 
-                (reduction_plot_offset_x + 
-                    (window.displayed_reduction[i]['x'] - min_x) / 
-                    (max_x - min_x) * (plot_width - 2 * reduction_plot_offset_x));
-            let y = reduction_translate.y + reduction_scale * 
-                (plot_height - reduction_plot_offset_y - 
-                    (window.displayed_reduction[i]['y'] - min_y) / 
-                    (max_y - min_y) * (plot_height - 2 * reduction_plot_offset_y));
+    for (i = 0;i < window.displayed_reduction.length;++i) {
+        //get each point's coordinates after current zoom/pan
+        if (i >= window.max_index || i > window.displayed_reduction.length) {
+                console.error("onclick event error: loop index (", i, ") is higher",  
+                " than array length (registered: ", window.max_index, "/actual: ", 
+                window.displayed_reduction.length, ")"
+            );
+            update_scores(0);
+            return;
+        }
+        let {x, y} = get_reduction_plot_coordinates({ x: min_x, y: min_y }, { x: max_x, y: max_y }, 
+            { width: plot_width, height: plot_height}, i);
+
+        dot_radius = 2;
+        let dist = (mouse_x - x) * (mouse_x - x) + (mouse_y - y) * (mouse_y - y);
+
+        //if the user clicked inside the dot, update the frameIndex
+        if (dist <= dot_radius * dot_radius) {
+            try {
+            //fetch current frame
+                let image_url = null;
+
+                async function fetch_image () {
+                    let name_processed = window.current_video.split(".")[0]; 
+                    const response = await fetch(`${server_url}/image/${name_processed}/${i}.png`);
+                    const blob = await response.blob();
+                    image_url = URL.createObjectURL(blob);
+                }
+
+                fetch_image().then(()=> {
+                    window.current_frame.src = image_url;
+                    update_video(image_url);
     
-            dot_radius = window.REGULAR_RADIUS;
-            let dist = (mouse_x - x) * (mouse_x - x) + (mouse_y - y) * (mouse_y - y);
-    
-            //if the user clicked inside the dot, update the frameIndex
-            if (dist <= dot_radius * dot_radius) {
-                //fetch current frame
-                let name_processed = window.current_video.split(".")[0]; 
-                const response = await fetch(`${server_url}/image/${name_processed}/${i}.png`);
-                const blob = await response.blob();
-                const image_url = URL.createObjectURL(blob);
-    
-                window.current_frame.src = image_url;
-                update_video(image_url);
-    
-                //update component
-                update_scores(i);
+                    //update component
+                    update_scores(i);
+                })
+                
                 return;
+            }
+            catch (error) {
+                console.log("failed selecting frame from reduction plot: ", error);
             }
         }
     }
-    catch (error) {
-        console.log("Error getting video frame: ", error);
-    }
-});
+})
 
 /*zoom/pan handling */
-let zom_pan_wheel = (event) => {
+let zoom_pan_wheel = (event) => {
     event.preventDefault();
     
     const mouse_x = event.offsetX;
@@ -400,17 +557,17 @@ let zom_pan_wheel = (event) => {
     plot_dimension_reduction(window.current_index);
 };
 
-let zom_pan_mouse_down = (event) => {
+let zoom_pan_mouse_down = (event) => {
     is_reduction_dragging = true;
     reduction_drag_offset.x = event.offsetX - reduction_translate.x;
     reduction_drag_offset.y = event.offsetY - reduction_translate.y;
 };
 
-let zom_pan_mouse_up = () => {
+let zoom_pan_mouse_up = () => {
     is_reduction_dragging = false;
 };
 
-let zom_pan_mouse_move = (event) => {
+let zoom_pan_mouse_move = (event) => {
     if (is_reduction_dragging) {
         reduction_translate.x = event.offsetX - reduction_drag_offset.x;
         reduction_translate.y = event.offsetY - reduction_drag_offset.y;
@@ -420,11 +577,11 @@ let zom_pan_mouse_move = (event) => {
     }
 };
 
-reduction_plot.addEventListener('wheel', zom_pan_wheel);
-reduction_plot.addEventListener('mousedown', zom_pan_mouse_down); 
-reduction_plot.addEventListener('mouseup', zom_pan_mouse_up);
-reduction_plot.addEventListener('mouseout', zom_pan_mouse_up);
-reduction_plot.addEventListener('mousemove', zom_pan_mouse_move);
+reduction_plot.addEventListener('wheel', zoom_pan_wheel);
+reduction_plot.addEventListener('mousedown', zoom_pan_mouse_down); 
+reduction_plot.addEventListener('mouseup', zoom_pan_mouse_up);
+reduction_plot.addEventListener('mouseout', zoom_pan_mouse_up);
+reduction_plot.addEventListener('mousemove', zoom_pan_mouse_move);
 
 /*handling embedding selection */
 
@@ -478,19 +635,9 @@ let is_circle_in_square = (p1, p2, c, r) => {
 // update the selection indices global vector
 let update_selected = (current_index) => {
     if (window.displayed_reduction == null) { return; }
-
-    /*get min/max to later normalize reduction values*/
-    let min_x = window.displayed_reduction[0]["x"];
-    let max_x = window.displayed_reduction[0]["x"];
-    let min_y = window.displayed_reduction[0]["y"];
-    let max_y = window.displayed_reduction[0]["y"];
-
-    for (let i = 1; i < window.displayed_reduction.length; ++i) {
-        min_x = Math.min(window.reduction_min_x, window.displayed_reduction[i]["x"]);
-        max_x = Math.max(window.reduction_max_x, window.displayed_reduction[i]["x"]);
-        min_y = Math.min(window.reduction_min_y, window.displayed_reduction[i]["y"]);
-        max_y = Math.max(window.reduction_max_y, window.displayed_reduction[i]["y"]);
-    }
+ 
+    //get min/max to later normalize reduction values
+    let { min_x, max_x, min_y, max_y } =  normalize_coordinates();
 
     //reduction_plot width/length
     let plot_width = reduction_plot.width;
@@ -499,15 +646,14 @@ let update_selected = (current_index) => {
     //clear all
     selected_reduction_dots = [];
 
-    for (i = 0;i < window.displayed_reduction.length;++i) {
+    for (let i = 0;i < window.displayed_reduction.length;++i) {
         //get center coordinates
-        x = reduction_plot_offset_x + (window.displayed_reduction[i]['x'] - min_x) / (max_x - min_x) * (plot_width - 2 * reduction_plot_offset_x);
-        y = plot_height - reduction_plot_offset_y - (window.displayed_reduction[i]['y'] - min_y) / (max_y - min_y) * (plot_height - 2 * reduction_plot_offset_y);
+        let {x, y} = get_reduction_plot_coordinates({ x: min_x, y: min_y }, { x: max_x, y: max_y }, 
+            { width: plot_width, height: plot_height}, i);
 
         //checking if circle is in the selected area, taking into account the current zoom/pan and the big coloured dot that is the current frame embedding
         if (is_circle_in_square(window.selection_top_left, window.selection_bot_right, 
-            {x: reduction_translate.x + x * reduction_scale, y: reduction_translate.y + y * reduction_scale}, 
-            (current_index == i)? window.EMPHASIS_RADIUS : window.REGULAR_RADIUS)) {
+            {x: x, y: y}, (current_index == i)? window.EMPHASIS_RADIUS : window.REGULAR_RADIUS)) {
             selected_reduction_dots.push(i);
         }
     }
@@ -522,8 +668,14 @@ let selection_mouse_down = (event) => {
     let dp2 = length2(selection_mouse_down_point, window.selection_bot_right);
     let dc = length2(selection_mouse_down_point, selection_center);
 
-    let dp_top_right = length2(selection_mouse_down_point, { x: window.selection_bot_right.x, y: window.selection_top_left.y });
-    let dp_bottom_left = length2(selection_mouse_down_point, { x: window.selection_top_left.x, y: window.selection_bot_right.y });
+    let dp_top_right = length2(
+        selection_mouse_down_point, 
+        { x: window.selection_bot_right.x, y: window.selection_top_left.y }
+    );
+    let dp_bottom_left = length2(
+        selection_mouse_down_point, 
+        { x: window.selection_top_left.x, y: window.selection_bot_right.y }
+    );
 
     let list = [dp1, dp2, dc, dp_top_right, dp_bottom_left];
     //sort the list
@@ -545,29 +697,55 @@ let selection_mouse_move = (event) => {
     };
     switch (selection_state) {
         case "dp1":
-            window.selection_top_left = { x: window.selection_top_left.x + delta.x, y: window.selection_top_left.y + delta.y };
+            window.selection_top_left = { 
+                x: window.selection_top_left.x + delta.x, 
+                y: window.selection_top_left.y + delta.y 
+            };
             break;
 
         case "dp2":
-            window.selection_bot_right = { x: window.selection_bot_right.x + delta.x, y: window.selection_bot_right.y + delta.y };
+            window.selection_bot_right = { 
+                x: window.selection_bot_right.x + delta.x, 
+                y: window.selection_bot_right.y + delta.y 
+            };
             break;
 
         case "dc":
-            window.selection_top_left = { x: window.selection_top_left.x + delta.x, y: window.selection_top_left.y + delta.y };
-            window.selection_bot_right = { x: window.selection_bot_right.x + delta.x, y: window.selection_bot_right.y + delta.y };
+            window.selection_top_left = { 
+                x: window.selection_top_left.x + delta.x, 
+                y: window.selection_top_left.y + delta.y 
+            };
+            window.selection_bot_right = { 
+                x: window.selection_bot_right.x + delta.x,
+                y: window.selection_bot_right.y + delta.y 
+            };
             break;
 
         case "dctr":
-            window.selection_top_left = { x: window.selection_top_left.x, y: window.selection_top_left.y + delta.y };
-            window.selection_bot_right = { x: window.selection_bot_right.x + delta.x, y: window.selection_bot_right.y };
+            window.selection_top_left = { 
+                x: window.selection_top_left.x, 
+                y: window.selection_top_left.y + delta.y 
+            };
+            window.selection_bot_right = { 
+                x: window.selection_bot_right.x + delta.x, 
+                y: window.selection_bot_right.y 
+            };
             break;
 
         case "dcbl":
-            window.selection_top_left = { x: window.selection_top_left.x + delta.x, y: window.selection_top_left.y };
-            window.selection_bot_right = { x: window.selection_bot_right.x, y: window.selection_bot_right.y + delta.y };
+            window.selection_top_left = { 
+                x: window.selection_top_left.x + delta.x, 
+                y: window.selection_top_left.y 
+            };
+            window.selection_bot_right = { 
+                x: window.selection_bot_right.x, 
+                y: window.selection_bot_right.y + delta.y 
+            };
             break;
     }
-    selection_center = { x: (window.selection_top_left.x + window.selection_bot_right.x) / 2, y: (window.selection_top_left.y + window.selection_bot_right.y) / 2 };
+    selection_center = { x: (window.selection_top_left.x + window.selection_bot_right.x) / 2, 
+        y: (window.selection_top_left.y + window.selection_bot_right.y) / 2 };
+
     selection_mouse_down_point = mouse_position;
 
     // Redraw the content
@@ -603,12 +781,12 @@ reset_reduction_plot.addEventListener("click", () => {
     reduction_plot.removeEventListener("mousedown", selection_mouse_down);
     reduction_plot.removeEventListener("mouseup", selection_mouse_up);
     reduction_plot.removeEventListener("mouseout", selection_mouse_up);
-
-    reduction_plot.addEventListener("mousedown", zom_pan_mouse_down);
-    reduction_plot.addEventListener("mouseup", zom_pan_mouse_up);
-    reduction_plot.addEventListener("mouseout", zom_pan_mouse_up);
-    reduction_plot.addEventListener("mousemove", zom_pan_mouse_move);
-    reduction_plot.addEventListener("wheel", zom_pan_wheel);
+    
+    reduction_plot.addEventListener("mousedown", zoom_pan_mouse_down);
+    reduction_plot.addEventListener("mouseup", zoom_pan_mouse_up);
+    reduction_plot.addEventListener("mouseout", zoom_pan_mouse_up);
+    reduction_plot.addEventListener("mousemove", zoom_pan_mouse_move);
+    reduction_plot.addEventListener("wheel", zoom_pan_wheel);
 
     //redraw context
     update_scores(window.current_index);
@@ -620,15 +798,16 @@ let toggle_selection = document.getElementById("select_dots");
 toggle_selection.addEventListener("click", () => {
     if (window.is_selection == false) {
         window.is_selection = true;
-        reduction_plot.removeEventListener("mousemove", zom_pan_mouse_move);
-        reduction_plot.removeEventListener("mousedown", zom_pan_mouse_down);
-        reduction_plot.removeEventListener("mouseup", zom_pan_mouse_up);
-        reduction_plot.removeEventListener("mouseout", zom_pan_mouse_up);
-        reduction_plot.removeEventListener("wheel", zom_pan_wheel);
+
+        reduction_plot.removeEventListener("mousemove", zoom_pan_mouse_move);
+        reduction_plot.removeEventListener("mousedown", zoom_pan_mouse_down);
+        reduction_plot.removeEventListener("mouseup", zoom_pan_mouse_up);
+        reduction_plot.removeEventListener("mouseout", zoom_pan_mouse_up);
+        reduction_plot.removeEventListener("wheel", zoom_pan_wheel);
 
         reduction_plot.addEventListener("mousedown", selection_mouse_down);
         reduction_plot.addEventListener("mouseup", selection_mouse_up);
-        reduction_plot.addEventListener("mousemove", selection_mouse_move);
+        reduction_plot.addEventListener("mousemove", debounced_selection_mouse_move);
 
         update_selected(window.current_index);
         plot_score_curve(window.current_index);
@@ -640,11 +819,11 @@ toggle_selection.addEventListener("click", () => {
         reduction_plot.removeEventListener("mouseup", selection_mouse_up);
         reduction_plot.removeEventListener("mouseout", selection_mouse_up);
 
-        reduction_plot.addEventListener("mousedown", zom_pan_mouse_down);
-        reduction_plot.addEventListener("mouseup", zom_pan_mouse_up);
-        reduction_plot.addEventListener("mouseout", zom_pan_mouse_up);
-        reduction_plot.addEventListener("mousemove", zom_pan_mouse_move);
-        reduction_plot.addEventListener("wheel", zom_pan_wheel);
+        reduction_plot.addEventListener("mousedown", zoom_pan_mouse_down);
+        reduction_plot.addEventListener("mouseup", zoom_pan_mouse_up);
+        reduction_plot.addEventListener("mouseout", zoom_pan_mouse_up);
+        reduction_plot.addEventListener("mousemove", zoom_pan_mouse_move);
+        reduction_plot.addEventListener("wheel", zoom_pan_wheel);
     }
     //redraw context
     plot_dimension_reduction(window.current_index);

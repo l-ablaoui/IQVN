@@ -16,6 +16,7 @@ import base64
 
 from sklearn.preprocessing import LabelEncoder
 from sklearn.cluster import DBSCAN
+from sklearn.neighbors import NearestNeighbors
 
 from tqdm import tqdm
 
@@ -37,11 +38,13 @@ VIDEOS_DIR = "videos"
 MODEL_NAME = "openai/clip-vit-base-patch16"
 #MODEL_NAME = "google/owlvit-base-patch32"
 #MODEL_NAME = "google/owlv2-base-patch16-ensemble"
-current_video_path = "videos/cut5.mp4"
+current_video_path = "./videos/cut5.mp4"
 
 IMAGE_CROP_QUERY = "<image-loaded>"
 OUTPUT_CROP_IMAGE = "images/search-image.png"
+MAX_NB_CLUSTERS = 20
 
+# save image as individual frames in the folder to facilitate fetching
 def video2images(video_path):
     output_path = video_path.replace(".mp4", "")
     vid = cv2.VideoCapture(video_path)
@@ -144,7 +147,7 @@ def compute_cosine_similarity(video_path, query_text, reduction = False):
         return similarity_scores, tsne_reduction, pca_reduction, umap_reduction
     else:
         return similarity_scores
-
+ 
 def find_mp4_files(relative_path):
     # Get the absolute path of the directory
     abs_path = os.path.abspath(relative_path)
@@ -161,6 +164,7 @@ async def annotate_video(video_path, output_path):
     detector = OD(capture_video=video_path, output_results=output_path+"-output.csv", model_name="yolov5s.pt")
     return detector()
 
+#apply bounding box to the image pixels
 async def crop_image(image, bbox):
     x_min, y_min, x_max, y_max = bbox
     x_min, y_min, x_max, y_max = int(x_min), int(y_min), int(x_max), int(y_max)
@@ -175,12 +179,86 @@ async def compute_depth_map(video_path, output_path):
     depth_estimator = DepthMapEstimation(video_path=video_path)
     depth_estimator(save_path=output_path)
 
+# Function to calculate the centroid
+def calculate_centroid(indices, vectors):
+    cluster_vectors = vectors[indices]
+    centroid = np.mean(cluster_vectors, axis=0)
+    return centroid
+
+# Function to find the index of the vector closest to the centroid
+def closest_vector_index(centroid, indices, vectors):
+    cluster_vectors = vectors[indices]
+    distances = np.linalg.norm(cluster_vectors - centroid, axis=1)
+    closest_index = indices[np.argmin(distances)]
+    return closest_index
+
+def choose_eps(vectors, k=4, percentile=90):
+    neigh = NearestNeighbors(n_neighbors=k)
+    nbrs = neigh.fit(vectors)
+    distances, indices = nbrs.kneighbors(vectors)
+    distances = np.sort(distances[:, k-1], axis=0)
+    eps = np.percentile(distances, percentile)
+    return eps
+
+def get_clusters(vectors, min_samples=5):
+    eps = choose_eps(vectors, min_samples, 100)
+    clusters = DBSCAN(eps=eps, min_samples=min_samples).fit(vectors).labels_
+    return clusters
+
+def get_centroids(clusters, vectors, max_clusters):
+    # Determine the number of unique classes
+    unique_clusters = np.unique(clusters)
+
+    # Create a dictionary to store vectors by class
+    clustered_indices = {cls: [] for cls in unique_clusters}
+
+    # Populate the dictionary with vectors
+    for i in range(clusters.size):
+        clustered_indices[clusters[i]].append(i)
+
+    # Sort clusters by size (number of vectors), largest first
+    sorted_clusters = sorted(clustered_indices.items(), key=lambda item: len(item[1]), reverse=True)
+
+    # Keep only the largest clusters
+    max_clusters = max_clusters
+    sorted_clusters = sorted_clusters[:max_clusters]
+
+    # Calculate centroids and find closest vectors
+    centroids = {}
+    closest_vectors = {}
+    for cls, indices in sorted_clusters:
+        centroid = calculate_centroid(indices, vectors)
+        closest_idx = closest_vector_index(centroid, indices, vectors)
+        centroids[cls] = centroid
+        closest_vectors[cls] = closest_idx
+    
+    return sorted_clusters, centroids, closest_vectors
+
+
 @app.get("/search")
 async def search(query: str):
     similarity_scores, tsne, pca, umap = compute_cosine_similarity(current_video_path, query, True)
-    tsne_clusters = DBSCAN(eps=2, min_samples=5).fit(tsne).labels_
-    pca_clusters = DBSCAN(eps=2, min_samples=5).fit(pca).labels_
-    umap_clusters = DBSCAN(eps=2, min_samples=5).fit(umap).labels_
+
+    tsne_clusters = get_clusters(tsne)
+    pca_clusters = get_clusters(pca)
+    umap_clusters = get_clusters(umap)
+
+    tsne_cluster_frames = []
+    pca_cluster_frames = []
+    umap_cluster_frames = []
+
+    sorted_clusters, _, closest_vectors = get_centroids(tsne_clusters, tsne, MAX_NB_CLUSTERS)
+    for cls, _ in sorted_clusters:
+        tsne_cluster_frames.append({"cluster": int(cls), "centroid": int(closest_vectors[cls])})
+    
+    sorted_clusters, _, closest_vectors = get_centroids(pca_clusters, pca, MAX_NB_CLUSTERS)
+    for cls, _ in sorted_clusters:
+        pca_cluster_frames.append({"cluster": int(cls), "centroid": int(closest_vectors[cls])})
+    
+    sorted_clusters, _, closest_vectors = get_centroids(umap_clusters, umap, MAX_NB_CLUSTERS)
+    for cls, _ in sorted_clusters:
+        umap_cluster_frames.append({"cluster": int(cls), "centroid": int(closest_vectors[cls])})
+
 
     return {
         "query": query, 
@@ -190,7 +268,10 @@ async def search(query: str):
         "umap": [{'x': float(umap[i, 0]), 'y': float(umap[i, 1])} for i in range(len(umap))],
         "tsne_clusters": [int(tsne_clusters[i]) for i in range(len(tsne_clusters))],
         "pca_clusters": [int(pca_clusters[i]) for i in range(len(pca_clusters))],
-        "umap_clusters": [int(umap_clusters[i]) for i in range(len(umap_clusters))]
+        "umap_clusters": [int(umap_clusters[i]) for i in range(len(umap_clusters))],
+        "tsne_cluster_frames": tsne_cluster_frames,
+        "pca_cluster_frames": pca_cluster_frames,
+        "umap_cluster_frames": umap_cluster_frames
     }
 
 @app.get("/search/image/{folder}/{image_path}")
@@ -228,9 +309,25 @@ async def upload_png(image_data: dict):
     cv2.imwrite(OUTPUT_CROP_IMAGE, img)
 
     similarity_scores, tsne, pca, umap = compute_cosine_similarity(current_video_path, IMAGE_CROP_QUERY, reduction=True)
-    tsne_clusters = DBSCAN(eps=2, min_samples=5).fit(tsne).labels_
-    pca_clusters = DBSCAN(eps=2, min_samples=5).fit(pca).labels_
-    umap_clusters = DBSCAN(eps=2, min_samples=5).fit(umap).labels_
+    tsne_clusters = get_clusters(tsne)
+    pca_clusters = get_clusters(pca)
+    umap_clusters = get_clusters(umap)
+
+    tsne_cluster_frames = []
+    pca_cluster_frames = []
+    umap_cluster_frames = []
+
+    sorted_clusters, _, closest_vectors = get_centroids(tsne_clusters, tsne, MAX_NB_CLUSTERS)
+    for cls, _ in sorted_clusters:
+        tsne_cluster_frames.append({"cluster": int(cls), "centroid": int(closest_vectors[cls])})
+    
+    sorted_clusters, _, closest_vectors = get_centroids(pca_clusters, pca, MAX_NB_CLUSTERS)
+    for cls, _ in sorted_clusters:
+        pca_cluster_frames.append({"cluster": int(cls), "centroid": int(closest_vectors[cls])})
+    
+    sorted_clusters, _, closest_vectors = get_centroids(umap_clusters, umap, MAX_NB_CLUSTERS)
+    for cls, _ in sorted_clusters:
+        umap_cluster_frames.append({"cluster": int(cls), "centroid": int(closest_vectors[cls])})
 
     return {
         "query": IMAGE_CROP_QUERY, 
@@ -240,7 +337,10 @@ async def upload_png(image_data: dict):
         "umap": [{'x': float(umap[i, 0]), 'y': float(umap[i, 1])} for i in range(len(umap))],
         "tsne_clusters": [int(tsne_clusters[i]) for i in range(len(tsne_clusters))],
         "pca_clusters": [int(pca_clusters[i]) for i in range(len(pca_clusters))],
-        "umap_clusters": [int(umap_clusters[i]) for i in range(len(umap_clusters))]
+        "umap_clusters": [int(umap_clusters[i]) for i in range(len(umap_clusters))],
+        "tsne_cluster_frames": tsne_cluster_frames,
+        "pca_cluster_frames": pca_cluster_frames,
+        "umap_cluster_frames": umap_cluster_frames
     }
 
 @app.get("/video/")

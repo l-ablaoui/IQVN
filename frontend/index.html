@@ -4,25 +4,27 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/4.5.2/css/bootstrap.min.css">
+<link rel="stylesheet" href="style.css">
 <title>Semantic and Interactive Navigation In Videos</title>
 </head>
-<body style="width:100vw; height:100vh; ">
-<div class="container-fluid" style="width: 100%; height: 100%; margin: auto; ">
-    <div class="row" style="width: 100%; height: 100%;">
-        <div class="col-sm" style="overflow-x: hidden; overflow-y: auto; width:50%; height:100%;"> <!-- inputs (video, crop, query) -->
-            <div style="width:100%;" class="row">
-                <label style="width:15%">Video: </label>
-                <select id="video_names_selection" style="width:84%" name="video_names"></select>
+<body>
+<div class="container-fluid adaptable" >
+    <div class="row adaptable" >
+        <div class="col-sm x_halved y_scrollable" > <!-- inputs (video, crop, query) -->
+            <div class="row x_adaptable">
+                <label class="label_15">Video: </label>
+                <select id="video_names_selection" name="video_names"></select>
+
             </div>
-            <canvas class="row" style="min-width:80; max-width:100%; max-height:75%; margin:auto;" id="video"></canvas>
+            <canvas class="row" id="video"></canvas>
             <!--tabindex makes the element focusable-->
-            <canvas class="row" tabindex="0" style="width:100%; height:15%; border:1px solid lightgray; margin:auto;" id="timeline"></canvas> 
+            <canvas class="row" tabindex="0" id="timeline"></canvas> 
             <div class="row">
-                <input type="button" id="new_selection" style="margin:0.1%;" value="new" class="col btn btn-sm btn-primary"/>
+                <input type="button" id="new_selection" value="new" class="col btn btn-sm btn-primary button_space"/>
                 <select class="col" id="selections" name="selections">
-                    <option style="color:royalblue;">blue</option>
+                    <option class="royalblue">blue</option>
                 </select>
-                <input type="button" id="set_operator" style="margin:0.1%;" value="perform" class="col btn btn-sm btn-primary"/>
+                <input type="button" id="set_operator" value="perform" class="col btn btn-sm btn-primary button_space"/>
                 <select class="col" id="operator_list" name="operator_list">
                     <option value="intersection">AND</option>
                     <option value="union">OR</option>
@@ -30,20 +32,20 @@
                     <option value="difference">MINUS (difference)</option>
                 </select>
                 <select class="col" id="selections2" name="selections2"></select>
-                <input type="button" id="reset_all" style="margin:0.1%;" value="reset" class="col btn btn-sm btn-primary"/>
+                <input type="button" id="reset_all" value="reset" class="col btn btn-sm btn-primary button_space"/>
             </div>
         </div>
-        <div class="col-sm" style="overflow-x: hidden; overflow-y: auto; width:50%; height:100%; "> <!-- outputs (window.scores, tsne reduction, detected objects) -->
+        <div class="col-sm x_halved y_scrollable" > <!-- outputs (window.scores, tsne reduction, detected objects) -->
             <label class="row">Inputs:</label>
             <input type="text" id="query_input" class="row form-control"/>
             <div class="row">
-                <input type="button" id="text_search_button" style="margin:0.1%;" value="Text-based search" class="btn btn-sm btn-primary"/>
-                <input type="button" id="object_detection_button" style="margin:0.1%;" value="Object detection" class="btn btn-sm btn-secondary" />
-                <input type="button" id="depthmap_computation_button" style="margin:0.1%;" value="Depth estimation" class="btn btn-sm btn-secondary" />
+                <input type="button" id="text_search_button" value="Text-based search" class="btn btn-sm btn-primary button_space"/>
+                <input type="button" id="object_detection_button" value="Object detection" class="btn btn-sm btn-secondary button_space" />
+                <input type="button" id="depthmap_computation_button" value="Depth estimation" class="btn btn-sm btn-secondary button_space" />
             </div>
             <div class="row">
-                <input type="button" id="image_search_button" style="margin:0.1%;" value="Crop-image-based search" class="btn btn-sm btn-primary"/>
-                <input type="button" id="toggle_crop" style="margin:0.1%;" value="toggle cropping" class="btn btn-sm btn-secondary" />
+                <input type="button" id="image_search_button" value="Crop-image-based search" class="btn btn-sm btn-primary button_space"/>
+                <input type="button" id="toggle_crop" value="toggle cropping" class="btn btn-sm btn-secondary button_space" />
             </div>
             <div class="row">
                 <label class="col text-left" id="crop_label">Cropped area: </label>
@@ -52,20 +54,21 @@
                 <canvas class="text-center" id="crop"></canvas>
             </div>
             <label class="row">Outputs:</label>
-            <input type="button" id="toggle_obj" style="width:100%;" value="▲ Detected objects" class="row btn btn-sm btn-info"/>
+            <input type="button" id="toggle_obj" value="▲ Detected objects" class="row btn btn-sm btn-info x_adaptable"/>
             <div class="row" id="obj_div">
-                <canvas id="obj_plot" style="display:block; width:100%;"></canvas>
+                <canvas id="obj_plot"></canvas>
             </div>
-            <input type="button" id="toggle_scores" style="width:100%;" value="▲ Similarity scores chart" class="row btn btn-sm btn-info"/>
-            <div class="row justify-content-center" style="width:100%;" id="score_div">
-                <canvas id="score_plot" style="display:block; width:100%;"></canvas>
+            <input type="button" id="toggle_scores" value="▲ Similarity scores chart" class="row btn btn-sm btn-info x_adaptable"/>
+            <div class="row justify-content-center x_adaptable" id="score_div">
+                <canvas id="score_plot"></canvas>
                 <div class="row">
-                    <input type="button" id="select_threshold" value="select threshold" style="margin:0.1%;" class="col-sm btn btn-sm btn-secondary"/>
-                    <input type="button" id="reset_score_plot" value="reset" style="margin:0.1%;" class="col-sm btn btn-sm btn-secondary"/>
+                    <input type="button" id="select_threshold" value="select threshold" class="col-sm btn btn-sm btn-secondary button_space"/>
+                    <input type="button" id="reset_score_plot" value="reset" class="col-sm btn btn-sm btn-secondary button_space"/>
                 </div>
             </div>  
-            <input type="button" id="toggle_reduction" style="width:100%;" value="▲ Video embeddings scatter plot in reduced embedding space" class="row btn btn-sm btn-info"/>
-            <div class="row" id="reduction_div" width="100%">
+            <input type="button" id="toggle_reduction" value="▲ Video frames distribution" class="x_adaptable row btn btn-sm btn-info"/>
+            <div class="row" id="reduction_div">
+
                 <div class="row">
                     <div class="col-sm justify-content-center">
                         <input type="radio" name="select_reduction_method" value="tsne" checked />
@@ -80,7 +83,7 @@
                         <label>umap</label>
                     </div>
                 </div>
-                <canvas class="row" id="reduction_plot" style="display:block; width:100%;" ></canvas>
+                <canvas class="row" width="1000px" id="reduction_plot"></canvas>
                 <div class="row justify-content-center">
                     <canvas class="text-center" id="reduction_color_map" height="0px"></canvas>
                 </div>
@@ -103,19 +106,22 @@
                     </div>
                 </div>
                 <div class="row">
-                    <input type="button" id="select_dots" value="navigate/select" style="margin:0.1%;" class="col-sm btn btn-sm btn-secondary"/>
-                    <input type="button" id="reset_reduction_plot" value="reset" style="margin:0.1%;" class="col-sm btn btn-sm btn-secondary"/>
+                    <input type="button" id="select_dots" value="navigate/select" class="col-sm btn btn-sm btn-secondary button_space"/>
+                    <input type="button" id="reset_reduction_plot" value="reset" class="col-sm btn btn-sm btn-secondary button_space"/>
+                </div>
+                <div id="cluster_frame_div">
+                    <img src="" alt="cluster -1" id="cluster_frame" />
                 </div>
             </div>
-            <input type="button" id="toggle_depth" style="width:100%;" value="▲ Depth map" class="row btn btn-sm btn-info"/>
+            <input type="button" id="toggle_depth" value="▲ Depth map" class="row btn btn-sm btn-info x_adaptable"/>
             <div class="row" id="depth_div">
-                <canvas class="row" style="width:100%; " id="depth_video"></canvas>
+                <canvas class="row x_adaptable" id="depth_video"></canvas>
             </div>
         </div>
     </div>
 </div>
 <!--global variables script-->
-<script type='text/javascript' > 
+<script type="text/javascript" > 
     //currently used video
     window.current_video = "";
 
@@ -148,10 +154,10 @@
     window.selected_points = [[]];
     window.current_selection = 0;
     const SELECTION_COLORS = [ 
-        {red: 65, green: 105, blue: 255}, 
-        {red: 178, green: 34, blue: 34}, 
-        {red: 225, green: 185, blue: 65}, 
-        {red: 34, green: 139, blue: 34}
+        {red: 65, green: 105, blue: 255}, //royalblue
+        {red: 178, green: 34, blue: 34},  //brickred
+        {red: 225, green: 185, blue: 65}, //honeyyellow
+        {red: 34, green: 139, blue: 34} //forestgreen
     ];
 
     //query result slot
@@ -162,11 +168,6 @@
     //dimension reduction stuff
     window.old_reduction = "tsne";
     window.displayed_reduction = null;
-    window.reduction_tree = null;
-    window.reduction_min_x = Infinity;
-    window.reduction_max_x = -Infinity;
-    window.reduction_min_y = Infinity;
-    window.reduction_max_y = -Infinity;
 
     window.tsne_reduction = null;
     window.pca_reduction = null;
@@ -175,17 +176,22 @@
     window.tsne_clusters = null;
     window.pca_clusters = null;
     window.umap_clusters = null;
-</script>
 
+    window.tsne_cluster_frames = null;
+    window.pca_cluster_frames = null;
+    window.umap_cluster_frames = null;
+  
+</script>
 <!--main script-->
-<script src="main.js"></script>
-<script src="video_selection.js"></script>
-<script src="similarity_scores_plot.js"></script>
-<script src="crop_script.js"></script>
-<script src="reduction_plot.js"></script>
-<script src="obj_detec_plot.js"></script>
-<script src="depth_script.js"></script>
-<script src="timeline.js"></script>
+<script defer src="main.js"></script>
+<script defer src="video_selection.js"></script>
+<script defer src="similarity_scores_plot.js"></script>
+<script defer src="crop_script.js"></script>
+<script defer src="reduction_plot.js"></script>
+<script defer src="obj_detec_plot.js"></script>
+<script defer src="depth_script.js"></script>
+<script defer src="timeline.js"></script>
+
 
 </body>
 </html>

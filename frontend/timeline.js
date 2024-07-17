@@ -44,7 +44,7 @@ let plot_timestamps = (max_index, fps, svg) => {
         nb_markers = max_index / fps / unit;
         ++i;
     }
-    const y = plot_height * 0.9;
+    const y = plot_height * 0.98;
 
     //plot markers
     for (let i = 0;i < nb_markers;++i) {
@@ -61,7 +61,7 @@ let plot_timestamps = (max_index, fps, svg) => {
         //write timestamp
         ctx.fillStyle = "lightgray";
         ctx.font = "10px arial";
-        ctx.fillText(`${Math.trunc((i * unit) / 60)}:${(i * unit) % 60}`, x - 10, plot_height * 0.98);
+        ctx.fillText(`${Math.trunc((i * unit) / 60)}:${(i * unit) % 60}`, x - 10, y);
     }
 };
 
@@ -166,7 +166,7 @@ timeline.addEventListener("keydown", async (event) => {
         case "ArrowUp":
         case "KeyD":
         case "KeyS":
-            window.current_index = Math.min(window.current_index + 1, window.max_index);
+            window.current_index = Math.min(window.current_index + 1, window.max_index - 1);
             break;
         case "default":
             return;
@@ -229,7 +229,7 @@ new_selection.addEventListener("click", () => {
     selections.add(name_option);
     selections.selectedIndex = window.current_selection;
 
-    selected_tsne_dots = window.selected_points[window.current_selection];
+    selected_reduction_dots = window.selected_points[window.current_selection];
     selected_score_spikes = [];
 
     update_selection2_list();
@@ -309,7 +309,7 @@ selections.addEventListener("change", () => {
 
     //FOR NOW, when the user changes queries in timeline, the old selected points are all put in the tsne area
     //modifying the tsne selection modifies all the selection, modifying the selected score spikes triggers a union
-    selected_tsne_dots = window.selected_points[window.current_selection];
+    selected_reduction_dots = window.selected_points[window.current_selection];
     selected_score_spikes = [];
     
     update_selection2_list();

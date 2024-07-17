@@ -1,10 +1,14 @@
-/************************/
+/***********************/
 /*variables declaration*/
-/************************/
+/***********************/
+//to keep space between plot and canvas boundaries (reduction plots)
+let reduction_plot_offset_x;
+let reduction_plot_offset_y = 20;
 
 //document components
 let text_search_button = document.getElementById("text_search_button");
-let image_search_buttonmage = document.getElementById("image_search_button");
+let image_search_button = document.getElementById("image_search_button");
+
 let object_detection_button = document.getElementById("object_detection_button");
 let depthEstimate = document.getElementById("depthmap_computation_button");
 
@@ -27,6 +31,7 @@ toggle_reduction.style.display = "none";
 toggle_depth.style.display = "none";
 
 const server_url = 'http://localhost:8000';
+
 /*********************/
 /*methods declaration*/
 /*********************/
@@ -36,7 +41,7 @@ const server_url = 'http://localhost:8000';
  * @param {*} p2 another 2d point cootdinates 
  * @returns euclidian distance (power 2)
  */
-let length2 = (p1, p2) => {
+const length2 = (p1, p2) => {
     return (p1.x - p2.x) * (p1.x - p2.x) + (p1.y - p2.y) * (p1.y - p2.y);
 }
 
@@ -46,7 +51,7 @@ let length2 = (p1, p2) => {
  * @param {*} point coordinates (dot center)
  * @param {*} radius dot radius
  */
-let fill_circle = (ctx, point, radius) => {
+const fill_circle = (ctx, point, radius) => {
     ctx.beginPath();
     ctx.ellipse(point.x, point.y, radius, radius, 0, 0, 2 * Math.PI);
     ctx.fill();
@@ -63,7 +68,7 @@ let fill_circle = (ctx, point, radius) => {
  * @param {*} line_width line width of the line marker
  * @param {*} svg canvas where the line is drawn
  */
-let plot_marker = (current_index, max, offset_left, offset_right, offset_y, color, line_width, svg) => {
+const plot_marker = (current_index, max, offset_left, offset_right, offset_y, color, line_width, svg) => {
     let plot_width = svg.width;
     let plot_height = svg.height;
     let ctx = svg.getContext("2d");
@@ -84,7 +89,7 @@ let plot_marker = (current_index, max, offset_left, offset_right, offset_y, colo
  * @param {*} offset_y top and bottom offsets to the plot in the canvas (px unit)
  * @param {*} svg canvas where the axes are drawn
  */
-let plot_axes = (offset_left, offset_right, offset_y, svg) => {
+const plot_axes = (offset_left, offset_right, offset_y, svg) => {
     let lenX = svg.width;
     let lenY = svg.height;
     let ctx = svg.getContext("2d");
@@ -129,7 +134,7 @@ let plot_axes = (offset_left, offset_right, offset_y, svg) => {
  * draw video frame in the dedicated video canvas
  * @param {*} image_url video's current frame
  */
-let update_video = (image_url) => {
+const update_video = (image_url) => {
     // Set the image source to the created URL
     window.current_frame.src = image_url;
 
@@ -162,7 +167,9 @@ let update_video = (image_url) => {
  * @param {*} frame_index currently visualised video frame's index
  */
 let update_scores = (frame_index) => {
-    if (window.current_index != frame_index) { window.current_index = frame_index; }
+    if (window.current_index != frame_index) { 
+      window.current_index = frame_index; 
+    }
     // Update plot
     plot_timeline(frame_index, window.max_index, window.fps);
     plot_objects(frame_index);
@@ -199,11 +206,12 @@ window.addEventListener("resize", () => {
     //update components' relative sizes
     let score_plot = document.getElementById("score_plot");
     score_plot.width = score_plot.offsetWidth;
-    score_plot.height = score_plot.width * 0.5;
+    score_plot.height = score_plot.width * 0.4;
 
-    let tsne_plot = document.getElementById("reduction_plot");
-    tsne_plot.width = tsne_plot.offsetWidth;
-    tsne_plot.height = tsne_plot.width;
+    let reduction_plot = document.getElementById("reduction_plot");
+    reduction_plot.width = reduction_plot.offsetWidth;
+    reduction_plot.height = reduction_plot.width * 0.7;
+    reduction_plot_offset_x = reduction_plot.width * 0.15;
 
     let obj_plot = document.getElementById("obj_plot");
     obj_plot.width = obj_plot.offsetWidth;
@@ -255,13 +263,23 @@ let update_frame_index_onclick = async (svg, offset_left, offset_right, offset_y
     catch (error) {
         console.error("Error getting frame ", frame_index, " of the video: ", error);
     }
-    
 }
 
 toggle_crop.addEventListener("click", () => {
     let crop = document.getElementById("crop");
     let crop_label = document.getElementById("crop_label");
     if (window.is_crop_visible == false) {
+        //update crop square to be a 10th of the image in the center
+        const video = document.getElementById("video");
+        let width = video.width;
+        let height = video.height;
+        
+        let step_w = width * 0.05;
+        let step_h = height * 0.05;
+
+        //window.crop_top_left = { x: width / 2 - step_w, y: height / 2 - step_h };
+        //window.crop_bot_right = { x: width / 2 + step_w, y: height / 2 + step_h };
+
         window.is_crop_visible = true;
         crop.style.display = "block";
         crop_label.style.display = "block";
@@ -285,7 +303,7 @@ toggle_obj.addEventListener("click", () => {
         obj_plot.style.display = "block";
         obj_plot.width = obj_plot.offsetWidth;
         obj_plot.height = obj_plot.width * 0.7;
-
+        
         plot_objects(window.current_index);
     } else {
         x.style.display = "none";
@@ -302,10 +320,11 @@ toggle_scores.addEventListener("click", () => {
         let score_plot = document.getElementById("score_plot");
         score_plot.style.display = "block";
         score_plot.width = score_plot.offsetWidth;
-        score_plot.height = score_plot.width * 0.5;
+        score_plot.height = score_plot.width * 0.4;
 
         plot_score_curve(window.current_index);
-    } else {
+    } 
+    else {
         x.style.display = "none";
         toggle_scores.value = "▲ Similarity scores chart";
     }
@@ -315,27 +334,34 @@ toggle_reduction.addEventListener("click", () => {
     let x = document.getElementById("reduction_div");
     if (x.style.display === "none") {
         x.style.display = "block";
-        toggle_reduction.value = "▼ Video embeddings scatter plot in reduced embedding space";
+        toggle_reduction.value = "▼ Video frames distribution";
 
-        let tsne_plot = document.getElementById("reduction_plot");
-        tsne_plot.style.display = "block";
-        tsne_plot.width = tsne_plot.offsetWidth;
-        tsne_plot.height = tsne_plot.width;
+        let reduction_plot = document.getElementById("reduction_plot");
+        reduction_plot.style.display = "block";
+        reduction_plot.width = reduction_plot.offsetWidth;
+        reduction_plot.height = reduction_plot.width * 0.7;
+        reduction_plot_offset_x = reduction_plot.width * 0.15;
 
-        plot_dimension_reduction(window.current_index);
-    } else {
+        let step = reduction_plot.height * 0.05;
+
+        window.selection_top_left = { x: reduction_plot.width / 2 - step, y: reduction_plot.height / 2 - step };
+        window.selection_bot_right = { x: reduction_plot.width / 2 + step, y: reduction_plot.height / 2 + step };
+
+        plot_reduction(window.current_index);
+    } 
+    else {
         x.style.display = "none";
-        toggle_reduction.value = "▲ Video embeddings scatter plot in reduced embedding space";
+        toggle_reduction.value = "▲ Video frames distribution";
     }
 });
 
-toggle_depth.addEventListener("click", async () => {
+toggle_depth.addEventListener("click", () => {
     let depth_div = document.getElementById("depth_div");
     if (depth_div.style.display == "none") {
         depth_div.style.display = "block";
         toggle_depth.value = "▼ Depth map";
         try {
-            await update_depth_video(window.current_index);
+            update_depth_video(window.current_index);
         }
         catch (error) {
             console.error("Error updating the depth video: ", error);
@@ -359,6 +385,8 @@ text_search_button.addEventListener('click', async () => {
         const response = await fetch(`${server_url}/search?query=${inputValue}`);
         const body = await response.json();
 
+        console.log(body);
+
         //only keep scores and tsne reduction values
         window.scores = body['scores'].map(function(value,index) { return value[1]; });
 
@@ -370,27 +398,53 @@ text_search_button.addEventListener('click', async () => {
         window.pca_clusters = body['pca_clusters'];
         window.umap_clusters = body['umap_clusters'];
         
-        window.displayed_reduction = window.tsne_reduction;
-        window.old_reduction = window.tsne_reduction;
+        let tsne_cluster_frames = [];
+        let pca_cluster_frames = [];
+        let umap_cluster_frames = [];
 
-        // Get min/max to normalize reduction values 
-        window.reduction_min_x = window.displayed_reduction[0]["x"];
-        window.reduction_max_x = window.displayed_reduction[0]["x"];
-        window.reduction_min_y = window.displayed_reduction[0]["y"];
-        window.reduction_max_y = window.displayed_reduction[0]["y"];
+        //fetching frames corresponding to each cluster's centroid for each reduction algorithm
+        let cluster_frames = body['tsne_cluster_frames'];
+        for(let i = 0;i < cluster_frames.length;++i) {
+            let name_processed = window.current_video.split(".")[0]; 
+            const cf_response = await fetch(`${server_url}/image/${name_processed}/${cluster_frames[i]["centroid"]}.png`);
+            const cf_blob = await cf_response.blob();
+            const cf_url = URL.createObjectURL(cf_blob);
 
-        for (let i = 1; i < window.displayed_reduction.length; ++i) {
-            window.reduction_min_x = Math.min(window.reduction_min_x, window.displayed_reduction[i]["x"]);
-            window.reduction_max_x = Math.max(window.reduction_max_x, window.displayed_reduction[i]["x"]);
-            window.reduction_min_y = Math.min(window.reduction_min_y, window.displayed_reduction[i]["y"]);
-            window.reduction_max_y = Math.max(window.reduction_max_y, window.displayed_reduction[i]["y"]);
+            tsne_cluster_frames.push([cluster_frames[i]["centroid"], cf_url]);
         }
 
-        console.log(body);
+        cluster_frames = body['pca_cluster_frames'];
+        for(let i = 0;i < cluster_frames.length;++i) {
+            let name_processed = window.current_video.split(".")[0]; 
+            const cf_response = await fetch(`${server_url}/image/${name_processed}/${cluster_frames[i]["centroid"]}.png`);
+            const cf_blob = await cf_response.blob();
+            const cf_url = URL.createObjectURL(cf_blob);
 
+            pca_cluster_frames.push([cluster_frames[i]["centroid"], cf_url]);
+        }
+
+        cluster_frames = body['umap_cluster_frames'];
+        for(let i = 0;i < cluster_frames.length;++i) {
+            let name_processed = window.current_video.split(".")[0]; 
+            const cf_response = await fetch(`${server_url}/image/${name_processed}/${cluster_frames[i]["centroid"]}.png`);
+            const cf_blob = await cf_response.blob();
+            const cf_url = URL.createObjectURL(cf_blob);
+
+            umap_cluster_frames.push([cluster_frames[i]["centroid"], cf_url]);
+        }
+
+        window.tsne_cluster_frames = tsne_cluster_frames;
+        window.pca_cluster_frames = pca_cluster_frames;
+        window.umap_cluster_frames = umap_cluster_frames;
+
+        //set default displayed reduction algorithm
+        window.displayed_reduction = window.tsne_reduction;
+        window.displayed_reduction = window.tsne_reduction;
+        
         //adjust the max value
         window.max_index = window.scores.length;
-        
+
+        //fetching first video frame
         let name_processed = window.current_video.split(".")[0]; 
         const imgresponse = await fetch(`${server_url}/image/${name_processed}/${window.current_index}.png`);
         const blob = await imgresponse.blob();
@@ -404,11 +458,7 @@ text_search_button.addEventListener('click', async () => {
         toggle_scores.style.display = "block";
         toggle_reduction.style.display = "block";
         score_plot.addEventListener("click", (event) => update_frame_index_onclick(score_plot, 
-                                                        score_plot_offset_left,
-                                                        score_plot_offset_right,
-                                                        score_plot_offset_y,
-                                                        window.max_index,
-                                                        event));
+            score_plot_offset_left, score_plot_offset_right, score_plot_offset_y, window.max_index, event));
 
         //update the curve plot
         update_scores(window.current_index);
@@ -418,8 +468,8 @@ text_search_button.addEventListener('click', async () => {
     }
 });
 
-//Image-based search, needs the cropped image to be defined (hover over the 
-//video) and expecting an array of window.scores plus a reduction array from the server
+/*Image-based search, needs the cropped image to be defined (hover over the video) 
+and expecting an array of window.scores plus a reduction array from the server*/
 image_search_button.addEventListener('click', async () => {
     try {
         let score_plot = document.getElementById("score_plot");
@@ -444,19 +494,6 @@ image_search_button.addEventListener('click', async () => {
         window.displayed_reduction = window.tsne_reduction;
         window.old_reduction = window.tsne_reduction;
         
-        // Get min/max to normalize reduction values 
-        window.reduction_min_x = window.displayed_reduction[0]["x"];
-        window.reduction_max_x = window.displayed_reduction[0]["x"];
-        window.reduction_min_y = window.displayed_reduction[0]["y"];
-        window.reduction_max_y = window.displayed_reduction[0]["y"];
-
-        for (let i = 1; i < window.displayed_reduction.length; ++i) {
-            window.reduction_min_x = Math.min(window.reduction_min_x, window.displayed_reduction[i]["x"]);
-            window.reduction_max_x = Math.max(window.reduction_max_x, window.displayed_reduction[i]["x"]);
-            window.reduction_min_y = Math.min(window.reduction_min_y, window.displayed_reduction[i]["y"]);
-            window.reduction_max_y = Math.max(window.reduction_max_y, window.displayed_reduction[i]["y"]);
-        }
-        
         console.log(body);
         
         //request to update the image
@@ -473,11 +510,7 @@ image_search_button.addEventListener('click', async () => {
         toggle_scores.style.display = "block";
         toggle_reduction.style.display = "block";
         score_plot.addEventListener("click", (event) => update_frame_index_onclick(score_plot, 
-                                                            score_plot_offset_left,
-                                                            score_plot_offset_right,
-                                                            score_plot_offset_y,
-                                                            window.max_index,
-                                                            event));
+            score_plot_offset_left, score_plot_offset_right, score_plot_offset_y, window.max_index, event));
 
         //update the curve plot
         update_scores(window.current_index);

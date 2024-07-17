@@ -1,6 +1,6 @@
 //offset, to keep space between plot and canvas boundaries
-let score_plot_offset_left = 35;
-let score_plot_offset_right = 0;
+const score_plot_offset_left = 35;
+const score_plot_offset_right = 12;
 let score_plot_offset_y = 20;
 let is_thresholding = false;
 let threshold = 0.8;
@@ -81,14 +81,35 @@ let plot_score_curve = (current_index) => {
     let ctx = score_plot.getContext("2d");
     ctx.clearRect(0, 0, plot_width, plot_height);
 
-    plot_axes(score_plot_offset_left, score_plot_offset_right, score_plot_offset_y, score_plot);
+    plot_axes(score_plot_offset_left, 0, score_plot_offset_y, score_plot);
 
     // Draw scale values on y-axis
     for (let i = 0; i < 5; i += 1) {
         const yPos = plot_height - score_plot_offset_y - (i / 5) * (plot_height - 2 * score_plot_offset_y);
 
         //Math.trunc(value * 100) / 100 := a precision of 0.01
-        ctx.fillText(Math.trunc(((4 - i) * min_score / 4 + i / 4 * max_score) * 100) / 100.0, score_plot_offset_left / 4, yPos);
+        ctx.fillText(Math.trunc(((4 - i) * min_score / 4 + i / 4 * max_score) * 100) 
+            / 100.0, score_plot_offset_left / 4, yPos);
+    }
+
+    // Draw scale values on x-axis
+    //check how fine-grained the timestamp has to be and plot markers accordingly
+    let unit = 10;
+    let i = 1;
+    let nb_markers = window.max_index / window.fps / unit;
+    while (nb_markers >= 10) {
+        unit = i * 30;
+        nb_markers = window.max_index / window.fps / unit;
+        ++i;
+    }
+
+    const y = plot_height - score_plot_offset_y / 2;
+    for (let i = 0;i < nb_markers;++i) {
+        let x = score_plot_offset_left + i * unit * window.fps / window.max_index * 
+            (plot_width - score_plot_offset_left - score_plot_offset_right);
+
+        //write timestamp
+        ctx.fillText(`${Math.trunc((i * unit) / 60)}:${(i * unit) % 60}`, x - 10, y);
     }
 
     //draw the curve
@@ -99,8 +120,10 @@ let plot_score_curve = (current_index) => {
 
     // Iterate through the points
     for (let i = 1; i < scaled_scores.length; i++) {
-        let x = score_plot_offset_left + (i / (scaled_scores.length - 1)) * (plot_width - score_plot_offset_right - score_plot_offset_left);
-        let y = plot_height - score_plot_offset_y - scaled_scores[i] * (plot_height - 2 * score_plot_offset_y);
+        let x = score_plot_offset_left + (i / (scaled_scores.length - 1)) * 
+            (plot_width - score_plot_offset_right - score_plot_offset_left);
+        let y = plot_height - score_plot_offset_y - scaled_scores[i] * 
+            (plot_height - 2 * score_plot_offset_y);
 
         // Start a new path segment with the new color
         currentPath = new Path2D();
@@ -115,10 +138,13 @@ let plot_score_curve = (current_index) => {
     }
 
     if (is_thresholding) {
-        draw_selector(threshold, score_plot_offset_left, score_plot_offset_right, score_plot_offset_y, score_plot);
+        draw_selector(threshold, score_plot_offset_left, score_plot_offset_right,
+            score_plot_offset_y, score_plot);
     }
     else {
-        plot_marker(current_index, window.scores.length, score_plot_offset_left, score_plot_offset_right, score_plot_offset_y, window.EMPHASIS_COLOR, 1, score_plot);
+        plot_marker(current_index, window.scores.length, score_plot_offset_left, 
+            score_plot_offset_right, score_plot_offset_y, window.EMPHASIS_COLOR, 
+            1, score_plot);
     }
     
 };

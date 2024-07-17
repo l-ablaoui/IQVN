@@ -1,7 +1,11 @@
 /*variables declaration*/
+//to keep space between plot and canvas boundaries (reduction plots)
+let reduction_plot_offset_x;
+let reduction_plot_offset_y = 20;
+
 //document components
 let text_search_button = document.getElementById("text_search_button");
-let image_search_buttonmage = document.getElementById("image_search_button");
+let image_search_button = document.getElementById("image_search_button");
 let object_detection_button = document.getElementById("object_detection_button");
 let depthEstimate = document.getElementById("depthmap_computation_button");
 
@@ -26,14 +30,14 @@ toggle_depth.style.display = "none";
 const server_url = 'http://localhost:8000';
 
 /*methods declaration*/
-let fill_circle = (ctx, point, radius) => {
+const fill_circle = (ctx, point, radius) => {
     ctx.beginPath();
     ctx.ellipse(point.x, point.y, radius, radius, 0, 0, 2 * Math.PI);
     ctx.fill();
 }
 
 //Plot the vertical line that indicates the current frame on the curve
-let plot_marker = (current_index, max, offset_left, offset_right, offset_y, color, line_width, svg) => {
+const plot_marker = (current_index, max, offset_left, offset_right, offset_y, color, line_width, svg) => {
     let plot_width = svg.width;
     let plot_height = svg.height;
     let ctx = svg.getContext("2d");
@@ -47,7 +51,7 @@ let plot_marker = (current_index, max, offset_left, offset_right, offset_y, colo
     ctx.stroke();
 };
 
-let plot_axes = (offset_left, offset_right, offset_y, svg) => {
+const plot_axes = (offset_left, offset_right, offset_y, svg) => {
     let lenX = svg.width;
     let lenY = svg.height;
     let ctx = svg.getContext("2d");
@@ -89,7 +93,7 @@ let plot_axes = (offset_left, offset_right, offset_y, svg) => {
 };
 
 //update video component
-let update_video = (image_url) => {
+const update_video = (image_url) => {
     // Set the image source to the created URL
     window.current_frame.src = image_url;
 
@@ -119,7 +123,9 @@ let update_video = (image_url) => {
 
 // Update score curve and vertical line position
 let update_scores = (frame_index) => {
-    if (window.current_index != frame_index) { window.current_index = frame_index; }
+    if (window.current_index != frame_index) { 
+        window.current_index = frame_index;
+    }
     // Update plot
     plot_timeline(frame_index, window.max_index, window.fps);
     plot_objects(frame_index);
@@ -139,7 +145,8 @@ window.addEventListener("resize", () => {
 
     let reduction_plot = document.getElementById("reduction_plot");
     reduction_plot.width = reduction_plot.offsetWidth;
-    reduction_plot.height = reduction_plot.width;
+    reduction_plot.height = reduction_plot.width * 0.7;
+    reduction_plot_offset_x = reduction_plot.width * 0.15;
 
     let obj_plot = document.getElementById("obj_plot");
     obj_plot.width = obj_plot.offsetWidth;
@@ -155,17 +162,17 @@ window.addEventListener("resize", () => {
 });
 
 let update_frame_index_onclick = async (svg, offset_left, offset_right, offset_y, nb_values, event) => {
-    const mouseX = event.offsetX;
-    const mouseY = event.offset_y;
+    const mouse_x = event.offsetX;
+    const mouse_y = event.offsetY;
 
     let plot_width = svg.width;
     let plot_height = svg.height;
 
     //case clicked on the offset
-    if (offset_y > mouseY || mouseY > plot_height - offset_y) { return; }
-    if (offset_left > mouseX || mouseX > plot_width - offset_right) { return; }
+    if (offset_y > mouse_y || mouse_y > plot_height - offset_y) { return; }
+    if (offset_left > mouse_x || mouse_x > plot_width - offset_right) { return; }
 
-    let frame_index = Math.trunc((mouseX - offset_left) / (plot_width - offset_right - offset_left) * (nb_values - 1));
+    let frame_index = Math.trunc((mouse_x - offset_left) / (plot_width - offset_right - offset_left) * (nb_values - 1));
 
     //fetch current frame
     let name_processed = window.current_video.split(".")[0]; 
@@ -182,6 +189,17 @@ toggle_crop.addEventListener("click", () => {
     let crop = document.getElementById("crop");
     let crop_label = document.getElementById("crop_label");
     if (window.is_crop_visible == false) {
+        //update crop square to be a 10th of the image in the center
+        const video = document.getElementById("video");
+        let width = video.width;
+        let height = video.height;
+        
+        let step_w = width * 0.05;
+        let step_h = height * 0.05;
+
+        //window.crop_top_left = { x: width / 2 - step_w, y: height / 2 - step_h };
+       // window.crop_bot_right = { x: width / 2 + step_w, y: height / 2 + step_h };
+
         window.is_crop_visible = true;
         crop.style.display = "block";
         crop_label.style.display = "block";
@@ -205,8 +223,9 @@ toggle_obj.addEventListener("click", () => {
         obj_plot.style.display = "block";
         obj_plot.width = obj_plot.offsetWidth;
         obj_plot.height = obj_plot.width * 0.7;
-
+        
         plot_objects(window.current_index);
+        
     } else {
         x.style.display = "none";
         toggle_obj.value = "▲ Detected objects";
@@ -225,7 +244,8 @@ toggle_scores.addEventListener("click", () => {
         score_plot.height = score_plot.width * 0.4;
 
         plot_score_curve(window.current_index);
-    } else {
+    } 
+    else {
         x.style.display = "none";
         toggle_scores.value = "▲ Similarity scores chart";
     }
@@ -235,27 +255,34 @@ toggle_reduction.addEventListener("click", () => {
     let x = document.getElementById("reduction_div");
     if (x.style.display === "none") {
         x.style.display = "block";
-        toggle_reduction.value = "▼ Video embeddings scatter plot in reduced embedding space";
+        toggle_reduction.value = "▼ Video frames distribution";
 
         let reduction_plot = document.getElementById("reduction_plot");
         reduction_plot.style.display = "block";
         reduction_plot.width = reduction_plot.offsetWidth;
-        reduction_plot.height = reduction_plot.width;
+        reduction_plot.height = reduction_plot.width * 0.7;
+        reduction_plot_offset_x = reduction_plot.width * 0.15;
+
+        let step = reduction_plot.height * 0.05;
+
+        window.selection_top_left = { x: reduction_plot.width / 2 - step, y: reduction_plot.height / 2 - step };
+        window.selection_bot_right = { x: reduction_plot.width / 2 + step, y: reduction_plot.height / 2 + step };
 
         plot_reduction(window.current_index);
-    } else {
+    } 
+    else {
         x.style.display = "none";
-        toggle_reduction.value = "▲ Video embeddings scatter plot in reduced embedding space";
+        toggle_reduction.value = "▲ Video frames distribution";
     }
 });
 
-toggle_depth.addEventListener("click", async () => {
+toggle_depth.addEventListener("click", () => {
     let depth_div = document.getElementById("depth_div");
     if (depth_div.style.display == "none") {
         depth_div.style.display = "block";
         toggle_depth.value = "▼ Depth map";
         
-        await update_depth_video(window.current_index);
+        update_depth_video(window.current_index);
     } 
     else {
         toggle_depth.value = "▲ Depth map";
@@ -274,6 +301,7 @@ text_search_button.addEventListener('click', async () => {
         //request similarity scores from the server
         const response = await fetch(`${server_url}/search?query=${inputValue}`);
         const body = await response.json();
+        console.log(body);
 
         //only keep scores and tsne reduction values
         window.scores = body['scores'].map(function(value,index) { return value[1]; });
@@ -286,13 +314,52 @@ text_search_button.addEventListener('click', async () => {
         window.pca_clusters = body['pca_clusters'];
         window.umap_clusters = body['umap_clusters'];
         
-        window.displayed_reduction = window.tsne_reduction;
+        let tsne_cluster_frames = [];
+        let pca_cluster_frames = [];
+        let umap_cluster_frames = [];
 
-        console.log(body);
+        //fetching frames corresponding to each cluster's centroid for each reduction algorithm
+        let cluster_frames = body['tsne_cluster_frames'];
+        for(let i = 0;i < cluster_frames.length;++i) {
+            let name_processed = window.current_video.split(".")[0]; 
+            const cf_response = await fetch(`${server_url}/image/${name_processed}/${cluster_frames[i]["centroid"]}.png`);
+            const cf_blob = await cf_response.blob();
+            const cf_url = URL.createObjectURL(cf_blob);
+
+            tsne_cluster_frames.push([cluster_frames[i]["centroid"], cf_url]);
+        }
+
+        cluster_frames = body['pca_cluster_frames'];
+        for(let i = 0;i < cluster_frames.length;++i) {
+            let name_processed = window.current_video.split(".")[0]; 
+            const cf_response = await fetch(`${server_url}/image/${name_processed}/${cluster_frames[i]["centroid"]}.png`);
+            const cf_blob = await cf_response.blob();
+            const cf_url = URL.createObjectURL(cf_blob);
+
+            pca_cluster_frames.push([cluster_frames[i]["centroid"], cf_url]);
+        }
+
+        cluster_frames = body['umap_cluster_frames'];
+        for(let i = 0;i < cluster_frames.length;++i) {
+            let name_processed = window.current_video.split(".")[0]; 
+            const cf_response = await fetch(`${server_url}/image/${name_processed}/${cluster_frames[i]["centroid"]}.png`);
+            const cf_blob = await cf_response.blob();
+            const cf_url = URL.createObjectURL(cf_blob);
+
+            umap_cluster_frames.push([cluster_frames[i]["centroid"], cf_url]);
+        }
+
+        window.tsne_cluster_frames = tsne_cluster_frames;
+        window.pca_cluster_frames = pca_cluster_frames;
+        window.umap_cluster_frames = umap_cluster_frames;
+
+        //set default displayed reduction algorithm
+        window.displayed_reduction = window.tsne_reduction;
 
         //adjust the max value
         window.max_index = window.scores.length;
-        
+
+        //fetching first video frame
         let name_processed = window.current_video.split(".")[0]; 
         const imgresponse = await fetch(`${server_url}/image/${name_processed}/${window.current_index}.png`);
         const blob = await imgresponse.blob();
@@ -306,11 +373,7 @@ text_search_button.addEventListener('click', async () => {
         toggle_scores.style.display = "block";
         toggle_reduction.style.display = "block";
         score_plot.addEventListener("click", (event) => update_frame_index_onclick(score_plot, 
-                                                        score_plot_offset_left,
-                                                        score_plot_offset_right,
-                                                        score_plot_offset_y,
-                                                        window.max_index,
-                                                        event));
+            score_plot_offset_left, score_plot_offset_right, score_plot_offset_y, window.max_index, event));
 
         //update the curve plot
         update_scores(window.current_index);
@@ -320,8 +383,8 @@ text_search_button.addEventListener('click', async () => {
     }
 });
 
-//Image-based search, needs the cropped image to be defined (hover over the 
-//video) and expecting an array of window.scores plus a reduction array from the server
+/*Image-based search, needs the cropped image to be defined (hover over the video) 
+and expecting an array of window.scores plus a reduction array from the server*/
 image_search_button.addEventListener('click', async () => {
     try {
         let score_plot = document.getElementById("score_plot");

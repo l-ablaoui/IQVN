@@ -65,7 +65,7 @@
                     <input type="button" id="reset_score_plot" value="reset" class="col-sm btn btn-sm btn-secondary button_space"/>
                 </div>
             </div>  
-            <input type="button" id="toggle_reduction" value="▲ Video embeddings scatter plot in reduced embedding space" class="x_adaptable row btn btn-sm btn-info"/>
+            <input type="button" id="toggle_reduction" value="▲ Video frames distribution" class="x_adaptable row btn btn-sm btn-info"/>
             <div class="row" id="reduction_div">
                 <div class="row">
                     <div class="col-sm justify-content-center">
@@ -119,7 +119,7 @@
     </div>
 </div>
 <!--global variables script-->
-<script type='text/javascript' > 
+<script type="text/javascript" > 
     //currently used video
     window.current_video = "";
 
@@ -166,22 +166,28 @@
     //dimension reduction stuff
     window.old_reduction = "tsne";
     window.displayed_reduction = null;
+
     window.tsne_reduction = null;
     window.pca_reduction = null;
     window.umap_reduction = null;
+
     window.tsne_clusters = null;
     window.pca_clusters = null;
     window.umap_clusters = null;
+
+    window.tsne_cluster_frames = null;
+    window.pca_cluster_frames = null;
+    window.umap_cluster_frames = null;
 </script>
 <!--main script-->
-<script src="main.js"></script>
-<script src="video_selection.js"></script>
-<script src="similarity_scores_plot.js"></script>
-<script src="crop_script.js"></script>
-<script src="reduction_plot.js"></script>
-<script src="obj_detec_plot.js"></script>
-<script src="depth_script.js"></script>
-<script src="timeline.js"></script>
+<script defer src="main.js"></script>
+<script defer src="video_selection.js"></script>
+<script defer src="similarity_scores_plot.js"></script>
+<script defer src="crop_script.js"></script>
+<script defer src="reduction_plot.js"></script>
+<script defer src="obj_detec_plot.js"></script>
+<script defer src="depth_script.js"></script>
+<script defer src="timeline.js"></script>
 
 </body>
 </html>

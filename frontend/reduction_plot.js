@@ -11,13 +11,10 @@ const reduction_zoom_speed = 0.1;
 let is_reduction_dragging = false;
 let reduction_drag_offset = { x: 0, y: 0 };
 
-//to keep space between plot and canvas boundaries
-let reduction_plot_offset_x = 20;
-let reduction_plot_offset_y = 20;
-
 //selection stuff
 let selection_state = "idle";
-let selection_center = { x: (window.selection_top_left.x + window.selection_bot_right.x) / 2, y: (window.selection_top_left.y + window.selection_bot_right.y) / 2 };
+let selection_center = { x: (window.selection_top_left.x + window.selection_bot_right.x) / 2, 
+    y: (window.selection_top_left.y + window.selection_bot_right.y) / 2 };
 let selection_mouse_down_point = selection_center;
 
 // Normalize the reduction plot coordinates
@@ -49,6 +46,120 @@ const get_reduction_plot_coordinates = (min_point, max_point, plot_dim, i) => {
     return { x, y };
 };
 
+const sort_cluster_frames = (centroids) => {
+    centroids.sort((c1, c2) => c1["x"] - c2["x"]);
+    let first_half = centroids.slice(0, centroids.length / 2).sort((c1, c2) => c1["y"] - c2["y"]);
+    let second_half = centroids.slice(centroids.length / 2, centroids.length).sort((c1, c2) => c1["y"] - c2["y"]);
+
+    for (let i = 0;i < centroids.length;++i) {
+        if (i < centroids.length / 2) {
+            centroids[i] = first_half[i];
+        }
+        else {
+            centroids[i] = second_half[i - centroids.length / 2];
+        }
+    }
+
+    return centroids;
+};
+
+const draw_cluster_frames = (color_map, min_x, min_y, max_x, max_y) => {
+    let ctx = reduction_plot.getContext("2d");
+    let plot_width = reduction_plot.width;
+    let plot_height = reduction_plot.height;
+
+    //get currently displayed reduction
+    let current_cluster_frames = (window.old_reduction == "tsne")? window.tsne_cluster_frames :
+        (window.old_reduction == "pca")? window.pca_cluster_frames: window.umap_cluster_frames;
+    if (current_cluster_frames.length < 2) { return; }
+
+    //get centroids and sort them so that each half of the images gets printed left and right
+    let centroids = [];
+    
+    current_cluster_frames.forEach((point) => {
+        let i = point[0];
+        let img_src = point[1];
+        let p = get_reduction_plot_coordinates({x: min_x, y: min_y}, {x: max_x, y: max_y}, 
+            {width: plot_width, height: plot_height}, i);
+        centroids.push({idx: i, src: img_src, x: p.x, y: p.y});
+    });
+    centroids = sort_cluster_frames(centroids);
+    
+    let l = current_cluster_frames.length / 2;
+    
+    //keep the proportions of the original frame
+    const video = document.getElementById("video");
+    const original_frame_width = video.width;
+    const original_frame_height = video.height;
+
+    let small_frame_height = plot_height / l - l * 0.5; // - l * 2 is to keep a little margin between frames
+    let small_frame_width = original_frame_width * small_frame_height / original_frame_height;
+    
+    //if the width of the frame is too much to draw on the margin, reduce it to
+    //the max the margin can take and adjust the height accordingly
+    if (small_frame_width > reduction_plot_offset_x - 10) {
+        new_small_width = reduction_plot_offset_x - 10;
+        small_frame_height = small_frame_height * new_small_width / small_frame_width;
+        small_frame_width = new_small_width;
+    }
+
+    for (let i = 0;i < l;++i) {
+        //center the image in terms of width
+        const x = reduction_plot_offset_x / 2 - small_frame_width / 2;
+        const y = i * plot_height / l;
+        const img = new Image();
+        img.src = centroids[i]["src"];
+        img.onload = () => {
+            ctx.drawImage(img, x, y, small_frame_width, small_frame_height);
+
+            // Draw border for each image
+            ctx.strokeStyle = color_map[centroids[i]["idx"]];
+            ctx.beginPath();
+            ctx.moveTo(x, y);
+            ctx.lineTo(x + small_frame_width, y);
+            ctx.lineTo(x + small_frame_width, y + small_frame_height);
+            ctx.lineTo(x, y + small_frame_height);
+            ctx.lineTo(x, y);
+            ctx.stroke();
+
+            // Draw the line from centroid to the label
+            ctx.strokeStyle = color_map[centroids[i]["idx"]];
+            ctx.beginPath();
+            ctx.moveTo(centroids[i]["x"], centroids[i]["y"]);
+            ctx.lineTo(x + small_frame_width, y + small_frame_height / 2); // Adjust to point to the center of the label
+            ctx.stroke();
+        };
+    }
+
+    if (current_cluster_frames.length % 2 != 0) { ++l; }
+    for (let i = l;i < current_cluster_frames.length;++i) {
+        const x = plot_width - reduction_plot_offset_x / 2 - small_frame_width / 2;
+        const y = (i - l) * plot_height / l;
+        const img = new Image();
+        img.src = centroids[i]["src"];
+        img.onload = () => {
+            ctx.drawImage(img, x, y, small_frame_width, small_frame_height);
+
+            // Draw border for each image
+            ctx.strokeStyle = color_map[centroids[i]["idx"]];
+            ctx.beginPath();
+            ctx.moveTo(x, y);
+            ctx.lineTo(x + small_frame_width, y);
+            ctx.lineTo(x + small_frame_width, y + small_frame_height);
+            ctx.lineTo(x, y + small_frame_height);
+            ctx.lineTo(x, y);
+            ctx.stroke();
+
+            // Draw the line from centroid to the label
+            ctx.strokeStyle = color_map[centroids[i]["idx"]];
+            ctx.beginPath();
+            ctx.moveTo(centroids[i]["x"], centroids[i]["y"]);
+            ctx.lineTo(x, y + small_frame_height / 2); // Adjust to point to the center of the label
+            ctx.stroke();
+        };
+    }
+};
+
 /*main drawing function for tsne reduced embeddings' scatter plot */
 let plot_reduction = (current_index) => {
     if (window.displayed_reduction == null) { return; }
@@ -71,6 +182,14 @@ let plot_reduction = (current_index) => {
 
     //draw the points (square shaped for now)
     for (i = 0;i < window.displayed_reduction.length;++i) {
+        if (i >= window.max_index || i > window.displayed_reduction.length) {
+                console.error("reduction plot error: loop index (", i, ") is higher",  
+                " than array length (registered: ", window.max_index, "/actual: ", 
+                window.displayed_reduction.length, ")"
+            );
+            update_scores(0);
+            return;
+        }
         //draw current frame marker last to stand out
         if (i == current_index) { continue; }
 
@@ -79,6 +198,7 @@ let plot_reduction = (current_index) => {
 
         ctx.fillStyle = color_map[i];
         dot_radius = radius_map[i];
+
         // Apply zoom/pan transformations to coordinates only and not to point radius (for visibility purposes)
         fill_circle(ctx, {x: x, y: y}, dot_radius);
     }
@@ -95,6 +215,14 @@ let plot_reduction = (current_index) => {
     ctx.stroke();
 
     if (window.is_selection) { draw_rectangle(ctx, window.selection_top_left, window.selection_bot_right); }
+
+    ctx.fillStyle = "white";
+    ctx.fillRect(0, 0, reduction_plot_offset_x - window.EMPHASIS_RADIUS, plot_height);
+
+    ctx.fillStyle = "white";
+    ctx.fillRect(plot_width - reduction_plot_offset_x + window.EMPHASIS_RADIUS, 0, reduction_plot_offset_x, plot_height);
+
+    draw_cluster_frames(color_map, min_x, min_y, max_x, max_y);
 };
 
 let generate_radius_map = (indices) => {
@@ -169,18 +297,14 @@ let generate_color_map = (current_index, cmap) => {
             let color1 = {red: 255, green: 0, blue: 0};
             let color2 = {red: 0, green: 200, blue: 0};
             for (let i = 0; i < window.displayed_reduction.length; ++i) { 
-                if (i == window.current_index) {
-                    color_map.push(window.EMPHASIS_COLOR);
-                }
-                else {
                 let factor = (window.scores[i] - min_score) / (max_score - min_score);
                 color_map.push(`rgba(${color1.red * (1 - factor) + color2.red * factor}, 
                     ${color1.green * (1 - factor) + color2.green * factor}, 
                     ${color1.blue * (1 - factor) + color2.blue * factor},
                     ${Math.sqrt(factor)}`); // the lower the score is the more transparent the color is, 
-                                            //using root square to prevent drastic behavior            
-                }
+                                            //using root square to prevent drastic behavior    
             }
+            color_map[window.current_index] = window.EMPHASIS_COLOR;
             draw_color_scale(min_score, max_score, color1, color2);
             break;
         }
@@ -288,6 +412,7 @@ let animate_reduction_transition = (old_reduction, new_reduction, duration) => {
     }
   
     animate();    
+    window.displayed_reduction = new_reduction;
 };
 
 /*selectors handling (colormap and reduction method)*/
@@ -319,8 +444,12 @@ const handle_reduction_method_change = () => {
 };
 
 // Add change event listener to each radio button
-color_radio_buttons.forEach(radio => { radio.addEventListener('change', handle_color_map_change); });
-reduction_method_buttons.forEach(radio => { radio.addEventListener('change', handle_reduction_method_change); });
+color_radio_buttons.forEach(radio => { 
+    radio.addEventListener('change', handle_color_map_change); 
+});
+reduction_method_buttons.forEach(radio => { 
+    radio.addEventListener('change', handle_reduction_method_change); 
+});
 
 /*On click handling for navigating the video frames*/
 /*compare mouse coordinates with each dot of the plot and see if it touches any, must consider the zoom/pan */
@@ -337,6 +466,12 @@ reduction_plot.addEventListener("click", async (event) => {
     let plot_width = reduction_plot.width;
     let plot_height = reduction_plot.height;
 
+    //if touching the offsets, ignore
+    if (mouse_x < reduction_plot_offset_x - window.EMPHASIS_RADIUS 
+        || mouse_x > plot_width - reduction_plot_offset_x + window.EMPHASIS_RADIUS) { 
+        return; 
+    }
+
     //get min/max to later normalize reduction values
     let { min_x, max_x, min_y, max_y } =  normalize_coordinates();
      
@@ -352,6 +487,14 @@ reduction_plot.addEventListener("click", async (event) => {
 
     for (i = 0;i < window.displayed_reduction.length;++i) {
         //get each point's coordinates after current zoom/pan
+        if (i >= window.max_index || i > window.displayed_reduction.length) {
+                console.error("onclick event error: loop index (", i, ") is higher",  
+                " than array length (registered: ", window.max_index, "/actual: ", 
+                window.displayed_reduction.length, ")"
+            );
+            update_scores(0);
+            return;
+        }
         let {x, y} = get_reduction_plot_coordinates({ x: min_x, y: min_y }, { x: max_x, y: max_y }, 
             { width: plot_width, height: plot_height}, i);
 
@@ -640,9 +783,6 @@ reset_reduction_plot.addEventListener("click", () => {
     reduction_plot.addEventListener("mousemove", zoom_pan_mouse_move);
     reduction_plot.addEventListener("wheel", zoom_pan_wheel);
 
-    reduction_plot.addEventListener("mouseout", cluster_frame_mouse_out);
-    reduction_plot.addEventListener("mousemove", cluster_frame_mouse_hover);
-
     //redraw context
     update_scores(window.current_index);
 });
@@ -658,9 +798,6 @@ toggle_selection.addEventListener("click", () => {
         reduction_plot.removeEventListener("mouseup", zoom_pan_mouse_up);
         reduction_plot.removeEventListener("mouseout", zoom_pan_mouse_up);
         reduction_plot.removeEventListener("wheel", zoom_pan_wheel);
-
-        reduction_plot.removeEventListener("mouseout", cluster_frame_mouse_out);
-        reduction_plot.removeEventListener("mousemove", cluster_frame_mouse_hover);
 
         reduction_plot.addEventListener("mousedown", selection_mouse_down);
         reduction_plot.addEventListener("mouseup", selection_mouse_up);
@@ -681,9 +818,6 @@ toggle_selection.addEventListener("click", () => {
         reduction_plot.addEventListener("mouseout", zoom_pan_mouse_up);
         reduction_plot.addEventListener("mousemove", zoom_pan_mouse_move);
         reduction_plot.addEventListener("wheel", zoom_pan_wheel);
-
-        reduction_plot.addEventListener("mouseout", cluster_frame_mouse_out);
-        reduction_plot.addEventListener("mousemove", cluster_frame_mouse_hover);
     }
     //redraw context
     plot_reduction(window.current_index);
@@ -691,71 +825,3 @@ toggle_selection.addEventListener("click", () => {
 
 /* plot hovering handle*/
 let cluster_frame_div = document.getElementById("cluster_frame_div");
-
-let cluster_frame_mouse_hover = async (event) => {
-    if (is_reduction_dragging) { return; }
-    if (window.displayed_reduction == null) { return; }
-
-    //update position
-    const mouse_x = event.offsetX;
-    const mouse_y = event.offsetY;
-
-    //get min/max to later normalize reduction values
-    let { min_x, max_x, min_y, max_y } =  normalize_coordinates();
-
-    //reduction_plot width/length
-    let plot_width = reduction_plot.width;
-    let plot_height = reduction_plot.height;
-
-    for (let i = 0;i < window.displayed_reduction.length;++i) {
-        //get center coordinates
-        let {x, y} = get_reduction_plot_coordinates({ x: min_x, y: min_y }, { x: max_x, y: max_y }, 
-            { width: plot_width, height: plot_height}, i);
-        let radius = (i == window.current_index)? 4 : 2;
-
-        //checking if the current circle is howevered
-        if ((x - mouse_x) ** 2 + (y - mouse_y) ** 2 <= radius) {
-            try {
-                //place component in the right place
-                cluster_frame_div.style.left = mouse_x + 'px';
-                cluster_frame_div.style.top = mouse_y + 'px';
-
-                //get image from server
-                let name_processed = window.current_video.split(".")[0]; 
-                const response = await fetch(`${server_url}/image/${name_processed}/${i}.png`);
-                const blob = await response.blob();
-                const image_url = URL.createObjectURL(blob);
-
-                //assign image to the component
-                let cluster_frame = document.getElementById("cluster_frame");
-                cluster_frame_div.style.display = "block";
-                cluster_frame.src = image_url;
-
-                //resize the image based on a 10th of the video's dimension
-                let video = document.getElementById("video");
-                cluster_frame.width = video.offsetWidth / 10;
-                cluster_frame.height = video.offsetHeight / 10;
-
-                //change border color depending on the current colormap
-                let color_map = generate_color_map(current_index, window.cmap);
-                cluster_frame_div.style.border = "3px solid " +  color_map[i];
-                
-                return;
-            }
-            catch (error) {
-                console.error("failed retrieving frame ", i, ": ", error);
-            }
-        }
-    }
-
-    //assuming the function is interrupted if a point is found, this code only executes if 
-    //the use howers a white space: make the square invisible
-    cluster_frame_div.style.display = "none";
-};
-
-let cluster_frame_mouse_out = () => {
-    cluster_frame_div.style.display = "none";
-};
-
-reduction_plot.addEventListener("mouseout", cluster_frame_mouse_out);
-reduction_plot.addEventListener("mousemove", cluster_frame_mouse_hover);

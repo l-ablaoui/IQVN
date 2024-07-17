@@ -14,6 +14,7 @@
             <div class="row x_adaptable">
                 <label class="label_15">Video: </label>
                 <select id="video_names_selection" name="video_names"></select>
+
             </div>
             <canvas class="row" id="video"></canvas>
             <!--tabindex makes the element focusable-->
@@ -67,6 +68,7 @@
             </div>  
             <input type="button" id="toggle_reduction" value="▲ Video frames distribution" class="x_adaptable row btn btn-sm btn-info"/>
             <div class="row" id="reduction_div">
+
                 <div class="row">
                     <div class="col-sm justify-content-center">
                         <input type="radio" name="select_reduction_method" value="tsne" checked />
@@ -131,7 +133,7 @@
     window.cmap = "default";
 
     //chart colors/sizes
-    window.REGULAR_COLOR = "gray";
+    window.REGULAR_COLOR = "rgba(128, 128, 128, 0.5)";
     window.EMPHASIS_COLOR = "red";
     window.REGULAR_RADIUS = 2.5;
     window.EMPHASIS_RADIUS = 5;
@@ -178,6 +180,7 @@
     window.tsne_cluster_frames = null;
     window.pca_cluster_frames = null;
     window.umap_cluster_frames = null;
+  
 </script>
 <!--main script-->
 <script defer src="main.js"></script>
@@ -188,6 +191,7 @@
 <script defer src="obj_detec_plot.js"></script>
 <script defer src="depth_script.js"></script>
 <script defer src="timeline.js"></script>
+
 
 </body>
 </html>

@@ -161,7 +161,7 @@ const draw_cluster_frames = (color_map, min_x, min_y, max_x, max_y) => {
 };
 
 /*main drawing function for tsne reduced embeddings' scatter plot */
-let plot_reduction = (current_index) => {
+let plot_dimension_reduction = (current_index) => {
     if (window.displayed_reduction == null) { return; }
 
     let color_map = generate_color_map(current_index, window.cmap);
@@ -281,7 +281,8 @@ let generate_color_map = (current_index, cmap) => {
         }
 
         case "score": {
-            //make sure scores exist and match the tsne reduction
+
+            //make sure scores exist and match the reduction 
             if (window.scores == null) { generate_color_map(current_index, ""); }
             if (window.scores.length != window.displayed_reduction.length) { generate_color_map(current_index, ""); }
 
@@ -289,7 +290,7 @@ let generate_color_map = (current_index, cmap) => {
             let min_score = window.scores[0];
             let max_score = window.scores[0];
 
-            for (i = 1;i < window.scores.length;++i) {
+            for (let i = 1;i < window.scores.length;++i) {
                 min_score = (min_score > window.scores[i])? window.scores[i] : min_score;
                 max_score = (max_score < window.scores[i])? window.scores[i] : max_score;
             }
@@ -319,7 +320,7 @@ let generate_color_map = (current_index, cmap) => {
             
             //get the number of clusters 
             let max_label = current_clusters[0];
-            for (i = 1;i < current_clusters.length;++i) {
+            for (let i = 1;i < current_clusters.length;++i) {
                 if (max_label < current_clusters[i]) {
                     max_label = current_clusters[i];
                 }
@@ -401,7 +402,7 @@ let animate_reduction_transition = (old_reduction, new_reduction, duration) => {
         });
         
         // Draw scatter plot with currentData
-        plot_reduction(window.current_index);
+        plot_dimension_reduction(window.current_index);
 
         if (t < 1) {
             requestAnimationFrame(animate);
@@ -425,7 +426,7 @@ const handle_color_map_change = () => {
     window.cmap = selected_value;
 
     //redraw components
-    plot_reduction(window.current_index);
+    plot_dimension_reduction(window.current_index);
 };
 
 // Function to handle the reduction algorithm change
@@ -480,6 +481,7 @@ reduction_plot.addEventListener("click", async (event) => {
         { width: plot_width, height: plot_height}, current_index);
 
     let dot_radius = 4;
+
     let dist = (mouse_x - x) * (mouse_x - x) + (mouse_y - y) * (mouse_y - y);
     if (dist <= dot_radius * dot_radius) {
         return;
@@ -552,7 +554,7 @@ let zoom_pan_wheel = (event) => {
     reduction_scale = new_scale;
 
     // Redraw the content
-    plot_reduction(window.current_index);
+    plot_dimension_reduction(window.current_index);
 };
 
 let zoom_pan_mouse_down = (event) => {
@@ -571,7 +573,7 @@ let zoom_pan_mouse_move = (event) => {
         reduction_translate.y = event.offsetY - reduction_drag_offset.y;
 
         //redraw context
-        plot_reduction(window.current_index);
+        plot_dimension_reduction(window.current_index);
     }
 };
 
@@ -651,7 +653,7 @@ let update_selected = (current_index) => {
 
         //checking if circle is in the selected area, taking into account the current zoom/pan and the big coloured dot that is the current frame embedding
         if (is_circle_in_square(window.selection_top_left, window.selection_bot_right, 
-            {x: x, y: y}, (current_index == i)? 4 : 2)) {
+            {x: x, y: y}, (current_index == i)? window.EMPHASIS_RADIUS : window.REGULAR_RADIUS)) {
             selected_reduction_dots.push(i);
         }
     }
@@ -743,12 +745,15 @@ let selection_mouse_move = (event) => {
     }
     selection_center = { x: (window.selection_top_left.x + window.selection_bot_right.x) / 2, 
         y: (window.selection_top_left.y + window.selection_bot_right.y) / 2 };
+
     selection_mouse_down_point = mouse_position;
 
     // Redraw the content
     update_selected(window.current_index);
     update_scores(window.current_index);
 }
+
+let debounced_selection_mouse_move = debounce(selection_mouse_move, 200);
 
 let selection_mouse_up = () => { 
     selection_state = "idle"; 
@@ -772,11 +777,11 @@ reset_reduction_plot.addEventListener("click", () => {
     window.is_selection = false;
     window.selected_points[window.current_selection] = [];
 
-    reduction_plot.removeEventListener("mousemove", selection_mouse_move);
+    reduction_plot.removeEventListener("mousemove", debounced_selection_mouse_move);
     reduction_plot.removeEventListener("mousedown", selection_mouse_down);
     reduction_plot.removeEventListener("mouseup", selection_mouse_up);
     reduction_plot.removeEventListener("mouseout", selection_mouse_up);
-
+    
     reduction_plot.addEventListener("mousedown", zoom_pan_mouse_down);
     reduction_plot.addEventListener("mouseup", zoom_pan_mouse_up);
     reduction_plot.addEventListener("mouseout", zoom_pan_mouse_up);
@@ -793,6 +798,7 @@ let toggle_selection = document.getElementById("select_dots");
 toggle_selection.addEventListener("click", () => {
     if (window.is_selection == false) {
         window.is_selection = true;
+
         reduction_plot.removeEventListener("mousemove", zoom_pan_mouse_move);
         reduction_plot.removeEventListener("mousedown", zoom_pan_mouse_down);
         reduction_plot.removeEventListener("mouseup", zoom_pan_mouse_up);
@@ -801,14 +807,14 @@ toggle_selection.addEventListener("click", () => {
 
         reduction_plot.addEventListener("mousedown", selection_mouse_down);
         reduction_plot.addEventListener("mouseup", selection_mouse_up);
-        reduction_plot.addEventListener("mousemove", selection_mouse_move);
+        reduction_plot.addEventListener("mousemove", debounced_selection_mouse_move);
 
         update_selected(window.current_index);
         plot_score_curve(window.current_index);
     }
     else {
         window.is_selection = false;
-        reduction_plot.removeEventListener("mousemove", selection_mouse_move);
+        reduction_plot.removeEventListener("mousemove", debounced_selection_mouse_move);
         reduction_plot.removeEventListener("mousedown", selection_mouse_down);
         reduction_plot.removeEventListener("mouseup", selection_mouse_up);
         reduction_plot.removeEventListener("mouseout", selection_mouse_up);
@@ -820,8 +826,5 @@ toggle_selection.addEventListener("click", () => {
         reduction_plot.addEventListener("wheel", zoom_pan_wheel);
     }
     //redraw context
-    plot_reduction(window.current_index);
+    plot_dimension_reduction(window.current_index);
 });
-
-/* plot hovering handle*/
-let cluster_frame_div = document.getElementById("cluster_frame_div");

@@ -777,7 +777,7 @@ reset_reduction_plot.addEventListener("click", () => {
     window.is_selection = false;
     window.selected_points[window.current_selection] = [];
 
-    reduction_plot.removeEventListener("mousemove", debounced_selection_mouse_move);
+    reduction_plot.removeEventListener("mousemove", selection_mouse_move);
     reduction_plot.removeEventListener("mousedown", selection_mouse_down);
     reduction_plot.removeEventListener("mouseup", selection_mouse_up);
     reduction_plot.removeEventListener("mouseout", selection_mouse_up);
@@ -807,14 +807,14 @@ toggle_selection.addEventListener("click", () => {
 
         reduction_plot.addEventListener("mousedown", selection_mouse_down);
         reduction_plot.addEventListener("mouseup", selection_mouse_up);
-        reduction_plot.addEventListener("mousemove", debounced_selection_mouse_move);
+        reduction_plot.addEventListener("mousemove", selection_mouse_move);
 
         update_selected(window.current_index);
         plot_score_curve(window.current_index);
     }
     else {
         window.is_selection = false;
-        reduction_plot.removeEventListener("mousemove", debounced_selection_mouse_move);
+        reduction_plot.removeEventListener("mousemove", selection_mouse_move);
         reduction_plot.removeEventListener("mousedown", selection_mouse_down);
         reduction_plot.removeEventListener("mouseup", selection_mouse_up);
         reduction_plot.removeEventListener("mouseout", selection_mouse_up);

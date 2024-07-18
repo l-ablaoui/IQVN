@@ -347,7 +347,7 @@ toggle_reduction.addEventListener("click", () => {
         window.selection_top_left = { x: reduction_plot.width / 2 - step, y: reduction_plot.height / 2 - step };
         window.selection_bot_right = { x: reduction_plot.width / 2 + step, y: reduction_plot.height / 2 + step };
 
-        plot_reduction(window.current_index);
+        plot_dimension_reduction(window.current_index);
     } 
     else {
         x.style.display = "none";

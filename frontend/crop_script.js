@@ -11,11 +11,6 @@ let crop_mouse_down = { x: 0, y: 0 };
 window.crop_top_left = { x: 50, y: 50 };
 window.crop_bot_right = { x: 150, y: 150 };
 
-// Helper function to calculate the square of the distance between two points
-const length2 = (p1, p2) => {
-    return (p1.x - p2.x) * (p1.x - p2.x) + (p1.y - p2.y) * (p1.y - p2.y);
-}
-
 // Function to update the crop center
 const update_crop_center = () => {
     return { 

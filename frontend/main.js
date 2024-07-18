@@ -277,8 +277,8 @@ toggle_crop.addEventListener("click", () => {
         let step_w = width * 0.05;
         let step_h = height * 0.05;
 
-        //window.crop_top_left = { x: width / 2 - step_w, y: height / 2 - step_h };
-        //window.crop_bot_right = { x: width / 2 + step_w, y: height / 2 + step_h };
+        window.crop_top_left = { x: width / 2 - step_w, y: height / 2 - step_h };
+        window.crop_bot_right = { x: width / 2 + step_w, y: height / 2 + step_h };
 
         window.is_crop_visible = true;
         crop.style.display = "block";

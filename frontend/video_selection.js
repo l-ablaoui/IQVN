@@ -41,6 +41,25 @@ let load_video = async () => {
         const imgresponse = await fetch(`${server_url}/image/${name_processed}/${window.current_index}.png`);
         const blob = await imgresponse.blob();
         const image_url = URL.createObjectURL(blob);
+        
+        //reset radio buttons to default value when loading a new video
+        Array.from(document.querySelectorAll(
+            '[name="select_reduction_method"]')).forEach((element,index) => {
+                if (element.value === "tsne") {
+                    element.checked = true;
+                } else {
+                    element.checked = false;
+                }
+            });
+
+        Array.from(document.querySelectorAll(
+            '[name="select_color_map"]')).forEach((element,index) => {
+                if (element.value === "default") {
+                    element.checked = true;
+                } else {
+                    element.checked = false;
+                }
+            });
 
         window.current_frame.src = image_url;
         update_video(image_url);

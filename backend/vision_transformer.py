@@ -8,7 +8,7 @@ from tqdm import tqdm
 import time
 
 class VisionTransformer:
-    def __init__ (self, video_path = "", checkpoint = "openai/clip-vit-base-patch16"):
+    def __init__ (self, video_path = "", checkpoint = "openai/clip-vit-base-patch16", batch_size=256):
         #input video path
         self.video_path = video_path
 
@@ -25,6 +25,9 @@ class VisionTransformer:
         self.device = 'cuda' if torch.cuda.is_available() else 'cpu'
         print("Using device: ", self.device)
         self.model.to(self.device)
+
+        # batch size for processing frames
+        self.batch_size = batch_size
 
     def load_video(self):
         return cv2.VideoCapture(self.video_path)
@@ -44,18 +47,32 @@ class VisionTransformer:
     def get_video_features(self):
         vid = self.load_video()
         frameCount = int(vid.get(cv2.CAP_PROP_FRAME_COUNT))
+        frameWidth = int(vid.get(cv2.CAP_PROP_FRAME_WIDTH))
+        frameHeight = int(vid.get(cv2.CAP_PROP_FRAME_HEIGHT))
 
         embeddings = []
+        frames = []
         with tqdm(total=frameCount, desc="computing video embeddings: ") as pbar:
             while vid.isOpened:
                 okay, frame = vid.read()
                 if not okay:
                     break
-                embeddings.append(self.get_image_features(frame))
+
+                frames.append(frame)
+                if len(frames) == self.batch_size:
+                    batch_embeddings = self.get_image_features(frames)
+                    embeddings.append(batch_embeddings)
+                    frames = []
+                
                 pbar.update(1)
-        
+
+            # Process any remaining frames
+            if frames:
+                batch_embeddings = self.get_image_features(frames)
+                embeddings.append(batch_embeddings)
+
         vid.release()
-        return np.array(embeddings).squeeze(1)
+        return np.vstack(embeddings)
     
     def cosine_similarity(self, embeds1, embeds2):
         # Reshape 1D arrays to 2D if necessary
@@ -116,8 +133,6 @@ class VisionTransformer:
         u_map = umap.UMAP(n_components=2, random_state=random_state)
 
         if normalize:
-            from sklearn.preprocessing import StandardScaler
-            normalizer = StandardScaler()
             embeddings2d = u_map.fit_transform(normalizer.fit_transform(embeddings)) 
         else:
             embeddings2d = u_map.fit_transform(embeddings)
@@ -142,5 +157,4 @@ class VisionTransformer:
             if images is None:
                 self.scores = text_cosine 
             else:
-                self.scores = np.concatenate(self.scores, text_cosine, axis = 0)
-
+                self.scores = np.concatenate((self.scores, text_cosine), axis = 0)

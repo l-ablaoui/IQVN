@@ -182,14 +182,6 @@ let plot_dimension_reduction = (current_index) => {
 
     //draw the points (square shaped for now)
     for (i = 0;i < window.displayed_reduction.length;++i) {
-        if (i >= window.max_index || i > window.displayed_reduction.length) {
-                console.error("reduction plot error: loop index (", i, ") is higher",  
-                " than array length (registered: ", window.max_index, "/actual: ", 
-                window.displayed_reduction.length, ")"
-            );
-            update_scores(0);
-            return;
-        }
         //draw current frame marker last to stand out
         if (i == current_index) { continue; }
 

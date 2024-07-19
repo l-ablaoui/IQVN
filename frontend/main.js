@@ -494,6 +494,45 @@ image_search_button.addEventListener('click', async () => {
         window.displayed_reduction = window.tsne_reduction;
         window.old_reduction = window.tsne_reduction;
         
+        let tsne_cluster_frames = [];
+        let pca_cluster_frames = [];
+        let umap_cluster_frames = [];
+
+        //fetching frames corresponding to each cluster's centroid for each reduction algorithm
+        let cluster_frames = body['tsne_cluster_frames'];
+        for(let i = 0;i < cluster_frames.length;++i) {
+            let name_processed = window.current_video.split(".")[0]; 
+            const cf_response = await fetch(`${server_url}/image/${name_processed}/${cluster_frames[i]["centroid"]}.png`);
+            const cf_blob = await cf_response.blob();
+            const cf_url = URL.createObjectURL(cf_blob);
+
+            tsne_cluster_frames.push([cluster_frames[i]["centroid"], cf_url]);
+        }
+
+        cluster_frames = body['pca_cluster_frames'];
+        for(let i = 0;i < cluster_frames.length;++i) {
+            let name_processed = window.current_video.split(".")[0]; 
+            const cf_response = await fetch(`${server_url}/image/${name_processed}/${cluster_frames[i]["centroid"]}.png`);
+            const cf_blob = await cf_response.blob();
+            const cf_url = URL.createObjectURL(cf_blob);
+
+            pca_cluster_frames.push([cluster_frames[i]["centroid"], cf_url]);
+        }
+
+        cluster_frames = body['umap_cluster_frames'];
+        for(let i = 0;i < cluster_frames.length;++i) {
+            let name_processed = window.current_video.split(".")[0]; 
+            const cf_response = await fetch(`${server_url}/image/${name_processed}/${cluster_frames[i]["centroid"]}.png`);
+            const cf_blob = await cf_response.blob();
+            const cf_url = URL.createObjectURL(cf_blob);
+
+            umap_cluster_frames.push([cluster_frames[i]["centroid"], cf_url]);
+        }
+
+        window.tsne_cluster_frames = tsne_cluster_frames;
+        window.pca_cluster_frames = pca_cluster_frames;
+        window.umap_cluster_frames = umap_cluster_frames;
+
         console.log(body);
         
         //request to update the image

@@ -248,7 +248,8 @@ let update_frame_index_onclick = async (svg, offset_left, offset_right, offset_y
     if (offset_left > mouseX || mouseX > plot_width - offset_right) { return; }
 
     try {
-        let frame_index = Math.trunc((mouseX - offset_left) / (plot_width - offset_right - offset_left) * (nb_values - 1));
+        let frame_index = Math.trunc((mouseX - offset_left) / 
+        (plot_width - offset_right - offset_left) * (nb_values - 1));
 
         //fetch current frame
         let name_processed = window.current_video.split(".")[0]; 
@@ -373,102 +374,8 @@ toggle_depth.addEventListener("click", () => {
     }
 });
 
-//Text-based search, expecting an array of scores plus a reduction array from the server
-text_search_button.addEventListener('click', async () => {
-    try {
-        let score_plot = document.getElementById("score_plot");
 
-        //query input
-        let inputValue = document.getElementById("query_input").value;
-
-        //request similarity scores from the server
-        const response = await fetch(`${server_url}/search?query=${inputValue}`);
-        const body = await response.json();
-
-        console.log(body);
-
-        //only keep scores and tsne reduction values
-        window.scores = body['scores'].map(function(value,index) { return value[1]; });
-
-        window.tsne_reduction = body['tsne'];
-        window.pca_reduction = body['pca'];
-        window.umap_reduction = body['umap'];
-
-        window.tsne_clusters = body['tsne_clusters'];
-        window.pca_clusters = body['pca_clusters'];
-        window.umap_clusters = body['umap_clusters'];
-        
-        let tsne_cluster_frames = [];
-        let pca_cluster_frames = [];
-        let umap_cluster_frames = [];
-
-        //fetching frames corresponding to each cluster's centroid for each reduction algorithm
-        let cluster_frames = body['tsne_cluster_frames'];
-        for(let i = 0;i < cluster_frames.length;++i) {
-            let name_processed = window.current_video.split(".")[0]; 
-            const cf_response = await fetch(`${server_url}/image/${name_processed}/${cluster_frames[i]["centroid"]}.png`);
-            const cf_blob = await cf_response.blob();
-            const cf_url = URL.createObjectURL(cf_blob);
-
-            tsne_cluster_frames.push([cluster_frames[i]["centroid"], cf_url]);
-        }
-
-        cluster_frames = body['pca_cluster_frames'];
-        for(let i = 0;i < cluster_frames.length;++i) {
-            let name_processed = window.current_video.split(".")[0]; 
-            const cf_response = await fetch(`${server_url}/image/${name_processed}/${cluster_frames[i]["centroid"]}.png`);
-            const cf_blob = await cf_response.blob();
-            const cf_url = URL.createObjectURL(cf_blob);
-
-            pca_cluster_frames.push([cluster_frames[i]["centroid"], cf_url]);
-        }
-
-        cluster_frames = body['umap_cluster_frames'];
-        for(let i = 0;i < cluster_frames.length;++i) {
-            let name_processed = window.current_video.split(".")[0]; 
-            const cf_response = await fetch(`${server_url}/image/${name_processed}/${cluster_frames[i]["centroid"]}.png`);
-            const cf_blob = await cf_response.blob();
-            const cf_url = URL.createObjectURL(cf_blob);
-
-            umap_cluster_frames.push([cluster_frames[i]["centroid"], cf_url]);
-        }
-
-        window.tsne_cluster_frames = tsne_cluster_frames;
-        window.pca_cluster_frames = pca_cluster_frames;
-        window.umap_cluster_frames = umap_cluster_frames;
-
-        //set default displayed reduction algorithm
-        window.displayed_reduction = window.tsne_reduction;
-        window.displayed_reduction = window.tsne_reduction;
-        
-        //adjust the max value
-        window.max_index = window.scores.length;
-
-        //fetching first video frame
-        let name_processed = window.current_video.split(".")[0]; 
-        const imgresponse = await fetch(`${server_url}/image/${name_processed}/${window.current_index}.png`);
-        const blob = await imgresponse.blob();
-        const image_url = URL.createObjectURL(blob);
-        window.current_frame.src = image_url
-
-        //update component
-        update_video(window.current_frame.src);
-
-        //show buttons for toggling scores/reduction
-        toggle_scores.style.display = "block";
-        toggle_reduction.style.display = "block";
-        score_plot.addEventListener("click", (event) => update_frame_index_onclick(score_plot, 
-            score_plot_offset_left, score_plot_offset_right, score_plot_offset_y, window.max_index, event));
-
-        //update the curve plot
-        update_scores(window.current_index);
-    } 
-    catch (error) {
-        console.error("Error loading similarity scores: ", error);
-    }
-});
-
-/*Image-based search, needs the cropped image to be defined (hover over the video) 
+/*Image-based search, needs the cropped image to be defined (hover over the video)
 and expecting an array of window.scores plus a reduction array from the server*/
 image_search_button.addEventListener('click', async () => {
     try {
@@ -502,7 +409,9 @@ image_search_button.addEventListener('click', async () => {
         let cluster_frames = body['tsne_cluster_frames'];
         for(let i = 0;i < cluster_frames.length;++i) {
             let name_processed = window.current_video.split(".")[0]; 
-            const cf_response = await fetch(`${server_url}/image/${name_processed}/${cluster_frames[i]["centroid"]}.png`);
+            const cf_response = await fetch(
+                `${server_url}/image/${name_processed}/${cluster_frames[i]["centroid"]}.png`
+            );
             const cf_blob = await cf_response.blob();
             const cf_url = URL.createObjectURL(cf_blob);
 
@@ -512,7 +421,9 @@ image_search_button.addEventListener('click', async () => {
         cluster_frames = body['pca_cluster_frames'];
         for(let i = 0;i < cluster_frames.length;++i) {
             let name_processed = window.current_video.split(".")[0]; 
-            const cf_response = await fetch(`${server_url}/image/${name_processed}/${cluster_frames[i]["centroid"]}.png`);
+            const cf_response = await fetch(
+                `${server_url}/image/${name_processed}/${cluster_frames[i]["centroid"]}.png`
+            );
             const cf_blob = await cf_response.blob();
             const cf_url = URL.createObjectURL(cf_blob);
 
@@ -522,7 +433,9 @@ image_search_button.addEventListener('click', async () => {
         cluster_frames = body['umap_cluster_frames'];
         for(let i = 0;i < cluster_frames.length;++i) {
             let name_processed = window.current_video.split(".")[0]; 
-            const cf_response = await fetch(`${server_url}/image/${name_processed}/${cluster_frames[i]["centroid"]}.png`);
+            const cf_response = await fetch(
+                `${server_url}/image/${name_processed}/${cluster_frames[i]["centroid"]}.png`
+            );
             const cf_blob = await cf_response.blob();
             const cf_url = URL.createObjectURL(cf_blob);
 
@@ -537,7 +450,9 @@ image_search_button.addEventListener('click', async () => {
         
         //request to update the image
         let name_processed = window.current_video.split(".")[0]; 
-        const imgresponse = await fetch(`${server_url}/image/${name_processed}/${window.current_index}.png`);
+        const imgresponse = await fetch(
+            `${server_url}/image/${name_processed}/${window.current_index}.png`
+        );
         const blob = await imgresponse.blob();
         const image_url = URL.createObjectURL(blob);
 
@@ -610,7 +525,6 @@ object_detection_button.addEventListener('click', async () => {
 
         //show button for toggling obj chart
         toggle_obj.style.display = "block";
-        //obj_plot.addEventListener("click", (event) => update_frame_index_onclick(obj_plot, score_plotOffsetLeft, score_plotOffsetRight, score_plotOffsetY, window.max_index, event));
 
         update_scores(window.current_index);
     }

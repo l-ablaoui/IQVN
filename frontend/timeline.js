@@ -79,7 +79,10 @@ let plot_current_timer = (current_index, max_index, fps, svg) => {
     ctx.beginPath();
     ctx.fillStyle = "darkgray";
     ctx.font = "10px arial";
-    ctx.fillText(`${Math.trunc((timestamp) / 60)}:${Math.trunc((timestamp)) % 60}`, x + offset, plot_height * 0.1);
+    ctx.fillText(
+        `${Math.trunc((timestamp) / 60)}:${Math.trunc((timestamp)) % 60}`,
+        x + offset, plot_height * 0.1
+    );
 }
 
 let plot_timeline = (current_index, max_index, fps) => {
@@ -98,8 +101,10 @@ let plot_timeline = (current_index, max_index, fps) => {
         for (let i = 0; i < window.selected_points.length; ++i) {
             for (let j = 0;j < window.selected_points[i].length;++j) {
                 let x = window.selected_points[i][j] / (window.scores.length - 1) * plot_width;
-                let y1 = (2 * (window.selected_points.length - 1 - i) + 1) / (2 * window.selected_points.length + 1) * plot_height;
-                let y2 = (2 * (window.selected_points.length - 1 - i) + 2) / (2 * window.selected_points.length + 1) * plot_height;
+                let y1 = (2 * (window.selected_points.length - 1 - i) + 1) / 
+                    (2 * window.selected_points.length + 1) * plot_height;
+                let y2 = (2 * (window.selected_points.length - 1 - i) + 2) / 
+                    (2 * window.selected_points.length + 1) * plot_height;
                 ctx.beginPath();
                 ctx.moveTo(x, y1);
                 ctx.lineTo(x, y2);
@@ -144,7 +149,9 @@ timeline.height = timeline.offsetHeight;
 
 //mouse mouvement listeners
 timeline.addEventListener("mousedown", () => { is_timeline_dragging = true; });
-timeline.addEventListener("mousemove", (event) => { is_timeline_dragging && update_frame_index_onclick(timeline, 0, 0, 0, window.max_index, event); } );
+timeline.addEventListener("mousemove", (event) => { 
+    is_timeline_dragging && update_frame_index_onclick(timeline, 0, 0, 0, window.max_index, event); 
+} );
 timeline.addEventListener("mouseup", (event) => {
     update_frame_index_onclick(timeline, 0, 0, 0, window.max_index, event);
     is_timeline_dragging = false;
@@ -174,7 +181,9 @@ timeline.addEventListener("keydown", async (event) => {
 
     try {
         let name_processed = window.current_video.split(".")[0]; 
-        const response = await fetch(`${server_url}/image/${name_processed}/${window.current_index}.png`);
+        const response = await fetch(
+            `${server_url}/image/${name_processed}/${window.current_index}.png`
+        );
         const blob = await response.blob();
         const image_url = URL.createObjectURL(blob);
 
@@ -185,194 +194,4 @@ timeline.addEventListener("keydown", async (event) => {
     catch (error) {
         console.error("Error getting video frame ", window.current_frame, " : ", error);
     }
-});
-
-let new_selection = document.getElementById("new_selection");
-let selections = document.getElementById("selections");
-let selections2 = document.getElementById("selections2");
-let perform = document.getElementById("set_operator");
-
-new_selection.addEventListener("click", () => {
-    if (window.selected_points[window.current_selection].length == 0) {
-        console.log("Current selection is still empty!");
-        return;
-    }
-
-    if (window.selected_points.length == 4) {
-        console.log("Too many selections");
-        return;
-    }
-
-    //add selection array (new query)
-    window.selected_points.push([]);
-    window.current_selection += 1;
-
-    let name_option = document.createElement("option");
-    name_option.value = "query" + window.current_selection;
-    switch (window.current_selection) {
-        case 0: 
-            name_option.text = "blue";
-            break;
-        case 1: 
-            name_option.text = "red";
-            break;
-        case 2: 
-            name_option.text = "yellow";
-            break;
-        case 3: 
-            name_option.text = "green";
-            break;
-    }
-    name_option.style.color = `rgb(${SELECTION_COLORS[window.current_selection].red},
-                            ${SELECTION_COLORS[window.current_selection].green}
-                            ${SELECTION_COLORS[window.current_selection].blue})`;
-    selections.add(name_option);
-    selections.selectedIndex = window.current_selection;
-
-    selected_reduction_dots = window.selected_points[window.current_selection];
-    selected_score_spikes = [];
-
-    update_selection2_list();
-    update_scores(window.current_index);
-});
-
-let update_selection_list = () => {
-    let selections = document.getElementById("selections");
-
-    //clear options
-    while (selections.options.length > 0) {
-        selections.remove(0);
-    }
-
-    //add options (all but the currently selected one)
-    for (let i = 0;i < window.selected_points.length;++i) {
-        let name_option = document.createElement("option");
-        name_option.value = "query" + i;
-        switch (i) {
-            case 0: 
-                name_option.text = "blue";
-                break;
-            case 1: 
-                name_option.text = "red";
-                break;
-            case 2: 
-                name_option.text = "yellow";
-                break;
-            case 3: 
-                name_option.text = "green";
-                break;
-        }
-        name_option.style.color = `rgb(${SELECTION_COLORS[i].red},
-                                ${SELECTION_COLORS[i].green}
-                                ${SELECTION_COLORS[i].blue})`;
-        selections.add(name_option);
-    }
-};
-
-let update_selection2_list = () => {
-    let selections2 = document.getElementById("selections2");
-
-    //clear options
-    while (selections2.options.length > 0) {
-        selections2.remove(0);
-    }
-
-    //add options (all but the currently selected one)
-    for (let i = 0;i < window.selected_points.length;++i) {
-        if (i == window.current_selection) { continue; }
-        let name_option = document.createElement("option");
-        name_option.value = "query" + i;
-        switch (i) {
-            case 0: 
-                name_option.text = "blue";
-                break;
-            case 1: 
-                name_option.text = "red";
-                break;
-            case 2: 
-                name_option.text = "yellow";
-                break;
-            case 3: 
-                name_option.text = "green";
-                break;
-        }
-        name_option.style.color = `rgb(${SELECTION_COLORS[i].red},
-                                ${SELECTION_COLORS[i].green}
-                                ${SELECTION_COLORS[i].blue})`;
-        selections2.add(name_option);
-    }
-};
-
-selections.addEventListener("change", () => {
-    //update the currently selected array for selection points
-    window.current_selection = selections.selectedIndex;
-
-    //FOR NOW, when the user changes queries in timeline, the old selected points are all put in the tsne area
-    //modifying the tsne selection modifies all the selection, modifying the selected score spikes triggers a union
-    selected_reduction_dots = window.selected_points[window.current_selection];
-    selected_score_spikes = [];
-    
-    update_selection2_list();
-    update_scores(window.current_index);
-});
-
-perform.addEventListener("click", () => {
-    let array_a_index = selections.selectedIndex;
-    let array_b_index = -1;
-    if (selections2.options.length == 0) { return; }
-
-    let opt = selections2.options[selections2.selectedIndex].value;
-
-    switch (opt) {
-        case "query0": 
-            array_b_index = 0;
-            break;
-        case "query1":
-            array_b_index = 1;
-            break;
-        case "query2": 
-            array_b_index = 2;
-            break;
-        case "query3":
-            array_b_index = 3;
-            break;
-        default:
-            break;
-    }
-
-    let operator_list = document.getElementById("operator_list");
-    let operator = operator_list.options[operator_list.selectedIndex].value;
-    let res = [];
-
-    switch (operator) {
-        case "union":
-            res = union(window.selected_points[array_a_index], window.selected_points[array_b_index]);
-            break;
-        case "intersection":
-            res = intersection(window.selected_points[array_a_index], window.selected_points[array_b_index]);
-            break;
-        case "xor":
-            u = union(window.selected_points[array_a_index], window.selected_points[array_b_index]);
-            i = intersection(window.selected_points[array_a_index], window.selected_points[array_b_index]);
-            res = difference(u, i);
-            break;
-        case "difference":
-            res = difference(window.selected_points[array_a_index], window.selected_points[array_b_index]);
-            break;
-    }
-
-    window.current_selection = Math.min(array_a_index, array_b_index);
-    window.selected_points[Math.min(array_a_index, array_b_index)] = res;
-    window.selected_points.splice(Math.max(array_a_index, array_b_index), 1);
-    
-    update_selection_list();
-    update_selection2_list();
-    update_scores(window.current_index);
-});
-
-let reset_all = document.getElementById("reset_all");
-reset_all.addEventListener("click", () => {
-    window.selected_points = [[]];
-    window.current_selection = 0;
-    update_scores(window.current_index);
 });

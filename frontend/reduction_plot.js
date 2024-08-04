@@ -244,7 +244,7 @@ function generate_HSL_colors (nb_colors) {
 
     for (let i = 0; i < nb_colors; i++) {
         const hue = Math.floor((360 / nb_colors) * i);
-        colors.push(`hsl(${hue}, ${saturation}%, ${lightness}%)`);
+        colors.push(`hsla(${hue}, ${saturation}%, ${lightness}%, 0.7)`);
     }
 
     return colors;
@@ -263,9 +263,9 @@ let generate_color_map = (current_index, cmap) => {
                 let factor1 = (window.displayed_reduction.length - 1 - i) / (window.displayed_reduction.length - 1);
                 let factor2 = i / (window.displayed_reduction.length - 1);
                 color_map.push((current_index != i)? 
-                    `rgb(${color1.red * factor1 + color2.red * factor2}, 
+                    `rgba(${color1.red * factor1 + color2.red * factor2}, 
                     ${color1.green * factor1 + color2.green * factor2}, 
-                    ${color1.blue * factor1 + color2.blue * factor2}` 
+                    ${color1.blue * factor1 + color2.blue * factor2}, 0.7` 
                     : window.EMPHASIS_COLOR); 
             }
             draw_color_scale(0, window.displayed_reduction.length, color1, color2);
@@ -294,7 +294,7 @@ let generate_color_map = (current_index, cmap) => {
                 color_map.push(`rgba(${color1.red * (1 - factor) + color2.red * factor}, 
                     ${color1.green * (1 - factor) + color2.green * factor}, 
                     ${color1.blue * (1 - factor) + color2.blue * factor},
-                    ${Math.sqrt(factor)}`); // the lower the score is the more transparent the color is, 
+                    ${Math.sqrt(factor)}`); // the lower the score is more transparent the color is, 
                                             //using root square to prevent drastic behavior    
             }
             color_map[window.current_index] = window.EMPHASIS_COLOR;

@@ -298,8 +298,9 @@ plot_reduction_plot.addEventListener("click", async () => {
     window.max_index = window.tsne_reduction.length;
 
     //if scores are not computed yet, initialize with empty vector
-    window.scores = new Array(window.max_index).fill(0);
-
+    if (window.scores == null) {
+        window.scores = new Array(window.max_index).fill(0);
+    }
     toggle_reduction.style.display = "block";
     update_scores(window.current_index);
 

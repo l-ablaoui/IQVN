@@ -118,12 +118,15 @@ obj_plot.addEventListener("click", (event) => {
 
     //update cropped area if an object is clicked
     if (bb != null) {
+        let video = document.getElementById("video");
+        let x_draw_ratio = video.offsetWidth / video.width;
+        let y_draw_ratio = video.offsetHeight / video.height;
         console.log(bb);
 
-        window.crop_top_left.x = bb[0];
-        window.crop_top_left.y = bb[1];
-        window.crop_bot_right.x = bb[2];
-        window.crop_bot_right.y = bb[3];
+        window.crop_top_left.x = bb[0] * x_draw_ratio;
+        window.crop_top_left.y = bb[1] * y_draw_ratio;
+        window.crop_bot_right.x = bb[2] * x_draw_ratio;
+        window.crop_bot_right.y = bb[3] * y_draw_ratio;
 
         //toggle cropping
         window.is_crop_visible = true;

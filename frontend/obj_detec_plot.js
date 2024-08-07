@@ -26,27 +26,29 @@ let plot_objects = (current_index) => {
     }
 
     //for each timestamp, draw circles on the level of the object label
+    const objects_per_frame = window.objs["results"];
+    const obj_classes = window.objs["classes"];
+    const max_index = window.objs["maxTime"];
     let current_frame_obj_index = -1;
-    for (let k = 0; k < window.objs["results"].length; ++k) {
-        let objects = window.objs["results"][k];
-
-        //draw current frame dots last to stand out
-        if (objects[0]["timestamp"] == current_index) { 
-            current_frame_obj_index = k;
+    for (const [frame, objects] of Object.entries(objects_per_frame)) {
+         //draw current frame dots last to stand out
+        if (frame == current_index) { 
+            current_frame_obj_index = frame;
             continue; 
         }
         for (let i = 0;i < objects.length;++i) {
             //xpos reflects the timestamp
-            timestamp = objects[i]["timestamp"];
-            const x = obj_plot_offset_left + (timestamp / window.objs["maxTime"]) * (plot_width - obj_plot_offset_left - obj_plot_offset_right);
+            const x = obj_plot_offset_left + (frame / max_index) * 
+                (plot_width - obj_plot_offset_left - obj_plot_offset_right);
             
             //matching label with plot line (ypos)
-            label = objects[i]["label"];
+            const label = objects[i]["label"];
             let j = 0;
-            for (;j < window.objs["classes"].length; ++j) {
-                if (label == window.objs["classes"][j]["index"]) { break; }
+            for (;j < obj_classes.length; ++j) {
+                if (label == obj_classes[j]["index"]) { break; }
             } 
-            const y = plot_height - obj_plot_offset_y - (j / window.objs["classes"].length) * (plot_height - obj_plot_offset_y * 2);
+            const y = plot_height - obj_plot_offset_y - (j / obj_classes.length) * 
+                (plot_height - obj_plot_offset_y * 2);
 
             //draw circle
             ctx.fillStyle = window.REGULAR_COLOR;
@@ -57,17 +59,19 @@ let plot_objects = (current_index) => {
 
     //current frame dots drawing (if any)
     if (current_frame_obj_index != -1) {
-        let objects = window.objs["results"][current_frame_obj_index];
+        let objects = objects_per_frame[current_frame_obj_index];
 
         for (let i = 0; i < objects.length;++i) {
-            const x = obj_plot_offset_left + (current_index / window.objs["maxTime"]) * (plot_width - obj_plot_offset_right - obj_plot_offset_left);
+            const x = obj_plot_offset_left + (current_index / max_index) * 
+                (plot_width - obj_plot_offset_right - obj_plot_offset_left);
 
-            label = objects[i]["label"];
+            const label = objects[i]["label"];
             let j = 0;
-            for (;j < window.objs["classes"].length; ++j) {
-                if (label == window.objs["classes"][j]["index"]) { break; }
+            for (;j < obj_classes.length; ++j) {
+                if (label == obj_classes[j]["index"]) { break; }
             } 
-            const y = plot_height - obj_plot_offset_y - (j / window.objs["classes"].length) * (plot_height - obj_plot_offset_y * 2);
+            const y = plot_height - obj_plot_offset_y - (j / obj_classes.length) * 
+                (plot_height - obj_plot_offset_y * 2);
 
             ctx.fillStyle = window.EMPHASIS_COLOR;
             let dot_radius = window.EMPHASIS_RADIUS;
@@ -76,7 +80,8 @@ let plot_objects = (current_index) => {
     }
 
     //update vertical line position
-    plot_marker(current_index, window.objs["maxTime"], obj_plot_offset_left, obj_plot_offset_right, obj_plot_offset_y, window.EMPHASIS_COLOR, 1, obj_plot);
+    plot_marker(current_index, window.objs["maxTime"], obj_plot_offset_left, 
+        obj_plot_offset_right, obj_plot_offset_y, window.EMPHASIS_COLOR, 1, obj_plot);
 };
 
 /*when clicking on an object marker of the active frame, adjust the cropped area to reflect the object's bounding box */
@@ -129,4 +134,84 @@ obj_plot.addEventListener("click", (event) => {
         update_video(window.current_frame.src);
     }
     //drawCropped();
+});
+
+toggle_obj.addEventListener("click", () => {
+    let x = document.getElementById("obj_div");
+    if (x.style.display === "none") {
+        x.style.display = "block";
+        toggle_obj.value = "▼ Detected objects";
+
+        let obj_plot = document.getElementById("obj_plot");
+        obj_plot.style.display = "block";
+        obj_plot.width = obj_plot.offsetWidth;
+        obj_plot.height = obj_plot.width * 0.7;
+        
+        plot_objects(window.current_index);
+    } else {
+        x.style.display = "none";
+        toggle_obj.value = "▲ Detected objects";
+    }
+});
+
+object_detection_button.addEventListener('click', async () => {
+    //when reorganizing the detection's array, it is assumed that the detections are 
+    //ordrered in terms of timestamp
+    try {
+        const response = await fetch(`${server_url}/video/objects/${window.current_video}`);
+        const body = await response.json();
+        let results = body["result"];
+
+        console.log(results);
+
+        let classes = [];
+        //organizing the final array by timestamp
+        let objects = [];
+        //objects found in a single timestamp
+        let object = [];
+
+        if (results.length <= 0) { return; }
+        let frame = results[0]["frame"];
+        for (let i = 0;i < results.length;++i) {
+            //keep tabs on the timestamp
+            if (results[i]["frame"] != frame) {
+                objects[frame] = object;
+                frame = results[i]["frame"];
+                object = [];
+            }
+
+            //keep tabs on the classes pool (no repetition)
+            let found = false;
+            for (let j = 0;j < classes.length;++j) {
+                if (results[i]["class"] == classes[j]["index"]) {
+                    found = true;
+                    break;
+                } 
+            }
+            if (!found) {
+                classes.push({"index": results[i]["class"], "label": results[i]["name"]});
+            }
+
+            //save bounding box, timestamp and class number
+            object.push({
+                "min_x": results[i]["xmin"], 
+                "min_y": results[i]["ymin"], 
+                "max_x": results[i]["xmax"], 
+                "max_y": results[i]["ymax"],
+                "label": results[i]["class"],
+                "frame": results[i]["frame"]
+            });
+        }
+
+        window.objs = {"results": objects, "classes": classes, "maxTime": body["frames"]};
+        console.log(window.objs);
+
+        //show button for toggling obj chart
+        toggle_obj.style.display = "block";
+
+        update_scores(window.current_index);
+    }
+    catch (error) {
+        console.error("Error detecting objects: ", error);
+    }
 });

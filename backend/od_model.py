@@ -109,6 +109,7 @@ class OD:
         height = int(cap.get(cv2.CAP_PROP_FRAME_HEIGHT))
         
         frame_predictions = []
+        i = 0
 
         with tqdm(total=int(cap.get(cv2.CAP_PROP_FRAME_COUNT)), desc="detecting objects: ") as pbar:
             while True:
@@ -121,8 +122,10 @@ class OD:
                 results = self.score_frame(frame)
                 df_results = results[-1]
                 df_results['timestamp'] = cap.get(cv2.CAP_PROP_POS_MSEC)/1000.0
+                df_results['frame'] = i
                 frame_predictions.append(df_results)
 
+                i += 1
                 pbar.update(1)
 
         cap.release()

@@ -19,6 +19,9 @@ body {
 #score_plot, #obj_plot, #reduction_plot {
     display: block; 
     width: 100%;
+    background-color: rgba(255, 150, 0, 0.1);
+    border: rgba(255, 150, 0, 0.7) solid 2px;
+    border-radius: 5px;
 }
 
 #reduction_div {
@@ -34,6 +37,17 @@ body {
     display: none; 
     left:0px; 
     top:0px; 
+}
+
+#composite_text_query, #image_query_div {
+    padding: 1%;
+    background-color: rgba(0, 150, 255, 0.1);
+    border: rgba(0, 150, 255, 0.7) solid 2px;
+    border-radius: 5px;
+}
+
+.add_adj_sbj, .add_adj_obj, .add_adv {
+    background-color: white;
 }
 
 .adaptable {
@@ -106,4 +120,14 @@ body {
     padding: 0; 
     position: relative;
     /*display: none;*/
+}
+
+.btn-orange {
+    color: white;
+    background-color: rgba(255, 150, 0, 0.7);
+}
+
+.btn-royalblue {
+    color: white;
+    background-color: rgba(0, 150, 255, 0.7);
 }

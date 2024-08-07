@@ -1,34 +1,11 @@
-let plot_marker_triangle = (current_index, max_index, svg) => {
-    let ctx = svg.getContext("2d");
-
-    let plot_width = svg.width;
-    let plot_height = svg.height;
-    const triangle_length = plot_height / 20;
-
-    //convert index to canvas x
-    let plot_x = current_index / (max_index - 1) * plot_width;
-
-    //define coordinates
-    let top_left = { x: plot_x - triangle_length * 2 / 3, y: 0 };
-    let top_right = { x: plot_x + triangle_length * 2 / 3, y: 0 };
-    let mid_left = { x: plot_x - triangle_length * 2 / 3, y: triangle_length };
-    let mid_right = { x: plot_x + triangle_length * 2 / 3, y: triangle_length };
-    let bottom_center = { x: plot_x, y: triangle_length * 2 };
-
-    // Start drawing the triangle
-    ctx.beginPath();
-    ctx.moveTo(bottom_center.x, bottom_center.y); // Bottom point
-    ctx.lineTo(mid_left.x, mid_left.y); // Mid left point
-    ctx.lineTo(top_left.x, top_left.y); // Top left point
-    ctx.lineTo(top_right.x, top_right.y); // Top right point
-    ctx.lineTo(mid_right.x, mid_right.y); // Mid right point
-    ctx.closePath();
-
-    // Fill the triangle with a color
-    ctx.fillStyle = "black";
-    ctx.fill();
-};
-
+/**
+ * draws thin verticals lines representing timestamps
+ * the length of the interval between each line is computed dynamically
+ * so that a total of no more than 10 lines are drawn in the canvas
+ * @param {*} max_index the total number of frames in the video (expected to be a non zero positive integer)
+ * @param {*} fps video fps rate (expected to be a non zero positive integer)
+ * @param {*} svg the canvas where the lines are drawn, expected to be a 2D curve 
+ */
 let plot_timestamps = (max_index, fps, svg) => {
     let plot_width = svg.width;
     let plot_height = svg.height;
@@ -65,26 +42,12 @@ let plot_timestamps = (max_index, fps, svg) => {
     }
 };
 
-let plot_current_timer = (current_index, max_index, fps, svg) => {
-    let plot_width = svg.width;
-    let plot_height = svg.height;
-
-    let ctx = svg.getContext("2d");
-
-    let offset = plot_height / 30 + 5;
-    if (current_index >= max_index / 2) { offset = - offset - 20; }
-    let timestamp = current_index / fps;
-
-    let x = current_index / max_index * plot_width;
-    ctx.beginPath();
-    ctx.fillStyle = "darkgray";
-    ctx.font = "10px arial";
-    ctx.fillText(
-        `${Math.trunc((timestamp) / 60)}:${Math.trunc((timestamp)) % 60}`,
-        x + offset, plot_height * 0.1
-    );
-}
-
+/**
+ * @todo RIGHT THIS DOWN
+ * @param {*} current_index 
+ * @param {*} max_index 
+ * @param {*} fps 
+ */
 let plot_timeline = (current_index, max_index, fps) => {
     let timeline = document.getElementById("timeline");
     let ctx = timeline.getContext("2d");
@@ -98,27 +61,23 @@ let plot_timeline = (current_index, max_index, fps) => {
 
     //plot selected points highlight
     if (window.scores != null && window.selected_points != null) {
-        for (let i = 0; i < window.selected_points.length; ++i) {
-            for (let j = 0;j < window.selected_points[i].length;++j) {
-                let x = window.selected_points[i][j] / (window.scores.length - 1) * plot_width;
-                let y1 = (2 * (window.selected_points.length - 1 - i) + 1) / 
-                    (2 * window.selected_points.length + 1) * plot_height;
-                let y2 = (2 * (window.selected_points.length - 1 - i) + 2) / 
-                    (2 * window.selected_points.length + 1) * plot_height;
-                ctx.beginPath();
-                ctx.moveTo(x, y1);
-                ctx.lineTo(x, y2);
-                ctx.strokeStyle = `rgba(
-                    ${SELECTION_COLORS[i].red},
-                    ${SELECTION_COLORS[i].green},
-                    ${SELECTION_COLORS[i].blue},
-                    ${(window.current_selection == i)? 0.8 : 0.4})`;
-                ctx.stroke();
-            }
+        for (let i = 0; i < window.selected_points.length; ++i)  {
+            let x = window.selected_points[i] / (window.scores.length - 1) * plot_width;
+            let y1 = plot_height / 3;
+            let y2 = 2 * plot_height / 3;
+            ctx.beginPath();
+            ctx.moveTo(x, y1);
+            ctx.lineTo(x, y2);
+            ctx.strokeStyle = `rgba(
+                ${SELECTION_COLORS[0].red},
+                ${SELECTION_COLORS[0].green},
+                ${SELECTION_COLORS[0].blue},
+                ${(window.current_selection == i)? 0.8 : 0.4})`;
+            ctx.stroke();
         }
     }
-    plot_marker_triangle(current_index, max_index, timeline);
-    plot_current_timer(current_index, max_index, fps, timeline);
+    plot_marker_triangle(current_index, max_index, timeline, 0, 0, 0, "black");
+    plot_current_timer(current_index, max_index, fps, timeline, 0, 0);
     plot_marker(current_index, max_index, 0, 0, 0, "black", 0.5, timeline);
 };
 
@@ -160,38 +119,6 @@ timeline.addEventListener("mouseout", () => { is_timeline_dragging = false; });
 
 //keys interaction
 //this insures the timeline gets focused on click
-timeline.addEventListener("click", () => { timeline.focus(); })
-timeline.addEventListener("keydown", async (event) => {
-    switch (event.code) {
-        case "ArrowLeft":
-        case "ArrowDown":
-        case "KeyA":
-        case "KeyW":
-            window.current_index = Math.max(window.current_index - 1, 0);
-            break;
-        case "ArrowRight": 
-        case "ArrowUp":
-        case "KeyD":
-        case "KeyS":
-            window.current_index = Math.min(window.current_index + 1, window.max_index - 1);
-            break;
-        case "default":
-            return;
-    }
+timeline.addEventListener("click", focus_onclick);
 
-    try {
-        let name_processed = window.current_video.split(".")[0]; 
-        const response = await fetch(
-            `${server_url}/image/${name_processed}/${window.current_index}.png`
-        );
-        const blob = await response.blob();
-        const image_url = URL.createObjectURL(blob);
-
-        window.current_frame.src = image_url;
-        update_video(window.current_frame.src);
-        update_scores(window.current_index);
-    }
-    catch (error) {
-        console.error("Error getting video frame ", window.current_frame, " : ", error);
-    }
-});
+timeline.addEventListener("keydown", navigate_video_onkeydown);

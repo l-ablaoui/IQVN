@@ -70,8 +70,8 @@ def video2images(video_path):
             pbar.update(1)
 
     vid.release()
-        
-def compute_cosine_similarity(video_path, query_text, reduction = False):    
+
+def compute_embeddings_dim_reduction(video_path):  
     output_path = video_path.replace(".mp4", "")
     if not os.path.exists(output_path):
         os.mkdir(output_path)
@@ -79,7 +79,79 @@ def compute_cosine_similarity(video_path, query_text, reduction = False):
     if not os.path.exists(f"{output_path}/0.png"):
         video2images(video_path)
 
-    #Getting video embeddings and computing cosine similarity
+    #Getting video embeddings 
+    classifier = VisionTransformer(video_path, MODEL_NAME)
+
+    print("output_path:", output_path)
+    tic = time.time()
+
+    if not os.path.exists(f"{output_path}/embedding_0.npy"):
+        print("computing embeddings...")
+        classifier()
+        embeddings = classifier.video_embeddings
+
+        with tqdm(total=embeddings.shape[0], desc="saving embeddings: ") as pbar:
+            for i in range(embeddings.shape[0]):
+                np.save(output_path+f"/embedding_{i}.npy", embeddings[i])
+                pbar.update(1)
+        
+    if not os.path.exists(f"{output_path}/tsne_reduction.npy"):
+        if classifier.video_embeddings is None:
+            classifier()
+        tsne = classifier.tsne_reduction(classifier.video_embeddings)
+        np.save(output_path+f"/tsne_reduction.npy", tsne)
+
+    if not os.path.exists(f"{output_path}/pca_reduction.npy"):
+        if classifier.video_embeddings is None:
+            classifier()
+        pca = classifier.pca_reduction(classifier.video_embeddings)
+        np.save(output_path+f"/pca_reduction.npy", pca)
+
+    if not os.path.exists(f"{output_path}/umap_reduction.npy"):
+        if classifier.video_embeddings is None:
+            classifier()
+        umap = classifier.umap_reduction(classifier.video_embeddings)
+        np.save(output_path+f"/umap_reduction.npy", umap)
+    
+    tsne = np.load(output_path+f"/tsne_reduction.npy")
+    pca = np.load(output_path+f"/pca_reduction.npy")
+    umap = np.load(output_path+f"/umap_reduction.npy")
+
+    tsne_clusters = get_clusters(tsne)
+    pca_clusters = get_clusters(pca)
+    umap_clusters = get_clusters(umap)
+
+    tsne_cluster_frames = []
+    pca_cluster_frames = []
+    umap_cluster_frames = []
+
+    sorted_clusters, _, closest_vectors = get_centroids(tsne_clusters, tsne, MAX_NB_CLUSTERS)
+    for cls, _ in sorted_clusters:
+        tsne_cluster_frames.append({"cluster": int(cls), "centroid": int(closest_vectors[cls])})
+    
+    sorted_clusters, _, closest_vectors = get_centroids(pca_clusters, pca, MAX_NB_CLUSTERS)
+    for cls, _ in sorted_clusters:
+        pca_cluster_frames.append({"cluster": int(cls), "centroid": int(closest_vectors[cls])})
+    
+    sorted_clusters, _, closest_vectors = get_centroids(umap_clusters, umap, MAX_NB_CLUSTERS)
+    for cls, _ in sorted_clusters:
+        umap_cluster_frames.append({"cluster": int(cls), "centroid": int(closest_vectors[cls])})
+
+    toc = time.time() 
+    print(f"done in {(toc-tic):.2f} seconds...")
+
+    return tsne, pca, umap, tsne_clusters, pca_clusters, umap_clusters, tsne_cluster_frames,\
+         pca_cluster_frames, umap_cluster_frames
+
+
+def compute_cosine_similarity(video_path, query_text):    
+    output_path = video_path.replace(".mp4", "")
+    if not os.path.exists(output_path):
+        os.mkdir(output_path)
+
+    if not os.path.exists(f"{output_path}/0.png"):
+        video2images(video_path)
+
     classifier = VisionTransformer(video_path, MODEL_NAME)
 
     print("output_path:", output_path)
@@ -95,25 +167,6 @@ def compute_cosine_similarity(video_path, query_text, reduction = False):
             for i in range(embeddings.shape[0]):
                 np.save(output_path+f"/embedding_{i}.npy", embeddings[i])
                 pbar.update(1)
-        
-    if reduction:
-        if not os.path.exists(f"{output_path}/tsne_reduction.npy"):
-            if classifier.video_embeddings is None:
-                classifier()
-            tsne_reduction = classifier.tsne_reduction(classifier.video_embeddings)
-            np.save(output_path+f"/tsne_reduction.npy", tsne_reduction)
-
-        if not os.path.exists(f"{output_path}/pca_reduction.npy"):
-            if classifier.video_embeddings is None:
-                classifier()
-            pca_reduction = classifier.pca_reduction(classifier.video_embeddings)
-            np.save(output_path+f"/pca_reduction.npy", pca_reduction)
-
-        if not os.path.exists(f"{output_path}/umap_reduction.npy"):
-            if classifier.video_embeddings is None:
-                classifier()
-            umap_reduction = classifier.umap_reduction(classifier.video_embeddings)
-            np.save(output_path+f"/umap_reduction.npy", umap_reduction)
 
     #query type (text/image)
     if query_text == IMAGE_CROP_QUERY:
@@ -140,13 +193,7 @@ def compute_cosine_similarity(video_path, query_text, reduction = False):
     toc = time.time() 
     print(f"done in {(toc-tic):.2f} seconds...")
 
-    if reduction:
-        tsne_reduction = np.load(output_path+f"/tsne_reduction.npy")
-        pca_reduction = np.load(output_path+f"/pca_reduction.npy")
-        umap_reduction = np.load(output_path+f"/umap_reduction.npy")
-        return similarity_scores, tsne_reduction, pca_reduction, umap_reduction
-    else:
-        return similarity_scores
+    return similarity_scores
  
 def find_mp4_files(relative_path):
     # Get the absolute path of the directory
@@ -161,7 +208,8 @@ def find_mp4_files(relative_path):
     return mp4_file_names
 
 async def annotate_video(video_path, output_path):
-    detector = OD(capture_video=video_path, output_results=output_path+"-output.csv", model_name="yolov5s.pt")
+    detector = OD(capture_video=video_path, output_results=output_path+"-output.csv", \
+                model_name="yolov5s.pt")
     return detector()
 
 #apply bounding box to the image pixels
@@ -195,7 +243,7 @@ def closest_vector_index(centroid, indices, vectors):
 def choose_eps(vectors, k=4, percentile=90):
     neigh = NearestNeighbors(n_neighbors=k)
     nbrs = neigh.fit(vectors)
-    distances, indices = nbrs.kneighbors(vectors)
+    distances, _ = nbrs.kneighbors(vectors)
     distances = np.sort(distances[:, k-1], axis=0)
     eps = np.percentile(distances, percentile)
     return eps
@@ -237,41 +285,11 @@ def get_centroids(clusters, vectors, max_clusters):
 
 @app.get("/search")
 async def search(query: str):
-    similarity_scores, tsne, pca, umap = compute_cosine_similarity(current_video_path, query, True)
-
-    tsne_clusters = get_clusters(tsne)
-    pca_clusters = get_clusters(pca)
-    umap_clusters = get_clusters(umap)
-
-    tsne_cluster_frames = []
-    pca_cluster_frames = []
-    umap_cluster_frames = []
-
-    sorted_clusters, _, closest_vectors = get_centroids(tsne_clusters, tsne, MAX_NB_CLUSTERS)
-    for cls, _ in sorted_clusters:
-        tsne_cluster_frames.append({"cluster": int(cls), "centroid": int(closest_vectors[cls])})
-    
-    sorted_clusters, _, closest_vectors = get_centroids(pca_clusters, pca, MAX_NB_CLUSTERS)
-    for cls, _ in sorted_clusters:
-        pca_cluster_frames.append({"cluster": int(cls), "centroid": int(closest_vectors[cls])})
-    
-    sorted_clusters, _, closest_vectors = get_centroids(umap_clusters, umap, MAX_NB_CLUSTERS)
-    for cls, _ in sorted_clusters:
-        umap_cluster_frames.append({"cluster": int(cls), "centroid": int(closest_vectors[cls])})
-
+    similarity_scores = compute_cosine_similarity(current_video_path, query)
 
     return {
         "query": query, 
-        "scores": similarity_scores, 
-        "tsne": [{'x': float(tsne[i, 0]), 'y': float(tsne[i, 1])} for i in range(len(tsne))],
-        "pca": [{'x': float(pca[i, 0]), 'y': float(pca[i, 1])} for i in range(len(pca))],
-        "umap": [{'x': float(umap[i, 0]), 'y': float(umap[i, 1])} for i in range(len(umap))],
-        "tsne_clusters": [int(tsne_clusters[i]) for i in range(len(tsne_clusters))],
-        "pca_clusters": [int(pca_clusters[i]) for i in range(len(pca_clusters))],
-        "umap_clusters": [int(umap_clusters[i]) for i in range(len(umap_clusters))],
-        "tsne_cluster_frames": tsne_cluster_frames,
-        "pca_cluster_frames": pca_cluster_frames,
-        "umap_cluster_frames": umap_cluster_frames
+        "scores": similarity_scores
     }
 
 @app.get("/search/image/{folder}/{image_path}")
@@ -308,39 +326,11 @@ async def upload_png(image_data: dict):
         os.mkdir("images")
     cv2.imwrite(OUTPUT_CROP_IMAGE, img)
 
-    similarity_scores, tsne, pca, umap = compute_cosine_similarity(current_video_path, IMAGE_CROP_QUERY, reduction=True)
-    tsne_clusters = get_clusters(tsne)
-    pca_clusters = get_clusters(pca)
-    umap_clusters = get_clusters(umap)
-
-    tsne_cluster_frames = []
-    pca_cluster_frames = []
-    umap_cluster_frames = []
-
-    sorted_clusters, _, closest_vectors = get_centroids(tsne_clusters, tsne, MAX_NB_CLUSTERS)
-    for cls, _ in sorted_clusters:
-        tsne_cluster_frames.append({"cluster": int(cls), "centroid": int(closest_vectors[cls])})
+    similarity_scores = compute_cosine_similarity(current_video_path, IMAGE_CROP_QUERY)
     
-    sorted_clusters, _, closest_vectors = get_centroids(pca_clusters, pca, MAX_NB_CLUSTERS)
-    for cls, _ in sorted_clusters:
-        pca_cluster_frames.append({"cluster": int(cls), "centroid": int(closest_vectors[cls])})
-    
-    sorted_clusters, _, closest_vectors = get_centroids(umap_clusters, umap, MAX_NB_CLUSTERS)
-    for cls, _ in sorted_clusters:
-        umap_cluster_frames.append({"cluster": int(cls), "centroid": int(closest_vectors[cls])})
-
     return {
         "query": IMAGE_CROP_QUERY, 
-        "scores": similarity_scores, 
-        "tsne": [{'x': float(tsne[i, 0]), 'y': float(tsne[i, 1])} for i in range(len(tsne))],
-        "pca": [{'x': float(pca[i, 0]), 'y': float(pca[i, 1])} for i in range(len(pca))],
-        "umap": [{'x': float(umap[i, 0]), 'y': float(umap[i, 1])} for i in range(len(umap))],
-        "tsne_clusters": [int(tsne_clusters[i]) for i in range(len(tsne_clusters))],
-        "pca_clusters": [int(pca_clusters[i]) for i in range(len(pca_clusters))],
-        "umap_clusters": [int(umap_clusters[i]) for i in range(len(umap_clusters))],
-        "tsne_cluster_frames": tsne_cluster_frames,
-        "pca_cluster_frames": pca_cluster_frames,
-        "umap_cluster_frames": umap_cluster_frames
+        "scores": similarity_scores
     }
 
 @app.get("/video/")
@@ -399,6 +389,26 @@ async def get_depth_video(filename: str):
 
     paths = glob.glob(output_path+"/depth_frame_*.png")
     return { "frames": len(paths) }
+
+@app.get("/video/embeddings/{filename}")
+async def get_video_embeddings(filename: str):
+    print(filename)
+    video_path = os.path.join(VIDEOS_DIR, filename).replace("\\","/")
+    print(video_path)
+    tsne, pca, umap, tsne_clusters, pca_clusters, umap_clusters, tsne_cluster_frames, \
+        pca_cluster_frames, umap_cluster_frames = compute_embeddings_dim_reduction(video_path)
+    
+    return {
+        "tsne": [{'x': float(tsne[i, 0]), 'y': float(tsne[i, 1])} for i in range(len(tsne))],
+        "pca": [{'x': float(pca[i, 0]), 'y': float(pca[i, 1])} for i in range(len(pca))],
+        "umap": [{'x': float(umap[i, 0]), 'y': float(umap[i, 1])} for i in range(len(umap))],
+        "tsne_clusters": [int(tsne_clusters[i]) for i in range(len(tsne_clusters))],
+        "pca_clusters": [int(pca_clusters[i]) for i in range(len(pca_clusters))],
+        "umap_clusters": [int(umap_clusters[i]) for i in range(len(umap_clusters))],
+        "tsne_cluster_frames": tsne_cluster_frames,
+        "pca_cluster_frames": pca_cluster_frames,
+        "umap_cluster_frames": umap_cluster_frames
+    }
 
 
 @app.get("/video/{filename}/fps")

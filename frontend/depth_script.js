@@ -35,3 +35,39 @@ let update_depth_video = async (current_index) => {
     }
     
 }
+
+toggle_depth.addEventListener("click", () => {
+    let depth_div = document.getElementById("depth_div");
+    if (depth_div.style.display == "none") {
+        depth_div.style.display = "block";
+        toggle_depth.value = "▼ Depth map";
+        try {
+            update_depth_video(window.current_index);
+        }
+        catch (error) {
+            console.error("Error updating the depth video: ", error);
+        }
+    } 
+    else {
+        toggle_depth.value = "▲ Depth map";
+        depth_div.style.display = "none";
+    }
+});
+
+depthEstimate.addEventListener("click", async () => {
+    try {
+        //compute the depth map
+        const response = await fetch(`${server_url}/video/depth/${window.current_video}`);
+        const body = await response.json();
+        console.log(body);
+
+        //display the depth map of the current frame only
+        update_depth_video(window.current_index);
+
+        toggle_depth.style.display = "block";
+        window.depth = true;
+    }
+    catch (error) {
+        console.error("Error computing depth map: ", error);
+    }
+});

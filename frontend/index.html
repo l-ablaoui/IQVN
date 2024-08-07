@@ -20,46 +20,55 @@
             <canvas class="row x_adaptable" tabindex="0" id="timeline"></canvas> 
         </div>
         <div class="col-sm x_halved y_scrollable" > 
-            <label class="row x_adaptable">Inputs:</label>
+            <input type="button" id="toggle_text_based_search" value="▼ Perform text-based search" class="x_adaptable row btn btn-royalblue"/>
             <div class="row x_adaptable" id="composite_text_query">
                 <div class="sentence row x_adaptable">
-                    <input type="button" value="+adj" class="add_adj_sbj col-1 button_space btn btn-outline-info"/>
+                    <input type="button" value="+adj" class="add_adj_sbj col-1 button_space btn btn-outline-secondary"/>
                     <input type="text" placeholder="e.g. kid" maxlength=50 class="subject col-sm form-control"/>
-                    <input type="button" value="+adv" class="add_adv col-1 button_space btn btn-outline-warning"/>
+                    <input type="button" value="+adv" class="add_adv col-1 button_space btn btn-outline-secondary"/>
                     <input type="text" placeholder="playing with" maxlength=50 class="action col-sm form-control"/>
-                    <input type="button" value="+adj" class="add_adj_obj col-1 button_space btn btn-outline-info"/>
+                    <input type="button" value="+adj" class="add_adj_obj col-1 button_space btn btn-outline-secondary"/>
                     <input type="text" placeholder="ball" maxlength=50 class="object col-sm form-control"/>
+                    <input type="button" value="scores>80%" class="threshold_button col-sm button_space btn btn-secondary"/>
+                    <input type="button" value="box (0,0,0,0)" class="box_selection_button col-sm button_space btn btn-secondary"/>
+                </div><div class="connector row justify-content-center x_adaptable">
+                    <input type="button" value="show" class="utils btn btn-sm btn-outline-success col-1 button_space"/>
+                    <input type="button" value="OR" class="bool_op or btn btn-sm btn-secondary col-1 button_space"/>
+                    <input type="button" value="AND" class="bool_op and btn btn-sm btn-secondary col-1 button_space"/>
+                    <input type="button" value="W/O" class="bool_op minus btn btn-sm btn-secondary col-1 button_space"/>
+                    <input type="button" value="delete" class="utils btn btn-sm btn-outline-danger col-1 button_space"/>
                 </div>
-                <div class="connector row justify-content-center x_adaptable">
-                    <div class="col-sm"></div> <!--this is just a blank space-->
-                    <input type="button" value="OR" class="or btn btn-info col-1 button_space"/>
-                    <input type="button" value="AND" class="and btn btn-info col-1 button_space"/>
-                    <input type="button" value="W/O" class="minus btn btn-info col-1 button_space"/>
-                    <div class="col-sm"></div> <!--this is also just a blank space-->
+                <div class="row justify-content-end x_adaptable">
+                    <input type="button" id="text_search_button" value="search" class="btn btn-success button_space"/>
+                </div>
+            </div>
+            <input type="button" id="toggle_image_based_search" value="▲ Perform image-based search" class="x_adaptable row btn btn-royalblue"/>
+            <div class="row x_adaptable" id="image_query_div">
+                <div class="row x_adaptable">
+                    <label class="col text-left" id="crop_label">Cropped area: </label>
+                </div>
+                <div class="row x_adaptable justify-content-center">
+                    <canvas class="text-center" id="crop"></canvas>
+                </div>
+                <div class="row x_adaptable justify-content-end">
+                    <label class="input-group-text" for="image_load">Upload image</label>
+                    <input type="file" class="form-control col" id="image_load" accept="image/png, image/jpeg, image/gif">
+                    <input type="button" id="toggle_crop" value="toggle cropping" class="btn btn-sm col-2 btn-secondary button_space" />
+                    <input type="button" id="image_search_button" value="search" class="btn btn-success col-2 button_space"/>
                 </div>
             </div>
             <div class="row x_adaptable">
-                <input type="button" id="text_search_button" value="Text-based search" class="btn btn-sm btn-primary button_space"/>
-                <input type="button" id="object_detection_button" value="Object detection" class="btn btn-sm btn-secondary button_space" />
-                <input type="button" id="depthmap_computation_button" value="Depth estimation" class="btn btn-sm btn-secondary button_space" />
+                <input type="button" id="plot_reduction_plot" value="Plot video distribution" class="btn btn-sm btn-success button_space" />
+                <input type="button" id="object_detection_button" value="Perform object detection" class="btn btn-sm btn-success button_space" />
+                <input type="button" id="depthmap_computation_button" value="Perform depth estimation" class="btn btn-sm btn-success button_space" />
             </div>
-            <div class="row x_adaptable">
-                <input type="button" id="image_search_button" value="Crop-image-based search" class="btn btn-sm btn-primary button_space"/>
-                <input type="button" id="toggle_crop" value="toggle cropping" class="btn btn-sm btn-secondary button_space" />
-            </div>
-            <div class="row x_adaptable">
-                <label class="col text-left" id="crop_label">Cropped area: </label>
-            </div>
-            <div class="row x_adaptable justify-content-center">
-                <canvas class="text-center" id="crop"></canvas>
-            </div>
-            <label class="row x_adaptable">Outputs:</label>
-            <input type="button" id="toggle_obj" value="▲ Detected objects" class="row btn btn-sm btn-info x_adaptable"/>
-            <div class="row" id="obj_div">
+            <div class="loader" id="general_loader"></div>
+            <input type="button" id="toggle_obj" value="▲ Detected objects" class="row btn btn-orange x_adaptable"/>
+            <div class="row justify-content-center x_adaptable" id="obj_div">
                 <div class="loader" id="obj_plot_loader"></div>
                 <canvas id="obj_plot"></canvas>
             </div>
-            <input type="button" id="toggle_scores" value="▲ Similarity scores chart" class="row btn btn-sm btn-info x_adaptable"/>
+            <input type="button" id="toggle_scores" value="▲ Similarity scores chart" class="row btn btn-orange x_adaptable"/>
             <div class="row justify-content-center x_adaptable" id="score_div">
                 <div class="loader" id="score_plot_loader"></div>
                 <canvas id="score_plot"></canvas>
@@ -68,7 +77,7 @@
                     <input type="button" id="reset_score_plot" value="reset" class="col-sm btn btn-sm btn-secondary button_space"/>
                 </div>
             </div>  
-            <input type="button" id="toggle_reduction" value="▲ Video frames distribution" class="x_adaptable row btn btn-sm btn-info"/>
+            <input type="button" id="toggle_reduction" value="▲ Video frames distribution" class="x_adaptable row btn  btn-orange"/>
             <div class="row x_adaptable" id="reduction_div">
                 <div class="row">
                     <div class="col-sm justify-content-center">
@@ -96,11 +105,11 @@
                     </div>
                     <div class="col-sm justify-content-center">
                         <input type="radio" name="select_color_map" value="clusters"/>
-                        <label>dbscan</label>
+                        <label>clusters</label>
                     </div>
                     <div class="col-sm justify-content-center">
                         <input type="radio" name="select_color_map" value="time"/>
-                        <label>time</label>
+                        <label>timestamps</label>
                     </div>
                     <div class="col-sm justify-content-center">
                         <input type="radio" name="select_color_map" value="score"/>
@@ -115,7 +124,7 @@
                     <img src="" alt="cluster -1" id="cluster_frame" />
                 </div>
             </div>
-            <input type="button" id="toggle_depth" value="▲ Depth map" class="row btn btn-sm btn-info x_adaptable"/>
+            <input type="button" id="toggle_depth" value="▲ Depth map" class="row btn btn-orange x_adaptable"/>
             <div class="row" id="depth_div">
                 <div class="loader" id="depth_plot_loader"></div>
                 <canvas class="row x_adaptable" id="depth_video"></canvas>
@@ -154,7 +163,7 @@
     window.selection_top_left = { x: 10, y: 10 };
     window.selection_bot_right = { x: 40, y: 40 };
     window.is_selection = false;
-    window.selected_points = [[]];
+    window.selected_points = [];
     window.current_selection = 0;
     const SELECTION_COLORS = [ 
         {red: 65, green: 105, blue: 255}, //royalblue
@@ -164,6 +173,8 @@
     ];
 
     //query result slot
+    window.sentences_count = 1;
+    window.focused_sentence = 1;
     window.scores = null;
     window.objs = null;
     window.depth = false;

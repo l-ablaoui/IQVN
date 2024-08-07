@@ -11,16 +11,16 @@ let generate_score_color_map = () => {
     let color_map = [];
 
     for (let i = 0;i < window.scores.length;++i) {
+        //check if current point is selected
         let found = false;
-        for (let j = 0;j < window.selected_points[window.current_selection].length;++j) {
-            if (i == window.selected_points[window.current_selection][j]) {
+        for (let j = 0;j < window.selected_points.length;++j) {
+            if (i == window.selected_points[j]) {
                 found = true;
-                break;
             }
         }
-        color_map.push((found)? `rgb(${SELECTION_COLORS[window.current_selection].red},
-                                ${SELECTION_COLORS[window.current_selection].green},
-                                ${SELECTION_COLORS[window.current_selection].blue})` : window.REGULAR_COLOR);
+        color_map.push((found)? `rgb(${SELECTION_COLORS[0].red},
+            ${SELECTION_COLORS[0].green},
+            ${SELECTION_COLORS[0].blue})` : window.REGULAR_COLOR);
     }
 
     return color_map;
@@ -142,9 +142,13 @@ let plot_score_curve = (current_index) => {
             score_plot_offset_y, score_plot);
     }
     else {
-        plot_marker(current_index, window.scores.length, score_plot_offset_left, 
+        plot_marker(current_index, window.max_index, score_plot_offset_left, 
             score_plot_offset_right, score_plot_offset_y, window.EMPHASIS_COLOR, 
             1, score_plot);
+        plot_marker_triangle(current_index, window.max_index, score_plot, 
+            score_plot_offset_left, score_plot_offset_right, score_plot_offset_y, window.EMPHASIS_COLOR);
+        plot_current_timer(current_index, window.max_index, window.fps, score_plot, 
+            score_plot_offset_left, score_plot_offset_right);
     }
     
 };
@@ -173,7 +177,7 @@ let threshold_mouse_move = (event, offset_y, svg) => {
     threshold = 1 - Math.max(0, Math.min(1, (mouse_y - offset_y) / (plot_height - 2 * offset_y)));
     selected_score_spikes = [];
     selected_score_spikes = get_scores_above_threshold(threshold);
-    window.selected_points[window.current_selection] = union(selected_score_spikes, selected_reduction_dots);
+    window.selected_points = selected_score_spikes;
     update_scores(window.current_index);
 }
 
@@ -185,7 +189,7 @@ let threshold_mouse_up = (event, offset_y, svg) => {
 
     threshold = 1 - Math.max(0, Math.min(1, (mouse_y - offset_y) / (plot_height - 2 * offset_y)));
     selected_score_spikes = get_scores_above_threshold(threshold);
-    window.selected_points[window.current_selection] = union(selected_score_spikes, selected_reduction_dots);
+    window.selected_points = selected_score_spikes;
     update_scores(window.current_index);
 }
 
@@ -208,7 +212,7 @@ select_threshold.addEventListener("click", () => {
         score_plot.addEventListener("mouseup", threshold_final_mouse_up);
         selected_score_spikes = [];
         selected_score_spikes = get_scores_above_threshold(threshold);
-        window.selected_points[window.current_selection] = union(selected_score_spikes, selected_reduction_dots);
+        window.selected_points = selected_score_spikes;
         is_thresholding = true;
     }
     update_scores(window.current_index);
@@ -223,6 +227,29 @@ reset_score_plot.addEventListener("click", () => {
         is_thresholding = false;
     }
     is_thresholding = false;
-    window.selected_points[window.current_selection] = [];
+    window.selected_points = [];
     update_scores(window.current_index);
 });
+
+toggle_scores.addEventListener("click", () => {
+    let x = document.getElementById("score_div");
+    if (x.style.display === "none") {
+        x.style.display = "block";
+        toggle_scores.value = "▼ Similarity scores chart";
+
+        let score_plot = document.getElementById("score_plot");
+        score_plot.style.display = "block";
+        score_plot.width = score_plot.offsetWidth;
+        score_plot.height = score_plot.width * 0.4;
+
+        plot_score_curve(window.current_index);
+    } 
+    else {
+        x.style.display = "none";
+        toggle_scores.value = "▲ Similarity scores chart";
+    }
+});
+
+const score_plot = document.getElementById("score_plot");
+score_plot.addEventListener("click", focus_onclick);
+score_plot.addEventListener("keydown", navigate_video_onkeydown);

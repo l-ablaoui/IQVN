@@ -131,6 +131,76 @@ const plot_axes = (offset_left, offset_right, offset_y, svg) => {
 };
 
 /**
+ * plots the current time (window.current_index / window.fps) either on the left or the right
+ * of the marker (assuming this one is drawn). assumes also a 2D curve plot
+ * @param {*} current_index selected video frame index
+ * @param {*} max_index number of frames in the video, assumed to be a non-zero positive integer
+ * @param {*} fps video fps rate, assumed to be a non-zero positive integer
+ * @param {*} svg canvas element where the time is to be drawn
+ * @param {*} offset_left space to be left on the left of the X axis
+ * @param {*} offset_right space to be right on the left of the X axis
+ */
+let plot_current_timer = (current_index, max_index, fps, svg, offset_left, offset_right) => {
+    let plot_width = svg.width;
+    let plot_height = svg.height;
+
+    let ctx = svg.getContext("2d");
+
+    let offset = plot_height / 30 + 5;
+    if (current_index >= max_index / 2) { offset = - offset - 20; }
+    let timestamp = current_index / fps;
+
+    let x = offset_left + current_index / max_index * (plot_width - offset_left - offset_right);
+    ctx.beginPath();
+    ctx.fillStyle = "darkgray";
+    ctx.font = "10px arial";
+    ctx.fillText(
+        `${Math.trunc((timestamp) / 60)}:${Math.trunc((timestamp)) % 60}`,
+        x + offset, plot_height * 0.1
+    );
+}
+
+/**
+ * drawing of the small triangle above the timestamp line marker
+ * @param {*} current_index 
+ * @param {*} max_index 
+ * @param {*} svg 
+ * @param {*} offset_left 
+ * @param {*} offset_right 
+ * @param {*} offset_y 
+ */
+let plot_marker_triangle = (current_index, max_index, svg, offset_left, offset_right, offset_y, fill_color) => {
+    let ctx = svg.getContext("2d");
+
+    let plot_width = svg.width;
+    let plot_height = svg.height;
+    const triangle_length = (plot_height - 2 * offset_y) / 25;
+
+    //convert index to canvas x
+    let plot_x = offset_left + current_index / (max_index - 1) * (plot_width - offset_left - offset_right);
+
+    //define coordinates
+    let top_left = { x: plot_x - triangle_length * 2 / 3, y: offset_y };
+    let top_right = { x: plot_x + triangle_length * 2 / 3, y: offset_y };
+    let mid_left = { x: plot_x - triangle_length * 2 / 3, y: offset_y + triangle_length };
+    let mid_right = { x: plot_x + triangle_length * 2 / 3, y: offset_y + triangle_length };
+    let bottom_center = { x: plot_x, y: offset_y + triangle_length * 2 };
+
+    // Start drawing the triangle
+    ctx.beginPath();
+    ctx.moveTo(bottom_center.x, bottom_center.y); // Bottom point
+    ctx.lineTo(mid_left.x, mid_left.y); // Mid left point
+    ctx.lineTo(top_left.x, top_left.y); // Top left point
+    ctx.lineTo(top_right.x, top_right.y); // Top right point
+    ctx.lineTo(mid_right.x, mid_right.y); // Mid right point
+    ctx.closePath();
+
+    // Fill the triangle with a color
+    ctx.fillStyle = fill_color;
+    ctx.fill();
+};
+
+/**
  * draw video frame in the dedicated video canvas
  * @param {*} image_url video's current frame
  */
@@ -204,6 +274,10 @@ let debounce = (func, delay) => {
 //resize listener has to addapt the sizes of each component that has height as a function of width
 window.addEventListener("resize", () => {
     //update components' relative sizes
+    let video_canvas = document.getElementById("video");
+    video_canvas.width = video_canvas.offsetWidth;
+    video_canvas.height = video_canvas.offsetHeight;
+
     let score_plot = document.getElementById("score_plot");
     score_plot.width = score_plot.offsetWidth;
     score_plot.height = score_plot.width * 0.4;
@@ -266,287 +340,101 @@ let update_frame_index_onclick = async (svg, offset_left, offset_right, offset_y
     }
 }
 
-toggle_crop.addEventListener("click", () => {
-    let crop = document.getElementById("crop");
-    let crop_label = document.getElementById("crop_label");
-    if (window.is_crop_visible == false) {
-        //update crop square to be a 10th of the image in the center
-        const video = document.getElementById("video");
-        let width = video.width;
-        let height = video.height;
-        
-        let step_w = width * 0.05;
-        let step_h = height * 0.05;
+/** makes element focusable */
+const focus_onclick = () => { timeline.focus(); }
 
-        window.crop_top_left = { x: width / 2 - step_w, y: height / 2 - step_h };
-        window.crop_bot_right = { x: width / 2 + step_w, y: height / 2 + step_h };
+/**
+ * keyboard interaction to move forward or backwards in the video
+ * assuming usage on a focusable element of the interface
+ * @param {*} event click area
+ */
+const navigate_video_onkeydown = async (event) => {
+    switch (event.code) {
+        case "ArrowLeft":
+        case "ArrowDown":
+        case "KeyA":
+        case "KeyW":
+            window.current_index = Math.max(window.current_index - 1, 0);
+            break;
+        case "ArrowRight": 
+        case "ArrowUp":
+        case "KeyD":
+        case "KeyS":
+            window.current_index = Math.min(window.current_index + 1, window.max_index - 1);
+            break;
+        case "default":
+            return;
+    }
 
-        window.is_crop_visible = true;
-        crop.style.display = "block";
-        crop_label.style.display = "block";
+    try {
+        let name_processed = window.current_video.split(".")[0]; 
+        const response = await fetch(
+            `${server_url}/image/${name_processed}/${window.current_index}.png`
+        );
+        const blob = await response.blob();
+        const image_url = URL.createObjectURL(blob);
+
+        window.current_frame.src = image_url;
         update_video(window.current_frame.src);
-    } 
-    else {
-        window.is_crop_visible = false;
-        crop.style.display = "none";
-        crop_label.style.display = "none";
-        update_video(window.current_frame.src);
+        update_scores(window.current_index);
     }
-});
-
-toggle_obj.addEventListener("click", () => {
-    let x = document.getElementById("obj_div");
-    if (x.style.display === "none") {
-        x.style.display = "block";
-        toggle_obj.value = "▼ Detected objects";
-
-        let obj_plot = document.getElementById("obj_plot");
-        obj_plot.style.display = "block";
-        obj_plot.width = obj_plot.offsetWidth;
-        obj_plot.height = obj_plot.width * 0.7;
-        
-        plot_objects(window.current_index);
-    } else {
-        x.style.display = "none";
-        toggle_obj.value = "▲ Detected objects";
+    catch (error) {
+        console.error("Error getting video frame ", window.current_frame, " : ", error);
     }
-});
+}
 
-toggle_scores.addEventListener("click", () => {
-    let x = document.getElementById("score_div");
-    if (x.style.display === "none") {
-        x.style.display = "block";
-        toggle_scores.value = "▼ Similarity scores chart";
-
-        let score_plot = document.getElementById("score_plot");
-        score_plot.style.display = "block";
-        score_plot.width = score_plot.offsetWidth;
-        score_plot.height = score_plot.width * 0.4;
-
-        plot_score_curve(window.current_index);
-    } 
-    else {
-        x.style.display = "none";
-        toggle_scores.value = "▲ Similarity scores chart";
-    }
-});
-
-toggle_reduction.addEventListener("click", () => {
-    let x = document.getElementById("reduction_div");
-    if (x.style.display === "none") {
-        x.style.display = "block";
-        toggle_reduction.value = "▼ Video frames distribution";
-
-        let reduction_plot = document.getElementById("reduction_plot");
-        reduction_plot.style.display = "block";
-        reduction_plot.width = reduction_plot.offsetWidth;
-        reduction_plot.height = reduction_plot.width * 0.7;
-        reduction_plot_offset_x = reduction_plot.width * 0.15;
-
-        let step = reduction_plot.height * 0.05;
-
-        window.selection_top_left = { x: reduction_plot.width / 2 - step, y: reduction_plot.height / 2 - step };
-        window.selection_bot_right = { x: reduction_plot.width / 2 + step, y: reduction_plot.height / 2 + step };
-
-        plot_dimension_reduction(window.current_index);
-    } 
-    else {
-        x.style.display = "none";
-        toggle_reduction.value = "▲ Video frames distribution";
-    }
-});
-
-toggle_depth.addEventListener("click", () => {
-    let depth_div = document.getElementById("depth_div");
-    if (depth_div.style.display == "none") {
-        depth_div.style.display = "block";
-        toggle_depth.value = "▼ Depth map";
-        try {
-            update_depth_video(window.current_index);
-        }
-        catch (error) {
-            console.error("Error updating the depth video: ", error);
-        }
-    } 
-    else {
-        toggle_depth.value = "▲ Depth map";
-        depth_div.style.display = "none";
-    }
-});
-
+const getDataURL = async (file) => {
+    return new Promise((resolve, reject) => {
+        const reader = new FileReader();
+        reader.onload = () => resolve(reader.result);
+        reader.onerror = error => reject(error);
+        reader.readAsDataURL(file);
+    });
+}
 
 /*Image-based search, needs the cropped image to be defined (hover over the video)
 and expecting an array of window.scores plus a reduction array from the server*/
 image_search_button.addEventListener('click', async () => {
     try {
+        let score_plot_loader = document.getElementById("score_plot_loader");
+        let reduction_plot_loader = document.getElementById("reduction_plot_loader");
+        let general_loader = document.getElementById("general_loader");
+        score_plot_loader.style.display = "block";
+        reduction_plot_loader.style.display = "block";
+        general_loader.style.display = "block";
+
         let score_plot = document.getElementById("score_plot");
         
-        const dataURL = cropped.toDataURL('image/png');
+        let dataURL = cropped.toDataURL('image/png');
+        if (window.is_crop_visible == false) {
+            const file = image_load.files[0];
+            if (file) { dataURL = await getDataURL(file); }
+        }
+        console.log(dataURL);
         const response = await fetch(`${server_url}/upload_png/`, 
             {method: 'POST', body: JSON.stringify({ image_data: dataURL }), 
             headers: {'Content-Type': 'application/json'}});
         const body = await response.json();
 
         //only keep window.scores and tsne reduction values
-        window.scores = body['scores'].map(function(value,index) { return value[1]; });
-
-        window.tsne_reduction = body['tsne'];
-        window.pca_reduction = body['pca'];
-        window.umap_reduction = body['umap'];
-
-        window.tsne_clusters = body['tsne_clusters'];
-        window.pca_clusters = body['pca_clusters'];
-        window.umap_clusters = body['umap_clusters'];
-
-        window.displayed_reduction = window.tsne_reduction;
-        window.old_reduction = window.tsne_reduction;
+        window.scores = body['scores'].map(function(value, index) { return value[1]; });
         
-        let tsne_cluster_frames = [];
-        let pca_cluster_frames = [];
-        let umap_cluster_frames = [];
-
-        //fetching frames corresponding to each cluster's centroid for each reduction algorithm
-        let cluster_frames = body['tsne_cluster_frames'];
-        for(let i = 0;i < cluster_frames.length;++i) {
-            let name_processed = window.current_video.split(".")[0]; 
-            const cf_response = await fetch(
-                `${server_url}/image/${name_processed}/${cluster_frames[i]["centroid"]}.png`
-            );
-            const cf_blob = await cf_response.blob();
-            const cf_url = URL.createObjectURL(cf_blob);
-
-            tsne_cluster_frames.push([cluster_frames[i]["centroid"], cf_url]);
-        }
-
-        cluster_frames = body['pca_cluster_frames'];
-        for(let i = 0;i < cluster_frames.length;++i) {
-            let name_processed = window.current_video.split(".")[0]; 
-            const cf_response = await fetch(
-                `${server_url}/image/${name_processed}/${cluster_frames[i]["centroid"]}.png`
-            );
-            const cf_blob = await cf_response.blob();
-            const cf_url = URL.createObjectURL(cf_blob);
-
-            pca_cluster_frames.push([cluster_frames[i]["centroid"], cf_url]);
-        }
-
-        cluster_frames = body['umap_cluster_frames'];
-        for(let i = 0;i < cluster_frames.length;++i) {
-            let name_processed = window.current_video.split(".")[0]; 
-            const cf_response = await fetch(
-                `${server_url}/image/${name_processed}/${cluster_frames[i]["centroid"]}.png`
-            );
-            const cf_blob = await cf_response.blob();
-            const cf_url = URL.createObjectURL(cf_blob);
-
-            umap_cluster_frames.push([cluster_frames[i]["centroid"], cf_url]);
-        }
-
-        window.tsne_cluster_frames = tsne_cluster_frames;
-        window.pca_cluster_frames = pca_cluster_frames;
-        window.umap_cluster_frames = umap_cluster_frames;
-
-        console.log(body);
-        
-        //request to update the image
-        let name_processed = window.current_video.split(".")[0]; 
-        const imgresponse = await fetch(
-            `${server_url}/image/${name_processed}/${window.current_index}.png`
-        );
-        const blob = await imgresponse.blob();
-        const image_url = URL.createObjectURL(blob);
-
-        window.current_frame.src = image_url;
         //update component
         update_video(window.current_frame);
 
         //show buttons for toggling window.scores/reduction
         toggle_scores.style.display = "block";
-        toggle_reduction.style.display = "block";
         score_plot.addEventListener("click", (event) => update_frame_index_onclick(score_plot, 
             score_plot_offset_left, score_plot_offset_right, score_plot_offset_y, window.max_index, event));
 
         //update the curve plot
         update_scores(window.current_index);
+
+        score_plot_loader.style.display = "none";
+        reduction_plot_loader.style.display = "none";
+        general_loader.style.display = "none";
     }
     catch (error) {
         console.error("Error loading similarity window.scores: ", error);
-    }
-});
-
-object_detection_button.addEventListener('click', async () => {
-    //when reorganizing the detection's array, it is assumed that the detections are 
-    //ordrered in terms of timestamp
-    try {
-        const response = await fetch(`${server_url}/video/objects/${window.current_video}`);
-        const body = await response.json();
-        let results = body["result"];
-
-        let classes = [];
-        //organizing the final array by timestamp
-        let objects = [];
-        //objects found in a single timestamp
-        let object = [];
-
-        let timestamp = 0.0;
-        for (let i = 0;i < results.length;++i) {
-            //keep tabs on the timestamp
-            if (results[i]["timestamp"] != timestamp) {
-                objects[timestamp] = object;
-                timestamp = results[i]["timestamp"];
-                object = [];
-            }
-
-            //keep tabs on the classes pool (no repetition)
-            let found = false;
-            for (let j = 0;j < classes.length;++j) {
-                if (results[i]["class"] == classes[j]["index"]) {
-                    found = true;
-                    break;
-                } 
-            }
-            if (!found) {
-                classes.push({"index": results[i]["class"], "label": results[i]["name"]});
-            }
-
-            //save bounding box, timestamp and class number
-            object.push({
-                "min_x": results[i]["xmin"], 
-                "min_y": results[i]["ymin"], 
-                "max_x": results[i]["xmax"], 
-                "max_y": results[i]["ymax"],
-                "label": results[i]["class"],
-                "timestamp": results[i]["timestamp"]
-            });
-        }
-
-        window.objs = {"results": objects, "classes": classes, "maxTime": body["frames"]};
-        console.log(window.objs);
-
-        //show button for toggling obj chart
-        toggle_obj.style.display = "block";
-
-        update_scores(window.current_index);
-    }
-    catch (error) {
-        console.error("Error detecting objects: ", error);
-    }
-});
-
-depthEstimate.addEventListener("click", async () => {
-    try {
-        //compute the depth map
-        const response = await fetch(`${server_url}/video/depth/${window.current_video}`);
-        const body = await response.json();
-        console.log(body);
-
-        //display the depth map of the current frame only
-        update_depth_video(window.current_index);
-
-        toggle_depth.style.display = "block";
-        window.depth = true;
-    }
-    catch (error) {
-        console.error("Error computing depth map: ", error);
     }
 });

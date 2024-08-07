@@ -1,5 +1,6 @@
 let reduction_plot = document.getElementById("reduction_plot");
 let reduction_color_scale = document.getElementById("reduction_color_map");
+let plot_reduction_plot = document.getElementById("plot_reduction_plot")
 let selected_reduction_dots = [];
 
 //initial zoom setting
@@ -208,14 +209,103 @@ let plot_dimension_reduction = (current_index) => {
 
     if (window.is_selection) { draw_rectangle(ctx, window.selection_top_left, window.selection_bot_right); }
 
+    //drawing rectangles to hide the points when zooming 
+    //draw in white and then draw the color (transparency issues)
     ctx.fillStyle = "white";
     ctx.fillRect(0, 0, reduction_plot_offset_x - window.EMPHASIS_RADIUS, plot_height);
 
     ctx.fillStyle = "white";
     ctx.fillRect(plot_width - reduction_plot_offset_x + window.EMPHASIS_RADIUS, 0, reduction_plot_offset_x, plot_height);
 
+    ctx.fillStyle = "rgba(255, 150, 0, 0.1)";
+    ctx.fillRect(0, 0, reduction_plot_offset_x - window.EMPHASIS_RADIUS, plot_height);
+
+    ctx.fillStyle = "rgba(255, 150, 0, 0.1)";
+    ctx.fillRect(plot_width - reduction_plot_offset_x + window.EMPHASIS_RADIUS, 0, reduction_plot_offset_x, plot_height);
+
     draw_cluster_frames(color_map, min_x, min_y, max_x, max_y);
 };
+
+plot_reduction_plot.addEventListener("click", async () => {
+    let reduction_plot_loader = document.getElementById("reduction_plot_loader");
+    let general_loader = document.getElementById("general_loader");
+    reduction_plot_loader.style.display = "block";
+    general_loader.style.display = "block";
+
+    const embeds_response = await fetch(`${server_url}/video/embeddings/${window.current_video}`);
+    const body = await embeds_response.json();
+
+    console.log(body);
+
+    window.tsne_reduction = body['tsne'];
+    window.pca_reduction = body['pca'];
+    window.umap_reduction = body['umap'];
+
+    window.tsne_clusters = body['tsne_clusters'];
+    window.pca_clusters = body['pca_clusters'];
+    window.umap_clusters = body['umap_clusters'];
+    
+    let tsne_cluster_frames = [];
+    let pca_cluster_frames = [];
+    let umap_cluster_frames = [];
+
+    //fetching frames corresponding to each cluster's centroid for each reduction algorithm
+    let cluster_frames = body['tsne_cluster_frames'];
+    for(let i = 0;i < cluster_frames.length;++i) {
+        let name_processed = window.current_video.split(".")[0]; 
+        const cf_response = await fetch(
+            `${server_url}/image/${name_processed}/${cluster_frames[i]["centroid"]}.png`
+        );
+        const cf_blob = await cf_response.blob();
+        const cf_url = URL.createObjectURL(cf_blob);
+
+        tsne_cluster_frames.push([cluster_frames[i]["centroid"], cf_url]);
+    }
+
+    cluster_frames = body['pca_cluster_frames'];
+    for(let i = 0;i < cluster_frames.length;++i) {
+        let name_processed = window.current_video.split(".")[0]; 
+        const cf_response = await fetch(
+            `${server_url}/image/${name_processed}/${cluster_frames[i]["centroid"]}.png`
+        );
+        const cf_blob = await cf_response.blob();
+        const cf_url = URL.createObjectURL(cf_blob);
+
+        pca_cluster_frames.push([cluster_frames[i]["centroid"], cf_url]);
+    }
+
+    cluster_frames = body['umap_cluster_frames'];
+    for(let i = 0;i < cluster_frames.length;++i) {
+        let name_processed = window.current_video.split(".")[0]; 
+        const cf_response = await fetch(
+            `${server_url}/image/${name_processed}/${cluster_frames[i]["centroid"]}.png`
+        );
+        const cf_blob = await cf_response.blob();
+        const cf_url = URL.createObjectURL(cf_blob);
+
+        umap_cluster_frames.push([cluster_frames[i]["centroid"], cf_url]);
+    }
+
+    window.tsne_cluster_frames = tsne_cluster_frames;
+    window.pca_cluster_frames = pca_cluster_frames;
+    window.umap_cluster_frames = umap_cluster_frames;
+
+    //set default displayed reduction algorithm
+    window.displayed_reduction = window.tsne_reduction;
+    window.displayed_reduction = window.tsne_reduction;
+    
+    //adjust the max value
+    window.max_index = window.tsne_reduction.length;
+
+    //if scores are not computed yet, initialize with empty vector
+    window.scores = new Array(window.max_index).fill(0);
+
+    toggle_reduction.style.display = "block";
+    update_scores(window.current_index);
+
+    reduction_plot_loader.style.display = "none";
+    general_loader.style.display = "none";
+});
 
 let generate_radius_map = (indices) => {
     radius_map = [];
@@ -268,12 +358,11 @@ let generate_color_map = (current_index, cmap) => {
                     ${color1.blue * factor1 + color2.blue * factor2}, 0.7` 
                     : window.EMPHASIS_COLOR); 
             }
-            draw_color_scale(0, window.displayed_reduction.length, color1, color2);
+            draw_color_scale(0, window.max_index / window.fps, color1, color2);
             break;
         }
 
         case "score": {
-
             //make sure scores exist and match the reduction 
             if (window.scores == null) { generate_color_map(current_index, ""); }
             if (window.scores.length != window.displayed_reduction.length) { generate_color_map(current_index, ""); }
@@ -649,7 +738,7 @@ let update_selected = (current_index) => {
             selected_reduction_dots.push(i);
         }
     }
-    window.selected_points[window.current_selection] = union(selected_reduction_dots, selected_score_spikes);
+    window.selected_points = selected_reduction_dots;
 };
 
 let selection_mouse_down = (event) => {
@@ -767,7 +856,7 @@ reset_reduction_plot.addEventListener("click", () => {
 
     //reset selection
     window.is_selection = false;
-    window.selected_points[window.current_selection] = [];
+    window.selected_points = [];
 
     reduction_plot.removeEventListener("mousemove", selection_mouse_move);
     reduction_plot.removeEventListener("mousedown", selection_mouse_down);
@@ -819,4 +908,29 @@ toggle_selection.addEventListener("click", () => {
     }
     //redraw context
     plot_dimension_reduction(window.current_index);
+});
+
+toggle_reduction.addEventListener("click", () => {
+    let x = document.getElementById("reduction_div");
+    if (x.style.display === "none") {
+        x.style.display = "block";
+        toggle_reduction.value = "▼ Video frames distribution";
+
+        let reduction_plot = document.getElementById("reduction_plot");
+        reduction_plot.style.display = "block";
+        reduction_plot.width = reduction_plot.offsetWidth;
+        reduction_plot.height = reduction_plot.width * 0.7;
+        reduction_plot_offset_x = reduction_plot.width * 0.15;
+
+        let step = reduction_plot.height * 0.05;
+
+        window.selection_top_left = { x: reduction_plot.width / 2 - step, y: reduction_plot.height / 2 - step };
+        window.selection_bot_right = { x: reduction_plot.width / 2 + step, y: reduction_plot.height / 2 + step };
+
+        plot_dimension_reduction(window.current_index);
+    } 
+    else {
+        x.style.display = "none";
+        toggle_reduction.value = "▲ Video frames distribution";
+    }
 });

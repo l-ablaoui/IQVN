@@ -59,48 +59,48 @@ let crop_selection_mouse_move = (event) => {
     switch (crop_state) {
         case "dp1":
             window.crop_top_left = { 
-                x: window.crop_top_left.x + delta.x, 
-                y: window.crop_top_left.y + delta.y 
+                x: Math.min(window.crop_top_left.x + delta.x, window.crop_bot_right.x), 
+                y: Math.min(window.crop_top_left.y + delta.y, window.crop_bot_right.y)
             };
             break;
 
         case "dp2":
             window.crop_bot_right = { 
-                x: window.crop_bot_right.x + delta.x, 
-                y: window.crop_bot_right.y + delta.y 
+                x: Math.max(window.crop_bot_right.x + delta.x, window.crop_top_left.x), 
+                y: Math.max(window.crop_bot_right.y + delta.y, window.crop_top_left.y) 
             };
             break;
 
         case "dc":
             window.crop_top_left = { 
                 x: window.crop_top_left.x + delta.x, 
-                y: window.crop_top_left.y + delta.y 
+                y: window.crop_top_left.y + delta.y
             };
             window.crop_bot_right = { 
-                x: window.crop_bot_right.x + delta.x, 
-                y: window.crop_bot_right.y + delta.y 
+                x: Math.max(window.crop_bot_right.x + delta.x, window.crop_top_left.x), 
+                y: Math.max(window.crop_bot_right.y + delta.y, window.crop_top_left.y)
             };
             break;
 
         case "dcTR":
             window.crop_top_left = { 
                 x: window.crop_top_left.x, 
-                y: window.crop_top_left.y + delta.y 
+                y: Math.min(window.crop_top_left.y + delta.y, window.crop_bot_right.y) 
             };
             window.crop_bot_right = { 
-                x: window.crop_bot_right.x + delta.x, 
+                x: Math.max(window.crop_bot_right.x + delta.x, window.crop_top_left.x), 
                 y: window.crop_bot_right.y 
             };
             break;
 
         case "dcBL":
             window.crop_top_left = { 
-                x: window.crop_top_left.x + delta.x, 
+                x: Math.min(window.crop_top_left.x + delta.x, window.crop_bot_right.x), 
                 y: window.crop_top_left.y 
             };
             window.crop_bot_right = { 
                 x: window.crop_bot_right.x, 
-                y: window.crop_bot_right.y + delta.y 
+                y: Math.max(window.crop_bot_right.y + delta.y, window.crop_top_left.y) 
             };
             break;
     }

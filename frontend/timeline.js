@@ -6,7 +6,7 @@
  * @param {*} fps video fps rate (expected to be a non zero positive integer)
  * @param {*} svg the canvas where the lines are drawn, expected to be a 2D curve 
  */
-let plot_timestamps = (max_index, fps, svg) => {
+const plot_timestamps = (max_index, fps, svg) => {
     let plot_width = svg.width;
     let plot_height = svg.height;
 
@@ -32,7 +32,7 @@ let plot_timestamps = (max_index, fps, svg) => {
         ctx.moveTo(x, 0);
         ctx.lineTo(x, y);
         ctx.strokeStyle = "lightgray";
-        ctx.lineWidth = 0.5;
+        ctx.lineWidth = 0.7;
         ctx.stroke();
 
         //write timestamp
@@ -43,12 +43,13 @@ let plot_timestamps = (max_index, fps, svg) => {
 };
 
 /**
- * @todo RIGHT THIS DOWN
- * @param {*} current_index 
- * @param {*} max_index 
- * @param {*} fps 
+ * draw defined timestamp, current timestamp marker and selected point as vertical
+ * stripes on the rectangle designed to navigate the video temporally
+ * @param {*} current_index positive integer that shows the frame currently displayed
+ * @param {*} max_index positive integer that represents the number of frames of the video
+ * @param {*} fps positive integer that represents the frame per second rate of the video
  */
-let plot_timeline = (current_index, max_index, fps) => {
+const plot_timeline = (current_index, max_index, fps) => {
     let timeline = document.getElementById("timeline");
     let ctx = timeline.getContext("2d");
 
@@ -78,24 +79,7 @@ let plot_timeline = (current_index, max_index, fps) => {
     }
     plot_marker_triangle(current_index, max_index, timeline, 0, 0, 0, "black");
     plot_current_timer(current_index, max_index, fps, timeline, 0, 0);
-    plot_marker(current_index, max_index, 0, 0, 0, "black", 0.5, timeline);
-};
-
-let union = (array_a, array_b) => {
-    let set = new Set([...array_a, ...array_b]); // Use a Set to automatically handle duplicates
-    return Array.from(set);
-};
-
-let intersection = (array_a, array_b) => {
-    let set_a = new Set(array_a);
-    let intersection = array_b.filter(element => set_a.has(element));
-    return intersection;
-};
-
-let difference = (array_a, array_b) => {
-    let set_b = new Set(array_b);
-    let difference = array_a.filter(element => !set_b.has(element)); //A - B
-    return difference;
+    plot_marker(current_index, max_index, 0, 0, 0, "black", 0.7, timeline);
 };
 
 let is_timeline_dragging = false;

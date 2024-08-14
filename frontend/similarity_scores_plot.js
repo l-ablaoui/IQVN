@@ -26,7 +26,7 @@ let generate_score_color_map = () => {
     return color_map;
 }
 
-let draw_selector = (threshold, offset_left, offset_right, offset_y, svg) => {
+const draw_selector = (threshold, offset_left, offset_right, offset_y, svg) => {
     let plot_width = svg.width;
     let plot_height = svg.height;
     let ctx = svg.getContext("2d");
@@ -63,7 +63,7 @@ let draw_selector = (threshold, offset_left, offset_right, offset_y, svg) => {
 }
 
 //Plot the score curve
-let plot_score_curve = (current_index) => {
+const plot_score_curve = (current_index) => {
     let score_plot = document.getElementById("score_plot");
 
     if (window.scores == null) { return; }
@@ -153,49 +153,54 @@ let plot_score_curve = (current_index) => {
     
 };
 
-let get_scores_above_threshold = (threshold) => {
-    if (window.scores == null) { return; }
+const get_scores_above_threshold = (scores, threshold) => {
+    if (scores == null) { return; }
 
     //normalize scores array
-    let min_score = Math.min(...window.scores);
-    let max_score = Math.max(...window.scores);
-    let scaled_scores = window.scores.map(score => (score - min_score) / (max_score - min_score));
+    let min_score = Math.min(...scores);
+    let max_score = Math.max(...scores);
+    let scaled_scores = scores.map(score => (score - min_score) / (max_score - min_score));
 
     return scaled_scores.reduce((acc, num, index) => {
         if (num > threshold) acc.push(index);
         return acc;
     }, []);
-}
+};
 
-let threshold_mouse_down = () => { is_threshold_dragging = true; }
+const threshold_mouse_down = () => { is_threshold_dragging = true; };
 
-let threshold_mouse_move = (event, offset_y, svg) => { 
+const threshold_mouse_move = (event, offset_y, svg) => { 
     if (!is_threshold_dragging) { return; }
     let mouse_y = event.offsetY;
     let plot_height = svg.height;
 
     threshold = 1 - Math.max(0, Math.min(1, (mouse_y - offset_y) / (plot_height - 2 * offset_y)));
+    window.all_thresholds[window.focused_sentence] = threshold;
+    update_focused_threshold();
+
     selected_score_spikes = [];
-    selected_score_spikes = get_scores_above_threshold(threshold);
+    selected_score_spikes = get_scores_above_threshold(window.scores, threshold);
     window.selected_points = selected_score_spikes;
     update_scores(window.current_index);
-}
+};
 
-let threshold_mouse_up = (event, offset_y, svg) => { 
+const threshold_mouse_up = (event, offset_y, svg) => { 
     is_threshold_dragging = false;
 
     let mouse_y = event.offsetY;
     let plot_height = svg.height;
 
     threshold = 1 - Math.max(0, Math.min(1, (mouse_y - offset_y) / (plot_height - 2 * offset_y)));
-    selected_score_spikes = get_scores_above_threshold(threshold);
+    update_focused_threshold();
+
+    selected_score_spikes = get_scores_above_threshold(window.scores, threshold);
     window.selected_points = selected_score_spikes;
     update_scores(window.current_index);
 }
 
 //duplicating the storage of mouseup and mousemove for the sake of keeping a deletable reference
-let threshold_final_mouse_move = (event) => threshold_mouse_move(event, score_plot_offset_y, score_plot);
-let threshold_final_mouse_up = (event) => threshold_mouse_up(event, score_plot_offset_y, score_plot);
+const threshold_final_mouse_move = (event) => threshold_mouse_move(event, score_plot_offset_y, score_plot);
+const threshold_final_mouse_up = (event) => threshold_mouse_up(event, score_plot_offset_y, score_plot);
 
 let select_threshold = document.getElementById("select_threshold");
 select_threshold.addEventListener("click", () => {
@@ -211,7 +216,7 @@ select_threshold.addEventListener("click", () => {
         score_plot.addEventListener("mousemove", threshold_final_mouse_move);
         score_plot.addEventListener("mouseup", threshold_final_mouse_up);
         selected_score_spikes = [];
-        selected_score_spikes = get_scores_above_threshold(threshold);
+        selected_score_spikes = get_scores_above_threshold(window.scores, threshold);
         window.selected_points = selected_score_spikes;
         is_thresholding = true;
     }

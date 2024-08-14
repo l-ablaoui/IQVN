@@ -162,7 +162,7 @@ const draw_cluster_frames = (color_map, min_x, min_y, max_x, max_y) => {
 };
 
 /*main drawing function for tsne reduced embeddings' scatter plot */
-let plot_dimension_reduction = (current_index) => {
+const plot_dimension_reduction = (current_index) => {
     if (window.displayed_reduction == null) { return; }
 
     let color_map = generate_color_map(current_index, window.cmap);
@@ -308,7 +308,7 @@ plot_reduction_plot.addEventListener("click", async () => {
     general_loader.style.display = "none";
 });
 
-let generate_radius_map = (indices) => {
+const generate_radius_map = (indices) => {
     radius_map = [];
     if (window.displayed_reduction == null) { return radius_map; }
 
@@ -324,11 +324,11 @@ let generate_radius_map = (indices) => {
     }
 
     return radius_map;
-}
+};
 
 /*color map stuff */
 //generating random colors
-function generate_HSL_colors (nb_colors) {
+const generate_HSL_colors = (nb_colors) => {
     let colors = [];
     const saturation = 70; // Saturation percentage
     const lightness = 50;  // Lightness percentage
@@ -339,10 +339,10 @@ function generate_HSL_colors (nb_colors) {
     }
 
     return colors;
-}
+};
 
 //plot colormap
-let generate_color_map = (current_index, cmap) => {
+const generate_color_map = (current_index, cmap) => {
     color_map = [];
     if (window.displayed_reduction == null) { return color_map; }
 
@@ -441,9 +441,9 @@ let generate_color_map = (current_index, cmap) => {
     }
 
     return color_map;
-}
+};
 
-let draw_color_scale = (min_value, max_value, min_color, max_color) => {
+const draw_color_scale = (min_value, max_value, min_color, max_color) => {
     const ctx = reduction_color_scale.getContext("2d");
     reduction_color_scale.height = 20;
     reduction_color_scale.width = 300;
@@ -464,9 +464,9 @@ let draw_color_scale = (min_value, max_value, min_color, max_color) => {
     ctx.fillText(min_value, 15, reduction_color_scale.height / 2 + 5); // Min value at the left
     ctx.fillStyle = 'white';
     ctx.fillText(max_value, reduction_color_scale.width - 15, reduction_color_scale.height / 2 + 5); // Max value at the right
-}
+};
 
-let animate_reduction_transition = (old_reduction, new_reduction, duration) => {
+const animate_reduction_transition = (old_reduction, new_reduction, duration) => {
     //copying to make sure the reduction results aint touched
     const start_time = performance.now();
 
@@ -616,7 +616,7 @@ reduction_plot.addEventListener("click", async (event) => {
 })
 
 /*zoom/pan handling */
-let zoom_pan_wheel = (event) => {
+const zoom_pan_wheel = (event) => {
     event.preventDefault();
     
     const mouse_x = event.offsetX;
@@ -639,17 +639,17 @@ let zoom_pan_wheel = (event) => {
     plot_dimension_reduction(window.current_index);
 };
 
-let zoom_pan_mouse_down = (event) => {
+const zoom_pan_mouse_down = (event) => {
     is_reduction_dragging = true;
     reduction_drag_offset.x = event.offsetX - reduction_translate.x;
     reduction_drag_offset.y = event.offsetY - reduction_translate.y;
 };
 
-let zoom_pan_mouse_up = () => {
+const zoom_pan_mouse_up = () => {
     is_reduction_dragging = false;
 };
 
-let zoom_pan_mouse_move = (event) => {
+const zoom_pan_mouse_move = (event) => {
     if (is_reduction_dragging) {
         reduction_translate.x = event.offsetX - reduction_drag_offset.x;
         reduction_translate.y = event.offsetY - reduction_drag_offset.y;
@@ -668,7 +668,7 @@ reduction_plot.addEventListener('mousemove', zoom_pan_mouse_move);
 /*handling embedding selection */
 
 // Function to check if the circle intersects a rectangle edge
-let intersect_edges = (p1, p2, c, r) => {
+const intersect_edges = (p1, p2, c, r) => {
     // Closest point on the edge to the circle's center
     let closest_x = Math.max(p1.x, Math.min(c.x, p2.x));
     let closest_y = Math.max(p1.y, Math.min(c.y, p2.y));
@@ -688,7 +688,7 @@ let intersect_edges = (p1, p2, c, r) => {
  * @returns true if the circle is completely contained within the rectangle or 
  * if one the edges of the rectangle intersect with the circle
  */
-let is_circle_in_square = (p1, p2, c, r) => {
+const is_circle_in_square = (p1, p2, c, r) => {
     /*circle completely inside */
     // Ensure p1 is the top-left corner and p2 is the bottom-right corner
     let rect_left = Math.min(p1.x, p2.x);
@@ -715,8 +715,11 @@ let is_circle_in_square = (p1, p2, c, r) => {
 };
 
 // update the selection indices global vector
-let update_selected = (current_index) => {
-    if (window.displayed_reduction == null) { return; }
+const update_selected = (current_index, top_left, bot_right) => {
+    //clear all
+    selected_reduction_dots = [];
+    
+    if (window.displayed_reduction == null) { return selected_reduction_dots; }
  
     //get min/max to later normalize reduction values
     let { min_x, max_x, min_y, max_y } =  normalize_coordinates();
@@ -725,24 +728,21 @@ let update_selected = (current_index) => {
     let plot_width = reduction_plot.width;
     let plot_height = reduction_plot.height;
 
-    //clear all
-    selected_reduction_dots = [];
-
     for (let i = 0;i < window.displayed_reduction.length;++i) {
         //get center coordinates
         let {x, y} = get_reduction_plot_coordinates({ x: min_x, y: min_y }, { x: max_x, y: max_y }, 
             { width: plot_width, height: plot_height}, i);
 
         //checking if circle is in the selected area, taking into account the current zoom/pan and the big coloured dot that is the current frame embedding
-        if (is_circle_in_square(window.selection_top_left, window.selection_bot_right, 
-            {x: x, y: y}, (current_index == i)? window.EMPHASIS_RADIUS : window.REGULAR_RADIUS)) {
+        if (is_circle_in_square(top_left, bot_right, {x: x, y: y}, (current_index == i)? 
+        window.EMPHASIS_RADIUS : window.REGULAR_RADIUS)) {
             selected_reduction_dots.push(i);
         }
     }
-    window.selected_points = selected_reduction_dots;
+    return selected_reduction_dots;
 };
 
-let selection_mouse_down = (event) => {
+const selection_mouse_down = (event) => {
     selection_mouse_down_point = {x: event.offsetX, y: event.offsetY};
 
     //Get the closest point
@@ -770,7 +770,7 @@ let selection_mouse_down = (event) => {
     if (min_index == 4) selection_state = "dcbl";
 };
 
-let selection_mouse_move = (event) => {
+const selection_mouse_move = (event) => {
     if (selection_state == "idle") { return; }
     let mouse_position = {x: event.offsetX, y: event.offsetY};
     let delta = {
@@ -829,19 +829,24 @@ let selection_mouse_move = (event) => {
         y: (window.selection_top_left.y + window.selection_bot_right.y) / 2 };
 
     selection_mouse_down_point = mouse_position;
+    window.all_boxes[window.focused_sentence] = [window.selection_top_left.x, window.selection_top_left.y, 
+        window.selection_bot_right.x, window.selection_bot_right.y];
+    update_focused_box();
 
     // Redraw the content
-    update_selected(window.current_index);
+    window.selected_points = update_selected(window.current_index, window.selection_top_left,
+        window.selection_bot_right);
     update_scores(window.current_index);
 }
 
-let debounced_selection_mouse_move = debounce(selection_mouse_move, 200);
+const debounced_selection_mouse_move = debounce(selection_mouse_move, 200);
 
-let selection_mouse_up = () => { 
+const selection_mouse_up = () => { 
     selection_state = "idle"; 
 
     // Redraw the content
-    update_selected(window.current_index);
+    window.selected_points = update_selected(window.current_index, window.selection_top_left,
+        window.selection_bot_right);
     update_scores(window.current_index);
 }
 
@@ -891,7 +896,8 @@ toggle_selection.addEventListener("click", () => {
         reduction_plot.addEventListener("mouseup", selection_mouse_up);
         reduction_plot.addEventListener("mousemove", selection_mouse_move);
 
-        update_selected(window.current_index);
+        window.selected_points = update_selected(window.current_index, window.selection_top_left,
+            window.selection_bot_right);
         plot_score_curve(window.current_index);
     }
     else {
@@ -915,7 +921,7 @@ toggle_reduction.addEventListener("click", () => {
     let x = document.getElementById("reduction_div");
     if (x.style.display === "none") {
         x.style.display = "block";
-        toggle_reduction.value = "▼ Video frames distribution";
+        toggle_reduction.value = "▼ Semantic distribution of video frames";
 
         let reduction_plot = document.getElementById("reduction_plot");
         reduction_plot.style.display = "block";
@@ -923,15 +929,21 @@ toggle_reduction.addEventListener("click", () => {
         reduction_plot.height = reduction_plot.width * 0.7;
         reduction_plot_offset_x = reduction_plot.width * 0.15;
 
-        let step = reduction_plot.height * 0.05;
+        const step = reduction_plot.height * 0.05;
+        const x1 = reduction_plot.width / 2 - step;
+        const y1 = reduction_plot.height / 2 - step;
+        const x2 = reduction_plot.width / 2 + step;
+        const y2 = reduction_plot.height / 2 + step;
 
-        window.selection_top_left = { x: reduction_plot.width / 2 - step, y: reduction_plot.height / 2 - step };
-        window.selection_bot_right = { x: reduction_plot.width / 2 + step, y: reduction_plot.height / 2 + step };
+        window.selection_top_left = { x: x1, y: y1 };
+        window.selection_bot_right = { x: x2, y:  y2};
+        window.all_boxes[window.focused_sentence] = [x1, y1, x2, y2];
+        update_focused_box();
 
         plot_dimension_reduction(window.current_index);
     } 
     else {
         x.style.display = "none";
-        toggle_reduction.value = "▲ Video frames distribution";
+        toggle_reduction.value = "▲ Semantic distribution of video frames";
     }
 });

@@ -36,6 +36,23 @@ const server_url = 'http://localhost:8000';
 /*methods declaration*/
 /*********************/
 
+const union = (array_a, array_b) => {
+    let set = new Set([...array_a, ...array_b]); // Use a Set to automatically handle duplicates
+    return Array.from(set);
+};
+
+const intersection = (array_a, array_b) => {
+    let set_a = new Set(array_a);
+    let intersection = array_b.filter(element => set_a.has(element));
+    return intersection;
+};
+
+const difference = (array_a, array_b) => {
+    let set_b = new Set(array_b);
+    let difference = array_a.filter(element => !set_b.has(element)); //A - B
+    return difference;
+};
+
 /**
  * @param {*} p1 2d point cootdinates 
  * @param {*} p2 another 2d point cootdinates 
@@ -236,17 +253,27 @@ const update_video = (image_url) => {
  * this function is called to update all data visualisation components
  * @param {*} frame_index currently visualised video frame's index
  */
-let update_scores = (frame_index) => {
+const update_scores = (frame_index) => {
     if (window.current_index != frame_index) { 
-      window.current_index = frame_index; 
+        window.current_index = frame_index; 
     }
     // Update plot
     plot_timeline(frame_index, window.max_index, window.fps);
-    plot_objects(frame_index);
-    plot_score_curve(frame_index);
-    plot_dimension_reduction(frame_index);
-    update_depth_video(frame_index);
-    //TODO update other plots or frames later (possible in here)
+    if (obj_plot.style.display == "block") {
+        console.log("plotting object graph");
+        plot_objects(frame_index);
+    }
+    if (score_plot.style.display == "block") {
+        console.log("plotting score curve");
+        plot_score_curve(frame_index);
+    }
+    if (reduction_plot.style.display == "block") {
+        console.log("plotting semantic distribution");
+        plot_dimension_reduction(frame_index);
+    }
+    if (depth_video.style.display == "block") {
+        update_depth_video(frame_index);
+    }
 };
 
 /***********/
@@ -269,7 +296,7 @@ let debounce = (func, delay) => {
             func.apply(this, args);
         }, delay);
     };
-}
+};
 
 //resize listener has to addapt the sizes of each component that has height as a function of width
 window.addEventListener("resize", () => {
@@ -341,7 +368,7 @@ let update_frame_index_onclick = async (svg, offset_left, offset_right, offset_y
 }
 
 /** makes element focusable */
-const focus_onclick = () => { timeline.focus(); }
+const focus_onclick = () => { timeline.focus(); };
 
 /**
  * keyboard interaction to move forward or backwards in the video
@@ -381,7 +408,7 @@ const navigate_video_onkeydown = async (event) => {
     catch (error) {
         console.error("Error getting video frame ", window.current_frame, " : ", error);
     }
-}
+};
 
 const getDataURL = async (file) => {
     return new Promise((resolve, reject) => {
@@ -390,19 +417,19 @@ const getDataURL = async (file) => {
         reader.onerror = error => reject(error);
         reader.readAsDataURL(file);
     });
-}
+};
 
 /*Image-based search, needs the cropped image to be defined (hover over the video)
 and expecting an array of window.scores plus a reduction array from the server*/
 image_search_button.addEventListener('click', async () => {
-    try {
-        let score_plot_loader = document.getElementById("score_plot_loader");
-        let reduction_plot_loader = document.getElementById("reduction_plot_loader");
-        let general_loader = document.getElementById("general_loader");
-        score_plot_loader.style.display = "block";
-        reduction_plot_loader.style.display = "block";
-        general_loader.style.display = "block";
+    let score_plot_loader = document.getElementById("score_plot_loader");
+    let reduction_plot_loader = document.getElementById("reduction_plot_loader");
+    let general_loader = document.getElementById("general_loader");
+    score_plot_loader.style.display = "block";
+    reduction_plot_loader.style.display = "block";
+    general_loader.style.display = "block";
 
+    try {
         let score_plot = document.getElementById("score_plot");
         
         let dataURL = cropped.toDataURL('image/png');
@@ -429,12 +456,12 @@ image_search_button.addEventListener('click', async () => {
 
         //update the curve plot
         update_scores(window.current_index);
-
-        score_plot_loader.style.display = "none";
-        reduction_plot_loader.style.display = "none";
-        general_loader.style.display = "none";
     }
     catch (error) {
-        console.error("Error loading similarity window.scores: ", error);
+        console.error("Error loading similarity scores for image query: ", error);
     }
+
+    score_plot_loader.style.display = "none";
+    reduction_plot_loader.style.display = "none";
+    general_loader.style.display = "none";
 });

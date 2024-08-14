@@ -46,6 +46,10 @@ body {
     border-radius: 5px;
 }
 
+#display_composition {
+    display: none;
+}
+
 .add_adj_sbj, .add_adj_obj, .add_adv {
     background-color: white;
 }

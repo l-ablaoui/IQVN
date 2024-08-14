@@ -19,7 +19,7 @@ const update_crop_center = () => {
 
 let crop_center = update_crop_center();
 
-let crop_selection_mouse_down = (event) => {
+const crop_selection_mouse_down = (event) => {
     crop_mouse_down = {x: event.offsetX, y: event.offsetY};
     crop_center = update_crop_center(); // Update crop center on mousedown
 
@@ -47,7 +47,7 @@ let crop_selection_mouse_down = (event) => {
 
 video.addEventListener("mousedown", crop_selection_mouse_down);
 
-let crop_selection_mouse_move = (event) => {
+const crop_selection_mouse_move = (event) => {
     if (crop_state == "idle") return;
 
     let mouse_pos = {x: event.offsetX, y: event.offsetY};
@@ -111,12 +111,12 @@ let crop_selection_mouse_move = (event) => {
 };
 video.addEventListener("mousemove", crop_selection_mouse_move);
 
-let crop_selection_mouse_up = () => { crop_state = "idle"; }
+const crop_selection_mouse_up = () => { crop_state = "idle"; }
 
 video.addEventListener("mouseup", crop_selection_mouse_up);
 video.addEventListener("mouseout", crop_selection_mouse_up);
 
-let draw_rectangle = (ctx, p1, p2) => {
+const draw_rectangle = (ctx, p1, p2) => {
     // Draw the points for the corners of the square
     ctx.fillStyle = "rgba(100,200,255,1)";
     fill_circle(ctx, p1, 5);
@@ -133,7 +133,7 @@ let draw_rectangle = (ctx, p1, p2) => {
     ctx.stroke();
 }
 
-let draw_cropped = () => {
+const draw_cropped = () => {
     let video = document.getElementById("video");
     let ctx = video.getContext("2d");
     let ctx_cropped = cropped.getContext("2d");

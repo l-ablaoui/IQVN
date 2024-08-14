@@ -5,7 +5,7 @@ let video_name_selection = document.getElementById("video_names_selection");
  * resets all output results (scores, objects, depth, ...) and loads
  * the video whos name is currently selected
  */
-let load_video = async () => {
+const load_video = async () => {
     try {
         //update video name locally
         window.current_video = video_name_selection.value;
@@ -26,7 +26,24 @@ let load_video = async () => {
 
         //reset selected points and timeline
         window.selected_points = [];
-        window.current_selection = 0;
+        window.current_selection = 0; 
+        
+        //reset outputs
+        window.tsne_reduction = null;
+        window.pca_reduction = null;
+        window.umap_reduction = null;
+    
+        window.tsne_clusters = null;
+        window.pca_clusters = null;
+        window.umap_clusters = null;
+    
+        window.tsne_cluster_frames = null;
+        window.pca_cluster_frames = null;
+        window.umap_cluster_frames = null;
+        
+        window.scores = null;
+        window.objs = null;
+        window.depth = null;
 
         //toggle all score divs if they are visible
         document.getElementById("obj_div").style.display = "none";
@@ -84,7 +101,7 @@ video_name_selection.addEventListener("change", load_video);
  * asks the server for the list of available videos and loads their name
  * in the selection menu 
  */
-let update_video_selection = async () => {
+const update_video_selection = async () => {
     try {
         const response = await fetch(`${server_url}/video/`);
         const video_names = await response.json();

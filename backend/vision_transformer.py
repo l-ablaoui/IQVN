@@ -8,9 +8,10 @@ from tqdm import tqdm
 import time
 
 class VisionTransformer:
-    def __init__ (self, video_path = "", checkpoint = "openai/clip-vit-base-patch16", batch_size=256):
+    def __init__ (self, fps, video_path = "", checkpoint = "openai/clip-vit-base-patch16", batch_size=256):
         #input video path
         self.video_path = video_path
+        self.fps = fps
 
         #outputs
         self.video_embeddings = None
@@ -30,7 +31,11 @@ class VisionTransformer:
         self.batch_size = batch_size
 
     def load_video(self):
-        return cv2.VideoCapture(self.video_path)
+        vid = cv2.VideoCapture(self.video_path)
+        assert vid.isOpened
+        if self.fps is None:
+            self.fps = int(vid.get(cv2.CAP_PROP_FPS))
+        return vid
     
     def get_image_features(self, images):
         with torch.no_grad():
@@ -47,13 +52,23 @@ class VisionTransformer:
     def get_video_features(self):
         vid = self.load_video()
         frameCount = int(vid.get(cv2.CAP_PROP_FRAME_COUNT))
-        frameWidth = int(vid.get(cv2.CAP_PROP_FRAME_WIDTH))
-        frameHeight = int(vid.get(cv2.CAP_PROP_FRAME_HEIGHT))
+        originalFps = int(vid.get(cv2.CAP_PROP_FPS))
+
+        skipAhead = 0
+        print(type(self.fps), type(originalFps))
+        if originalFps > self.fps:
+            skipAhead =  int(originalFps / self.fps) 
+            frameCount = int(frameCount * self.fps / originalFps)
 
         embeddings = []
         frames = []
         with tqdm(total=frameCount, desc="computing video embeddings: ") as pbar:
             while vid.isOpened:
+                for _ in range(skipAhead - 1):
+                    okay, frame = vid.read()
+                    if not okay:
+                        break
+                    
                 okay, frame = vid.read()
                 if not okay:
                     break

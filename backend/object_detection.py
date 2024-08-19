@@ -6,15 +6,15 @@ from time import time
 
 from tqdm import tqdm
 
-class OD:
-
-    def __init__(self, capture_video, output_results, model_name):
+class ObjectDetector:
+    def __init__(self, video_path, output_results, model_name, fps):
         """
         Initializes the class with youtube url and output file.
         :param url: Has to be as youtube URL,on which prediction is made.
         :param out_file: A valid output file name.
         """
-        self.capture_video = capture_video
+        self.video_path = video_path
+        self.fps = fps
         self.output_results = output_results
         self.model = self.load_model(model_name)
         self.classes = self.model.names
@@ -26,8 +26,11 @@ class OD:
         Creates a new video streaming object to extract video frame by frame to make prediction on.
         :return: opencv2 video capture object, with lowest quality frame available for video.
         """
-    
-        return cv2.VideoCapture(self.capture_video)
+        vid = cv2.VideoCapture(self.video_path)
+        assert vid.isOpened
+        if self.fps is None:
+            self.fps = int(vid.get(cv2.CAP_PROP_FPS))
+        return vid
 
     def load_model(self, model_name):
         """
@@ -90,7 +93,6 @@ class OD:
         cv2.imwrite(output_path, img_annotated)
 
         
-
     def __call__(self, image=None):
         """
         This function is called when class is executed, it runs the loop to read the video frame by frame,
@@ -107,12 +109,23 @@ class OD:
 
         width = int(cap.get(cv2.CAP_PROP_FRAME_WIDTH))
         height = int(cap.get(cv2.CAP_PROP_FRAME_HEIGHT))
-        
+        frameCount = int(cap.get(cv2.CAP_PROP_FRAME_COUNT))
+        originalFps = int(cap.get(cv2.CAP_PROP_FPS))
+
         frame_predictions = []
         i = 0
 
-        with tqdm(total=int(cap.get(cv2.CAP_PROP_FRAME_COUNT)), desc="detecting objects: ") as pbar:
+        skipAhead = 0
+        if originalFps > self.fps:
+            skipAhead =  int(originalFps / self.fps) 
+            frameCount = int(frameCount * self.fps / originalFps)
+
+        with tqdm(total=frameCount, desc="detecting objects: ") as pbar:
             while True:
+                for _ in range(skipAhead - 1):
+                    okay, frame = cap.read()
+                    if not okay:
+                        break
                 ret, frame = cap.read()
                 if not ret:
                     break

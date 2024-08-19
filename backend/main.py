@@ -5,7 +5,7 @@ import os
 from fastapi.middleware.cors import CORSMiddleware
 
 import glob
-from od_model import OD
+from object_detection import ObjectDetector
 from vision_transformer import VisionTransformer
 from depthmap import DepthMapEstimation
 
@@ -43,6 +43,8 @@ current_video_path = "./videos/cut5.mp4"
 IMAGE_CROP_QUERY = "<image-loaded>"
 OUTPUT_CROP_IMAGE = "images/search-image.png"
 MAX_NB_CLUSTERS = 20
+EMBEDDINGS_LENGTH = 512
+FPS = 10
 
 # save image as individual frames in the folder to facilitate fetching
 def video2images(video_path):
@@ -56,10 +58,20 @@ def video2images(video_path):
     width = int(vid.get(cv2.CAP_PROP_FRAME_WIDTH))
     height = int(vid.get(cv2.CAP_PROP_FRAME_HEIGHT))
     total_count = int(vid.get(cv2.CAP_PROP_FRAME_COUNT))
+    fps = int(vid.get(cv2.CAP_PROP_FPS))
+
+    skipAhead = 0
+    if fps > FPS:
+        skipAhead =  int(fps / FPS) 
+        total_count = int(total_count * FPS / fps)
 
     frameCount = 0
     with tqdm(total=total_count, desc="saving original frames: ") as pbar:
         while vid.isOpened():
+            for _ in range(skipAhead - 1):
+                okay, frame = vid.read()
+                if not okay:
+                    break
             okay, frame = vid.read()
             if not okay:
                 break
@@ -71,6 +83,12 @@ def video2images(video_path):
 
     vid.release()
 
+def load_embeddings(output_path, frameCount):
+    embeddings = []
+    for i in range(frameCount):
+        embeddings.append(np.load(output_path+f"/embedding_{i}.npy"))
+    return np.vstack(embeddings)
+
 def compute_embeddings_dim_reduction(video_path):  
     output_path = video_path.replace(".mp4", "")
     if not os.path.exists(output_path):
@@ -80,7 +98,7 @@ def compute_embeddings_dim_reduction(video_path):
         video2images(video_path)
 
     #Getting video embeddings 
-    classifier = VisionTransformer(video_path, MODEL_NAME)
+    classifier = VisionTransformer(FPS, video_path, MODEL_NAME)
 
     print("output_path:", output_path)
     tic = time.time()
@@ -94,6 +112,11 @@ def compute_embeddings_dim_reduction(video_path):
             for i in range(embeddings.shape[0]):
                 np.save(output_path+f"/embedding_{i}.npy", embeddings[i])
                 pbar.update(1)
+    else:
+        vid = cv2.VideoCapture(video_path)
+        frameCount = int(int(vid.get(cv2.CAP_PROP_FRAME_COUNT)) * FPS / int(vid.get(cv2.CAP_PROP_FPS)))
+        classifier.video_embeddings = load_embeddings(output_path, frameCount)
+        vid.release()
         
     if not os.path.exists(f"{output_path}/tsne_reduction.npy"):
         if classifier.video_embeddings is None:
@@ -152,12 +175,12 @@ def compute_cosine_similarity(video_path, query_text):
     if not os.path.exists(f"{output_path}/0.png"):
         video2images(video_path)
 
-    classifier = VisionTransformer(video_path, MODEL_NAME)
+    classifier = VisionTransformer(FPS, video_path, MODEL_NAME)
 
     print("output_path:", output_path)
     tic = time.time()
 
-    #save embeddings and tsne reduction in file if not there already
+    #save embeddings in file if not there already
     if not os.path.exists(f"{output_path}/embedding_0.npy"):
         print("computing embeddings...")
         classifier(texts=query_text)
@@ -208,8 +231,8 @@ def find_mp4_files(relative_path):
     return mp4_file_names
 
 async def annotate_video(video_path, output_path):
-    detector = OD(capture_video=video_path, output_results=output_path+"-output.csv", \
-                model_name="yolov5s.pt")
+    detector = ObjectDetector(video_path=video_path, output_results=output_path+"-output.csv", \
+                model_name="yolov5s.pt", fps=FPS)
     return detector()
 
 #apply bounding box to the image pixels
@@ -224,7 +247,7 @@ async def compute_depth_map(video_path, output_path):
     if not os.path.exists(output_path):
         os.mkdir(output_path)
 
-    depth_estimator = DepthMapEstimation(video_path=video_path)
+    depth_estimator = DepthMapEstimation(FPS, video_path=video_path)
     depth_estimator(save_path=output_path)
 
 # Function to calculate the centroid
@@ -285,6 +308,8 @@ def get_centroids(clusters, vectors, max_clusters):
 
 @app.get("/search")
 async def search(query: str):
+    global current_video_path
+
     similarity_scores = compute_cosine_similarity(current_video_path, query)
 
     return {
@@ -315,6 +340,8 @@ async def get_image(prediction_path: str, filename: str):
 
 @app.post("/upload_png/")
 async def upload_png(image_data: dict):
+    global current_video_path
+
     data_url = image_data.get('image_data', '')
     
     image_data_str = data_url.split(",")[1]
@@ -355,9 +382,13 @@ async def select_video(name_data: dict):
         if not os.path.exists(f"{output_path}/0.png"):
             video2images(current_video_path)
 
+        frameCount = int(vid.get(cv2.CAP_PROP_FRAME_COUNT))
+        originalFps = int(vid.get(cv2.CAP_PROP_FPS))
+        frameCount = int(frameCount * FPS / originalFps)
+
         return { 
-            "frame_count": int(vid.get(cv2.CAP_PROP_FRAME_COUNT)), 
-            "fps": int(vid.get(cv2.CAP_PROP_FPS))
+            "frame_count": frameCount, 
+            "fps": FPS #int(vid.get(cv2.CAP_PROP_FPS))
         }
 
 @app.get("/video/objects/{filename}")
@@ -418,5 +449,5 @@ async def get_video_fps(filename: str):
     if (not vid.isOpened):
         return { "fps": -1 }
     else:
-        return { "fps": int(vid.get(cv2.CAP_PROP_FPS)) }
+        return { "fps": FPS } #int(vid.get(cv2.CAP_PROP_FPS)) }
     

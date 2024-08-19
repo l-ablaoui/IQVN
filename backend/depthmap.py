@@ -7,13 +7,13 @@ from tqdm import tqdm
 from transformers import GLPNImageProcessor, GLPNForDepthEstimation
 
 class DepthMapEstimation:
-    def __init__(self, video_path="", checkpoint="vinvino02/glpn-nyu"):
+    def __init__(self, fps, video_path="", checkpoint="vinvino02/glpn-nyu"):
         #input video
         self.video_path = video_path
 
         #output depth video
         self.depth_video = None
-        self.fps = 0
+        self.fps = fps
 
         #load model
         self.preprocessor = GLPNImageProcessor.from_pretrained(checkpoint)
@@ -23,7 +23,11 @@ class DepthMapEstimation:
         print("Using device: ", self.device)
     
     def load_video(self):
-        return cv2.VideoCapture(self.video_path)
+        vid = cv2.VideoCapture(self.video_path)
+        assert vid.isOpened
+        if self.fps is None:
+            self.fps = int(vid.get(cv2.CAP_PROP_FPS))
+        return vid
         
     def get_image_depth(self, image):
         inputs = self.preprocessor(images=image, return_tensors="pt").to(self.device) #preprocessing the image
@@ -47,11 +51,21 @@ class DepthMapEstimation:
         frameCount = int(vid.get(cv2.CAP_PROP_FRAME_COUNT))
         frameWidth = int(vid.get(cv2.CAP_PROP_FRAME_WIDTH))
         frameHeight = int(vid.get(cv2.CAP_PROP_FRAME_HEIGHT))
+        originalFps = int(vid.get(cv2.CAP_PROP_FPS))
+        
+        skipAhead = 0
+        if originalFps > self.fps:
+            skipAhead = int(originalFps / self.fps)
+            frameCount = int(frameCount * self.fps / originalFps)
 
         self.depth_video = np.zeros((frameCount, frameHeight, frameWidth), dtype="uint8") #init output
 
         with tqdm(total=frameCount, desc="Processing video depth map: ") as pbar:
             for i in range(frameCount):
+                for _ in range(skipAhead - 1):
+                    okay, frame = vid.read()
+                    if not okay:
+                        break
                 okay, frame = vid.read()
                 if not okay:
                     break
@@ -90,6 +104,12 @@ class DepthMapEstimation:
         frameCount = int(vid.get(cv2.CAP_PROP_FRAME_COUNT))
         frameWidth = int(vid.get(cv2.CAP_PROP_FRAME_WIDTH))
         frameHeight = int(vid.get(cv2.CAP_PROP_FRAME_HEIGHT))
+        originalFps = int(vid.get(cv2.CAP_PROP_FPS))
+
+        skipAhead = 0
+        if originalFps > self.fps:
+            skipAhead = int(originalFps / self.fps)
+            frameCount = int(frameCount * self.fps / originalFps)
 
         fourcc = cv2.VideoWriter_fourcc(*'mp4v')
         if save_video:
@@ -99,6 +119,10 @@ class DepthMapEstimation:
 
         with tqdm(total=frameCount, desc="Processing video depth map: ") as pbar:
             for i in range(frameCount):
+                for _ in range(skipAhead - 1):
+                    okay, frame = vid.read()
+                    if not okay:
+                        break
                 okay, frame = vid.read()
                 if not okay:
                     break

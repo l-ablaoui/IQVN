@@ -48,19 +48,22 @@ const get_reduction_plot_coordinates = (min_point, max_point, plot_dim, i) => {
 };
 
 const sort_cluster_frames = (centroids) => {
+    console.log(centroids)
     centroids.sort((c1, c2) => c1["x"] - c2["x"]);
-    let first_half = centroids.slice(0, centroids.length / 2).sort((c1, c2) => c1["y"] - c2["y"]);
-    let second_half = centroids.slice(centroids.length / 2, centroids.length).sort((c1, c2) => c1["y"] - c2["y"]);
+    const middle = Math.trunc(centroids.length / 2);
+    let first_half = centroids.slice(0, middle).sort((c1, c2) => c1["y"] - c2["y"]);
+    let second_half = centroids.slice(middle, centroids.length).sort((c1, c2) => c1["y"] - c2["y"]);
 
     for (let i = 0;i < centroids.length;++i) {
-        if (i < centroids.length / 2) {
+        if (i < middle) {
             centroids[i] = first_half[i];
         }
         else {
-            centroids[i] = second_half[i - centroids.length / 2];
+            centroids[i] = second_half[i - middle];
         }
     }
 
+    console.log(centroids)
     return centroids;
 };
 
@@ -86,7 +89,7 @@ const draw_cluster_frames = (color_map, min_x, min_y, max_x, max_y) => {
     });
     centroids = sort_cluster_frames(centroids);
     
-    let l = current_cluster_frames.length / 2;
+    let l = Math.trunc(current_cluster_frames.length / 2);
     
     //keep the proportions of the original frame
     const video = document.getElementById("video");
@@ -132,11 +135,12 @@ const draw_cluster_frames = (color_map, min_x, min_y, max_x, max_y) => {
         };
     }
 
-    if (current_cluster_frames.length % 2 != 0) { ++l; }
     for (let i = l;i < current_cluster_frames.length;++i) {
+        const remains = (l * 2 == current_cluster_frames.length)? l : (l + 1);
         const x = plot_width - reduction_plot_offset_x / 2 - small_frame_width / 2;
-        const y = (i - l) * plot_height / l;
+        const y = (i - l) * plot_height / remains;
         const img = new Image();
+        console.log(centroids, i, current_cluster_frames.length)
         img.src = centroids[i]["src"];
         img.onload = () => {
             ctx.drawImage(img, x, y, small_frame_width, small_frame_height);

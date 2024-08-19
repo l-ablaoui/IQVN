@@ -50,8 +50,15 @@ const load_video = async () => {
         document.getElementById("score_div").style.display = "none";
         document.getElementById("reduction_div").style.display = "none";
         document.getElementById("depth_div").style.display = "none";
+        
+        document.getElementById("obj_plot").style.display = "none";
+        document.getElementById("score_plot").style.display = "none";
+        document.getElementById("reduction_plot").style.display = "none";
+        document.getElementById("depth_video").style.display = "none";
+
         document.getElementById("crop").style.display = "none";
         document.getElementById("crop_label").style.display = "none";
+
         document.getElementById("toggle_obj").style.display = "none";
         document.getElementById("toggle_scores").style.display = "none";
         document.getElementById("toggle_reduction").style.display = "none";

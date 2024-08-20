@@ -327,31 +327,8 @@ window.addEventListener("resize", () => {
     update_scores(window.current_index);
 });
 
-/**
- * onClick method used in canvas with a drawn 2D plot/curve. It updates the current frame
- * index based on the logical x axis value
- * @param {*} svg canvas where the plot/curve is drawn
- * @param {*} offset_left left offset to the beginning of the plot in the canvas (px unit)
- * @param {*} offset_right right offset to the end of the plot in the canvas (px unit)
- * @param {*} offset_y top and bottom offsets to the plot in the canvas (px unit)
- * @param {*} nb_values maximum value in the x axis, corresponds to the number of frame in the video in this usecase
- * @param {*} event captures the coordinates of the click 
- */
-let update_frame_index_onclick = async (svg, offset_left, offset_right, offset_y, nb_values, event) => {
-    const mouseX = event.offsetX;
-    const mouseY = event.offsetY;
-
-    let plot_width = svg.width;
-    let plot_height = svg.height;
-
-    //case clicked on the offset
-    if (offset_y > mouseY || mouseY > plot_height - offset_y) { return; }
-    if (offset_left > mouseX || mouseX > plot_width - offset_right) { return; }
-
+const fetch_frame_by_index = async (frame_index) =>  {
     try {
-        let frame_index = Math.trunc((mouseX - offset_left) / 
-        (plot_width - offset_right - offset_left) * (nb_values - 1));
-
         //fetch current frame
         let name_processed = window.current_video.split(".")[0]; 
         const response = await fetch(`${server_url}/image/${name_processed}/${frame_index}.png`);
@@ -365,6 +342,32 @@ let update_frame_index_onclick = async (svg, offset_left, offset_right, offset_y
     catch (error) {
         console.error("Error getting frame ", frame_index, " of the video: ", error);
     }
+};
+
+/**
+ * onClick method used in canvas with a drawn 2D plot/curve. It updates the current frame
+ * index based on the logical x axis value
+ * @param {*} svg canvas where the plot/curve is drawn
+ * @param {*} offset_left left offset to the beginning of the plot in the canvas (px unit)
+ * @param {*} offset_right right offset to the end of the plot in the canvas (px unit)
+ * @param {*} offset_y top and bottom offsets to the plot in the canvas (px unit)
+ * @param {*} nb_values maximum value in the x axis, corresponds to the number of frame in the video in this usecase
+ * @param {*} event captures the coordinates of the click 
+ */
+const update_frame_index_onclick = async (svg, offset_left, offset_right, offset_y, nb_values, event) => {
+    const mouseX = event.offsetX;
+    const mouseY = event.offsetY;
+
+    const plot_width = svg.width;
+    const plot_height = svg.height;
+
+    //case clicked on the offset
+    if (offset_y > mouseY || mouseY > plot_height - offset_y) { return; }
+    if (offset_left > mouseX || mouseX > plot_width - offset_right) { return; }
+
+    const frame_index = Math.trunc((mouseX - offset_left) / (plot_width - offset_right - offset_left) 
+        * (nb_values - 1));
+    await fetch_frame_by_index (frame_index);
 }
 
 /** makes element focusable */
@@ -464,4 +467,26 @@ image_search_button.addEventListener('click', async () => {
     score_plot_loader.style.display = "none";
     reduction_plot_loader.style.display = "none";
     general_loader.style.display = "none";
+});
+
+const go_to_timestamp_onclick = async () => {
+    const timestamp = document.getElementById("timestamp_input").value;
+    if (timestamp < 0 || timestamp * window.fps > window.max_index) { return; }
+    await fetch_frame_by_index(Math.trunc(timestamp * window.fps));
+};
+
+const go_to_frame_number_onclick = async () => {
+    const frame_index = document.getElementById("frame_number_input").value;
+    if (frame_index < 0 || frame_index > window.max_index) { return; }
+    await fetch_frame_by_index(Math.trunc(frame_index));
+};
+
+document.getElementById("go_to_timestamp").addEventListener("click", go_to_timestamp_onclick);
+document.getElementById("timestamp_input").addEventListener("keydown", async (event) => { 
+    (event.key === "Enter") && await go_to_timestamp_onclick();
+});
+
+document.getElementById("go_to_frame_number").addEventListener("click", go_to_frame_number_onclick);
+document.getElementById("frame_number_input").addEventListener("keydown", async (event) => {
+    (event.key === "Enter") && await go_to_frame_number_onclick();
 });

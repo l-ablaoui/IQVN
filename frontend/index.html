@@ -18,32 +18,57 @@
             <canvas class="row" id="video"></canvas>
             <!--tabindex makes the element focusable-->
             <canvas class="row x_adaptable" tabindex="0" id="timeline"></canvas> 
+            <div class="row x_adaptable">
+                <input type="number" placeholder="timestamp" maxlength="8" min="0" max="100"
+                    id="timestamp_input" class="col-2 form-control" />
+                <input type="button" value="→" id="go_to_timestamp" class="col-1"/>
+                <input type="number" placeholder="frame" maxlength="8" min="0" max="1000"
+                    id="frame_number_input" class="col-2 form-control" />
+                <input type="button" value="→" id="go_to_frame_number" class="col-1"/>
+            </div>
         </div>
         <div class="col-sm x_halved y_scrollable" > 
-            <input type="button" id="toggle_text_based_search" value="▼ Perform text-based search" class="x_adaptable row btn btn-royalblue"/>
+            <input type="button" id="toggle_text_based_search" value="▼ Perform text-based search" 
+                class="x_adaptable row btn btn-royalblue"/>
             <div class="row x_adaptable" id="composite_text_query">
                 <div class="sentence row x_adaptable">
-                    <input type="button" value="+adj" class="add_adj_sbj col-1 button_space btn btn-outline-info"/>
-                    <input type="text" placeholder="subject" maxlength=50 class="subject col-sm form-control"/>
-                    <input type="button" value="+adv" class="add_adv col-1 button_space btn btn-outline-info"/>
-                    <input type="text" placeholder="verb" maxlength=50 class="action col-sm form-control"/>
-                    <input type="button" value="+adj" class="add_adj_obj col-1 button_space btn btn-outline-info"/>
-                    <input type="text" placeholder="object" maxlength=50 class="object col-sm form-control"/>
-                    <input type="button" value=">80%" class="threshold_button col-1 button_space btn btn-secondary"/>
-                    <input type="button" value="(0, 0, 20, 20)" class="box_selection_button col-1 button_space btn btn-secondary"/>
+                    <input type="button" value="+adj" class="add_adj_sbj col-1 button_space btn    
+                        btn-outline-info"/>
+                    <input type="text" placeholder="subject" maxlength=50 class="subject col-sm 
+                        form-control"/>
+                    <input type="button" value="+adv" class="add_adv col-1 button_space btn 
+                        btn-outline-info"/>
+                    <input type="text" placeholder="verb" maxlength=50 class="action col-sm 
+                        form-control"/>
+                    <input type="button" value="+adj" class="add_adj_obj col-1 button_space btn 
+                        btn-outline-info"/>
+                    <input type="text" placeholder="object" maxlength=50 class="object col-sm 
+                        form-control"/>
+                    <input type="button" value=">80%" class="threshold_button col-1 button_space 
+                        btn btn-secondary"/>
+                    <input type="button" value="(0, 0, 20, 20)" class="box_selection_button col-1 
+                        button_space btn btn-secondary"/>
                 </div><div class="connector row justify-content-center x_adaptable">
-                    <input type="button" value="show" class="utils btn btn-sm btn-outline-success col-1 button_space"/>
-                    <input type="button" value="OR" class="bool_op or btn btn-sm btn-secondary col-1 button_space"/>
-                    <input type="button" value="AND" class="bool_op and btn btn-sm btn-secondary col-1 button_space"/>
-                    <input type="button" value="W/O" class="bool_op minus btn btn-sm btn-secondary col-1 button_space"/>
-                    <input type="button" value="delete" class="utils btn btn-sm btn-outline-danger col-1 button_space"/>
+                    <input type="button" value="show" class="utils btn btn-sm btn-outline-success 
+                        col-1 button_space"/>
+                    <input type="button" value="OR" class="bool_op or btn btn-sm btn-secondary 
+                        col-1 button_space"/>
+                    <input type="button" value="AND" class="bool_op and btn btn-sm btn-secondary 
+                        col-1 button_space"/>
+                    <input type="button" value="W/O" class="bool_op minus btn btn-sm btn-secondary 
+                        col-1 button_space"/>
+                    <input type="button" value="delete" class="utils btn btn-sm btn-outline-danger 
+                        col-1 button_space"/>
                 </div>
                 <div class="row justify-content-end x_adaptable">
-                    <input type="button" id="display_composition" value="show all" class="btn btn-outline-success button_space">
-                    <input type="button" id="text_search_button" value="search" class="btn btn-success button_space"/>
+                    <input type="button" id="display_composition" value="show all" class="btn 
+                        btn-outline-success button_space">
+                    <input type="button" id="text_search_button" value="search" class="btn btn-success 
+                        button_space"/>
                 </div>
             </div>
-            <input type="button" id="toggle_image_based_search" value="▲ Perform image-based search" class="x_adaptable row btn btn-royalblue"/>
+            <input type="button" id="toggle_image_based_search" value="▲ Perform image-based search" 
+                class="x_adaptable row btn btn-royalblue"/>
             <div class="row x_adaptable" id="image_query_div">
                 <div class="row x_adaptable">
                     <label class="col text-left" id="crop_label">Cropped area: </label>
@@ -53,34 +78,45 @@
                 </div>
                 <div class="row x_adaptable justify-content-end">
                     <label class="input-group-text" for="image_load">Upload image</label>
-                    <input type="file" class="form-control col" id="image_load" accept="image/png, image/jpeg, image/gif">
-                    <input type="button" id="toggle_crop" value="crop" class="btn btn-sm col-2 btn-secondary button_space" />
-                    <input type="button" id="image_search_button" value="search" class="btn btn-success col-2 button_space"/>
+                    <input type="file" class="form-control col" id="image_load" accept="image/png, 
+                        image/jpeg, image/gif">
+                    <input type="button" id="toggle_crop" value="crop" class="btn btn-sm col-2 
+                        btn-secondary button_space" />
+                    <input type="button" id="image_search_button" value="search" class="btn btn-success 
+                        col-2 button_space"/>
                 </div>
             </div>
             <div class="row x_adaptable">
-                <input type="button" id="plot_reduction_plot" value="Plot video distribution" class="btn btn-sm btn-success button_space" />
-                <input type="button" id="object_detection_button" value="Perform object detection" class="btn btn-sm btn-success button_space" />
-                <input type="button" id="depthmap_computation_button" value="Perform depth estimation" class="btn btn-sm btn-success button_space" />
+                <input type="button" id="plot_reduction_plot" value="Plot video distribution" 
+                    class="btn btn-sm btn-success button_space" />
+                <input type="button" id="object_detection_button" value="Perform object detection" 
+                    class="btn btn-sm btn-success button_space" />
+                <input type="button" id="depthmap_computation_button" value="Perform depth estimation" 
+                    class="btn btn-sm btn-success button_space" />
                 <div class="loader" id="general_loader"></div>
             </div>
-            <input type="button" id="toggle_obj" value="▲ Detected objects" class="row btn btn-orange x_adaptable"/>
+            <input type="button" id="toggle_obj" value="▲ Detected objects" class="row btn btn-orange 
+                x_adaptable"/>
             <div class="row justify-content-center x_adaptable" id="obj_div">
                 <div class="loader" id="obj_plot_loader"></div>
                 <canvas id="obj_plot"></canvas>
             </div>
-            <input type="button" id="toggle_scores" value="▲ Similarity scores chart" class="row btn btn-orange x_adaptable"/>
+            <input type="button" id="toggle_scores" value="▲ Similarity scores chart" class="row btn 
+                btn-orange x_adaptable"/>
             <div class="row justify-content-center x_adaptable" id="score_div">
                 <div class="loader" id="score_plot_loader"></div>
                 <canvas id="score_plot"></canvas>
                 <div class="row x_adaptable">
-                    <input type="button" id="select_threshold" value="select threshold" class="col-sm btn btn-sm btn-secondary button_space"/>
-                    <input type="button" id="reset_score_plot" value="reset" class="col-sm btn btn-sm btn-secondary button_space"/>
+                    <input type="button" id="select_threshold" value="select threshold" class="col-sm btn 
+                        btn-sm btn-secondary button_space"/>
+                    <input type="button" id="reset_score_plot" value="clear" class="col-sm btn btn-sm 
+                        btn-secondary button_space"/>
                 </div>
             </div>  
-            <input type="button" id="toggle_reduction" value="▲ Semantic distribution of video frames" class="x_adaptable row btn  btn-orange"/>
+            <input type="button" id="toggle_reduction" value="▲ Semantic distribution of video frames" 
+                class="x_adaptable row btn  btn-orange"/>
             <div class="row x_adaptable" id="reduction_div">
-                <div class="row">
+                <div id="reduction_method_radio_group" class="row">
                     <div class="col-sm justify-content-center">
                         <input type="radio" name="select_reduction_method" value="tsne" checked />
                         <label>t-sne</label>
@@ -118,8 +154,10 @@
                     </div>
                 </div>
                 <div class="row x_adaptable">
-                    <input type="button" id="select_dots" value="navigate/select" class="col-sm btn btn-sm btn-secondary button_space"/>
-                    <input type="button" id="reset_reduction_plot" value="reset" class="col-sm btn btn-sm btn-secondary button_space"/>
+                    <input type="button" id="select_dots" value="navigate/select" class="col-sm btn 
+                        btn-sm btn-secondary button_space"/>
+                    <input type="button" id="reset_reduction_plot" value="clear" class="col-sm btn 
+                        btn-sm btn-secondary button_space"/>
                 </div>
                 <div id="cluster_frame_div">
                     <img src="" alt="cluster -1" id="cluster_frame" />
@@ -142,7 +180,7 @@
     window.current_index = 0;
     window.current_frame = new Image();
     window.max_index = 100;
-    window.fps = 60;
+    window.fps = 10;
     window.cmap = "default";
 
     //chart colors/sizes
@@ -200,7 +238,10 @@
     window.tsne_cluster_frames = null;
     window.pca_cluster_frames = null;
     window.umap_cluster_frames = null;
-  
+    
+    //HERE Hidden elements that can be added later
+    reduction_method_radio_group.style.display = "none";
+    depthmap_computation_button.style.display = "none";
 </script>
 <!--main script-->
 <script defer src="main.js"></script>

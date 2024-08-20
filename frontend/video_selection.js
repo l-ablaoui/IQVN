@@ -20,6 +20,8 @@ const load_video = async () => {
         //update timeline range
         window.max_index = body["frame_count"];
         window.fps = body["fps"];
+        document.getElementById("frame_number_input").max = window.max_index - 1;
+        document.getElementById("timestamp_input").max = Math.trunc((window.max_index - 1) / window.fps);
 
         //reset index
         window.current_index = 0;

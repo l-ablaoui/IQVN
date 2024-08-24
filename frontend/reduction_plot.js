@@ -48,7 +48,6 @@ const get_reduction_plot_coordinates = (min_point, max_point, plot_dim, i) => {
 };
 
 const sort_cluster_frames = (centroids) => {
-    console.log(centroids)
     centroids.sort((c1, c2) => c1["x"] - c2["x"]);
     const middle = Math.trunc(centroids.length / 2);
     let first_half = centroids.slice(0, middle).sort((c1, c2) => c1["y"] - c2["y"]);
@@ -62,8 +61,7 @@ const sort_cluster_frames = (centroids) => {
             centroids[i] = second_half[i - middle];
         }
     }
-
-    console.log(centroids)
+    
     return centroids;
 };
 
@@ -140,7 +138,7 @@ const draw_cluster_frames = (color_map, min_x, min_y, max_x, max_y) => {
         const x = plot_width - reduction_plot_offset_x / 2 - small_frame_width / 2;
         const y = (i - l) * plot_height / remains;
         const img = new Image();
-        console.log(centroids, i, current_cluster_frames.length)
+        
         img.src = centroids[i]["src"];
         img.onload = () => {
             ctx.drawImage(img, x, y, small_frame_width, small_frame_height);

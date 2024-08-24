@@ -19,12 +19,17 @@
             <!--tabindex makes the element focusable-->
             <canvas class="row x_adaptable" tabindex="0" id="timeline"></canvas> 
             <div class="row x_adaptable">
-                <input type="number" placeholder="timestamp" maxlength="8" min="0" max="100"
-                    id="timestamp_input" class="col-2 form-control" />
-                <input type="button" value="→" id="go_to_timestamp" class="col-1"/>
-                <input type="number" placeholder="frame" maxlength="8" min="0" max="1000"
-                    id="frame_number_input" class="col-2 form-control" />
-                <input type="button" value="→" id="go_to_frame_number" class="col-1"/>
+                <div class="col d-flex">
+                    <input type="number" placeholder="timestamp" maxlength="8" min="0" max="100"
+                        id="timestamp_input" class="form-control col-3" />
+                    <input type="button" value="→" id="go_to_timestamp" class="btn btn-secondary mx-1"/>
+                    <input type="number" placeholder="frame" maxlength="8" min="0" max="1000"
+                        id="frame_number_input" class="form-control col-3" />
+                    <input type="button" value="→" id="go_to_frame_number" class="btn btn-secondary mx-1"/>
+                </div>
+                <div class="col-auto ml-auto">
+                    <input type="button" value="copy selected" id="copy_selected" class="btn btn-secondary"/>
+                </div>
             </div>
         </div>
         <div class="col-sm x_halved y_scrollable" > 

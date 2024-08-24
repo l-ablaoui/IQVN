@@ -54,13 +54,13 @@ const difference = (array_a, array_b) => {
 };
 
 /**
- * @param {*} p1 2d point cootdinates 
+ * @param {*} p1 2d point coordinates 
  * @param {*} p2 another 2d point cootdinates 
  * @returns euclidian distance (power 2)
  */
 const length2 = (p1, p2) => {
     return (p1.x - p2.x) * (p1.x - p2.x) + (p1.y - p2.y) * (p1.y - p2.y);
-}
+};
 
 /**
  * utility function to draw a dot in a canvas
@@ -72,7 +72,7 @@ const fill_circle = (ctx, point, radius) => {
     ctx.beginPath();
     ctx.ellipse(point.x, point.y, radius, radius, 0, 0, 2 * Math.PI);
     ctx.fill();
-}
+};
 
 /**
  * utility function to draw a vertical line in a 2d plot inside a canvas
@@ -175,7 +175,7 @@ let plot_current_timer = (current_index, max_index, fps, svg, offset_left, offse
         `${Math.trunc((timestamp) / 60)}:${Math.trunc((timestamp)) % 60}`,
         x + offset, plot_height * 0.1
     );
-}
+};
 
 /**
  * drawing of the small triangle above the timestamp line marker
@@ -247,7 +247,7 @@ const update_video = (image_url) => {
 
         if (window.is_crop_visible) { draw_cropped(); }
     };
-}
+};
 
 /**
  * this function is called to update all data visualisation components
@@ -368,7 +368,7 @@ const update_frame_index_onclick = async (svg, offset_left, offset_right, offset
     const frame_index = Math.trunc((mouseX - offset_left) / (plot_width - offset_right - offset_left) 
         * (nb_values - 1));
     await fetch_frame_by_index (frame_index);
-}
+};
 
 /** makes element focusable */
 const focus_onclick = () => { timeline.focus(); };
@@ -433,18 +433,16 @@ image_search_button.addEventListener('click', async () => {
     general_loader.style.display = "block";
 
     try {
-        let score_plot = document.getElementById("score_plot");
-        
         let dataURL = cropped.toDataURL('image/png');
         if (window.is_crop_visible == false) {
             const file = image_load.files[0];
             if (file) { dataURL = await getDataURL(file); }
         }
-        console.log(dataURL);
         const response = await fetch(`${server_url}/upload_png/`, 
             {method: 'POST', body: JSON.stringify({ image_data: dataURL }), 
             headers: {'Content-Type': 'application/json'}});
         const body = await response.json();
+        console.log(body);
 
         //only keep window.scores and tsne reduction values
         window.scores = body['scores'].map(function(value, index) { return value[1]; });
@@ -454,7 +452,7 @@ image_search_button.addEventListener('click', async () => {
 
         //show buttons for toggling window.scores/reduction
         toggle_scores.style.display = "block";
-        score_plot.addEventListener("click", (event) => update_frame_index_onclick(score_plot, 
+        document.getElementById("score_plot").addEventListener("click", (event) => update_frame_index_onclick(score_plot, 
             score_plot_offset_left, score_plot_offset_right, score_plot_offset_y, window.max_index, event));
 
         //update the curve plot
@@ -490,3 +488,47 @@ document.getElementById("go_to_frame_number").addEventListener("click", go_to_fr
 document.getElementById("frame_number_input").addEventListener("keydown", async (event) => {
     (event.key === "Enter") && await go_to_frame_number_onclick();
 });
+
+const format_time = (seconds_count) => {
+    const hours = Math.floor(seconds_count / 3600)
+    const minutes = Math.floor((seconds_count - hours * 3600) / 60);
+    const seconds = seconds_count % 60;
+    
+    return /*`${String(hours).padStart(2, '0')}:` + */`${String(minutes).padStart(2, '0')}:`
+        + `${String(seconds).padStart(2, '0')}`;
+};
+
+const parse_selected_frames = () => {
+    //represent the selected frames in a boolean manner
+    let bool_timeline_frames = new Array(window.max_index).fill(0);
+    window.selected_points.forEach((element) => {
+        bool_timeline_frames[element] = 1;
+    });
+
+    //subsample frames to get seconds
+    const bool_timestamps = bool_timeline_frames.filter((_, index) => index % window.fps === 0);
+
+    //parse time intervals into string
+    const intervals = bool_timestamps.reduce((acc, cur, i, arr) => {
+        if (cur && (i === 0 || !arr[i - 1])) acc.push([i]);  // Start of a new interval
+        if (!cur && arr[i - 1]) acc[acc.length - 1].push(i); // End of an interval
+        if (cur && i === arr.length - 1) acc[acc.length - 1].push(i + 1); // End interval if last element is 1
+        return acc;
+    }, []).map(([start, end]) => `${format_time(start)}-${format_time(end - 1)}`).join('; ');
+
+    return intervals;
+};
+
+document.getElementById("copy_selected").addEventListener("click", () => {
+    const parsed_selected_frames = parse_selected_frames();
+
+    navigator.clipboard.writeText(parsed_selected_frames)
+        .then(() => {
+            console.log('Text copied to clipboard');
+        })
+        .catch(err => {
+            console.error('Failed to copy text: ', err);
+        });
+});
+//hide button but leave it for later use
+document.getElementById("copy_selected").style.display = "none";

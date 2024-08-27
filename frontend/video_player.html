@@ -1,0 +1,62 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/4.5.2/css/bootstrap.min.css">
+<link rel="stylesheet" href="style.css">
+<title>Standard Navigation In Videos</title>
+</head>
+<body>
+    <div class="container-fluid adaptable justify-content-center" >
+        <div style="width:90%; height:auto; margin:auto;">
+            <div class="row x_adaptable justify-content-center">
+                <label class="col-1">Video: </label>
+                <select id="video_selection" name="video_names" class="col-3 form-control">
+                    <option value="video_0.mp4">video 0</option>
+                    <option value="video_1.mp4">video 1</option>
+                    <option value="video_2.mp4">video 2</option>
+                    <option value="video_3.mp4">video 3</option>
+                    <option value="video_4.mp4">video 4</option>
+                </select>
+            </div>
+            <video id="standard_video" controls>
+                <source id="standard_video_src" src="../backend/videos/video_0.mp4" type="video/mp4" />
+            </video>
+        </div>
+    </div>
+</body>
+<script>
+    let video = document.getElementById("standard_video");
+    let source = document.getElementById("standard_video_src");
+
+    video.load();
+    video.addEventListener("keydown", (event) => {
+        if (event.key == "+") {
+            video.playbackRate = Math.min(5, video.playbackRate + 0.5); 
+            video.play();
+            console.log("+", video.playbackRate);
+        }
+        if (event.key == "-") {
+            video.playbackRate = Math.max(0.5, video.playbackRate - 0.5); 
+            video.play();
+            console.log("-", video.playbackRate);
+        }
+    });
+
+    let video_selector = document.getElementById("video_selection");
+    video_selector.addEventListener("change", () => {
+        source.setAttribute("src", "../backend/videos/" + video_selector.value);
+        source.setAttribute("type", "video/mp4");
+
+        console.log(source.src);
+
+        video.load(); 
+        // Adjust dimensions after the video metadata is loaded
+        video.addEventListener("loadedmetadata", () => {
+            video.style.width = "auto";
+            video.style.height = "auto"; 
+        });
+    });
+</script>
+</html>

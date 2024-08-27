@@ -38,13 +38,15 @@ VIDEOS_DIR = "videos"
 MODEL_NAME = "openai/clip-vit-base-patch16"
 #MODEL_NAME = "google/owlvit-base-patch32"
 #MODEL_NAME = "google/owlv2-base-patch16-ensemble"
-current_video_path = "./videos/cut5.mp4"
+current_video_path = "./videos/video_0.mp4"
 
 IMAGE_CROP_QUERY = "<image-loaded>"
 OUTPUT_CROP_IMAGE = "images/search-image.png"
 MAX_NB_CLUSTERS = 20
 EMBEDDINGS_LENGTH = 512
 FPS = 10
+
+log_file = open("log_file.txt", "a+")
 
 # save image as individual frames in the folder to facilitate fetching
 def video2images(video_path):
@@ -447,6 +449,10 @@ async def upload_png(image_data: dict):
 
 @app.post("/log/")
 async def write_log(log_data: dict):
+    global log_file
+
+    log_file.write(log_data.get("interaction_log", "") + "\n")
+    log_file.flush()
     print(log_data.get("interaction_log", ""))
 
 if __name__ == "__main__":

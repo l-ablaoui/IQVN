@@ -24,6 +24,29 @@ const focus_my_sentence_onclick = (event) => {
     }
 };
 
+const show_my_sentence_onclick = (event) => {
+     try {
+        // Locate the clicked sentence or its parent node that has the class 'sentence'
+        const sentence = event.target.parentNode.previousElementSibling;
+        const composite_query = document.getElementById("composite_text_query");
+        const all_sentences = composite_query.querySelectorAll(".sentence");
+
+        for (let i = 0;i < all_sentences.length;++i) {
+            if (sentence === all_sentences[i]) {
+                window.focused_sentence = i;
+                window.scores = window.all_scores[i];
+                window.selected_points = get_sentence_result(i);
+                update_scores(window.current_index);
+                console.log("sentence: ", window.focused_sentence);
+                return;
+            }
+        } 
+    }
+    catch (error) {
+        console.error("Error displayed sentence: ", error); 
+    }
+}
+
 /**
  * onclick handler to inserts qualificator element (adjective or adverb) on the right 
  * of the clicked button
@@ -195,7 +218,7 @@ const add_bool_operators = (composite_query) => {
     display_button.value = "show";
     display_button.style.display = "block";
     display_button.classList.add("utils", "btn", "btn-sm", "btn-outline-success", "col-1", "button_space");
-    display_button.addEventListener("click", focus_my_sentence_onclick);
+    display_button.addEventListener("click", show_my_sentence_onclick);
 
     let or_button = document.createElement("input");
     or_button.type = "button";
@@ -508,10 +531,7 @@ const display_bounding_box_onclick = (event) => {
 
         for (let i = 0;i < all_sentences.length;++i) {
             if (sentence === all_sentences[i]) {
-                const box = event.target.value;
-                const numbers = box.match(/\d+/g).map(Number);
-
-                console.log(numbers);
+                const numbers = window.all_boxes[i];
 
                 window.selection_top_left = { x: numbers[0], y: numbers[1]}; 
                 window.selection_bot_right = { x: numbers[2], y: numbers[3]}; 
@@ -558,7 +578,7 @@ const update_focused_box = () => {
 /**
  * used when displaying query result by pressing "show" of the respective query sentence
  * apply OR on threshold selection and bbox selection and returns all selected points 
- * @param {*} index currently displayed image, needed for bbox selection
+ * @param {*} index currently focused sentence
  * @returns all selected points by either thresholding or bbox selection (array of ints)
  */
 const get_sentence_result = (index) => {
@@ -585,14 +605,21 @@ let get_full_composition = () => {
 
     let selected_points = get_sentence_result(0);
     
-    //combining the other sentences, applying bool operators according to their apparition order
-    for (let i = 1;i < window.all_scores;++i) {
+    //combining the other sentences, applying bool operators according to their appearance order
+    for (let i = 1;i < window.all_scores.length;++i) {
         let sentence_result = get_sentence_result(i);
 
-        const operator = (window.operators[i - 1] == "OR")? union : 
-            (window.operators[i - 1] == "AND")? intersection : difference;
-
-        selected_points = operator(selected_points, sentence_result);
+        switch(window.operators[i - 1]) {
+            case "OR": 
+                selected_points = union(selected_points, sentence_result);
+                break;
+            case "AND":
+                selected_points = intersection(selected_points, sentence_result);
+                break;
+            case "W/O":
+                selected_points = difference(selected_points, sentence_result);
+                break;
+        }
     }
 
     return selected_points;
@@ -730,6 +757,10 @@ composite_text_query.querySelectorAll(".box_selection_button").forEach(element =
 
 composite_text_query.querySelectorAll(".utils").forEach((element) => {
     element.style.display = "none";
+});
+
+composite_text_query.querySelectorAll(".utils.btn-outline-success").forEach((element) => {
+    element.addEventListener("click", show_my_sentence_onclick);
 });
 
 composite_text_query.querySelectorAll(".utils.btn-outline-danger").forEach((element) => {

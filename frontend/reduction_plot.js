@@ -167,7 +167,7 @@ const draw_cluster_frames = (color_map, min_x, min_y, max_x, max_y) => {
 const plot_dimension_reduction = (current_index) => {
     if (window.displayed_reduction == null) { return; }
 
-    let color_map = generate_color_map(current_index, window.cmap);
+    let color_map = generate_color_map(current_index, window.colormap);
     let radius_map = generate_radius_map([current_index]);
 
     //get min/max to later normalize reduction values
@@ -234,77 +234,93 @@ plot_reduction_plot.addEventListener("click", async () => {
     reduction_plot_loader.style.display = "block";
     general_loader.style.display = "block";
 
-    const embeds_response = await fetch(`${server_url}/video/embeddings/${window.current_video}`);
-    const body = await embeds_response.json();
+    try {
+        const embeds_response = await fetch(`${server_url}/video/embeddings/${window.current_video}`);
+        const body = await embeds_response.json();
 
-    console.log(body);
+        console.log(body);
 
-    window.tsne_reduction = body['tsne'];
-    window.pca_reduction = body['pca'];
-    window.umap_reduction = body['umap'];
+        window.tsne_reduction = body['tsne'];
+        window.pca_reduction = body['pca'];
+        window.umap_reduction = body['umap'];
 
-    window.tsne_clusters = body['tsne_clusters'];
-    window.pca_clusters = body['pca_clusters'];
-    window.umap_clusters = body['umap_clusters'];
-    
-    let tsne_cluster_frames = [];
-    let pca_cluster_frames = [];
-    let umap_cluster_frames = [];
+        window.tsne_clusters = body['tsne_clusters'];
+        window.pca_clusters = body['pca_clusters'];
+        window.umap_clusters = body['umap_clusters'];
+        
+        let tsne_cluster_frames = [];
+        let pca_cluster_frames = [];
+        let umap_cluster_frames = [];
 
-    //fetching frames corresponding to each cluster's centroid for each reduction algorithm
-    let cluster_frames = body['tsne_cluster_frames'];
-    for(let i = 0;i < cluster_frames.length;++i) {
-        let name_processed = window.current_video.split(".")[0]; 
-        const cf_response = await fetch(
-            `${server_url}/image/${name_processed}/${cluster_frames[i]["centroid"]}.png`
-        );
-        const cf_blob = await cf_response.blob();
-        const cf_url = URL.createObjectURL(cf_blob);
+        //fetching frames corresponding to each cluster's centroid for each reduction algorithm
+        let cluster_frames = body['tsne_cluster_frames'];
+        for(let i = 0;i < cluster_frames.length;++i) {
+            let name_processed = window.current_video.split(".")[0]; 
+            const cf_response = await fetch(
+                `${server_url}/image/${name_processed}/${cluster_frames[i]["centroid"]}.png`
+            );
+            const cf_blob = await cf_response.blob();
+            const cf_url = URL.createObjectURL(cf_blob);
 
-        tsne_cluster_frames.push([cluster_frames[i]["centroid"], cf_url]);
+            tsne_cluster_frames.push([cluster_frames[i]["centroid"], cf_url]);
+        }
+
+        cluster_frames = body['pca_cluster_frames'];
+        for(let i = 0;i < cluster_frames.length;++i) {
+            let name_processed = window.current_video.split(".")[0]; 
+            const cf_response = await fetch(
+                `${server_url}/image/${name_processed}/${cluster_frames[i]["centroid"]}.png`
+            );
+            const cf_blob = await cf_response.blob();
+            const cf_url = URL.createObjectURL(cf_blob);
+
+            pca_cluster_frames.push([cluster_frames[i]["centroid"], cf_url]);
+        }
+
+        cluster_frames = body['umap_cluster_frames'];
+        for(let i = 0;i < cluster_frames.length;++i) {
+            let name_processed = window.current_video.split(".")[0]; 
+            const cf_response = await fetch(
+                `${server_url}/image/${name_processed}/${cluster_frames[i]["centroid"]}.png`
+            );
+            const cf_blob = await cf_response.blob();
+            const cf_url = URL.createObjectURL(cf_blob);
+
+            umap_cluster_frames.push([cluster_frames[i]["centroid"], cf_url]);
+        }
+
+        window.tsne_cluster_frames = tsne_cluster_frames;
+        window.pca_cluster_frames = pca_cluster_frames;
+        window.umap_cluster_frames = umap_cluster_frames;
+
+        //set default displayed reduction algorithm
+        window.displayed_reduction = window.tsne_reduction;
+        window.displayed_reduction = window.tsne_reduction;
+        
+        //adjust the max value
+        window.max_index = window.tsne_reduction.length;
+
+        //if scores are not computed yet, initialize with empty vector
+        if (window.scores == null) {
+            window.scores = new Array(window.max_index).fill(0);
+        }
+        toggle_reduction.style.display = "block";
+        update_scores(window.current_index);
+
+        const today = new Date;
+        const time_log = `${today.getDate()}/${today.getMonth() + 1}/${today.getFullYear()} `
+            + `${today.getHours()}:${today.getMinutes()}:${today.getSeconds()} : `
+            + ` plotted semantic distribution`;
+
+        await fetch (`${server_url}/log/`, {
+            method: 'POST', 
+            body: JSON.stringify({interaction_log: time_log}),
+            headers: {'Content-Type': 'application/json'}
+        });
     }
-
-    cluster_frames = body['pca_cluster_frames'];
-    for(let i = 0;i < cluster_frames.length;++i) {
-        let name_processed = window.current_video.split(".")[0]; 
-        const cf_response = await fetch(
-            `${server_url}/image/${name_processed}/${cluster_frames[i]["centroid"]}.png`
-        );
-        const cf_blob = await cf_response.blob();
-        const cf_url = URL.createObjectURL(cf_blob);
-
-        pca_cluster_frames.push([cluster_frames[i]["centroid"], cf_url]);
+    catch(error) {
+        console.log("failed to plot semantic distribution: ", error);
     }
-
-    cluster_frames = body['umap_cluster_frames'];
-    for(let i = 0;i < cluster_frames.length;++i) {
-        let name_processed = window.current_video.split(".")[0]; 
-        const cf_response = await fetch(
-            `${server_url}/image/${name_processed}/${cluster_frames[i]["centroid"]}.png`
-        );
-        const cf_blob = await cf_response.blob();
-        const cf_url = URL.createObjectURL(cf_blob);
-
-        umap_cluster_frames.push([cluster_frames[i]["centroid"], cf_url]);
-    }
-
-    window.tsne_cluster_frames = tsne_cluster_frames;
-    window.pca_cluster_frames = pca_cluster_frames;
-    window.umap_cluster_frames = umap_cluster_frames;
-
-    //set default displayed reduction algorithm
-    window.displayed_reduction = window.tsne_reduction;
-    window.displayed_reduction = window.tsne_reduction;
-    
-    //adjust the max value
-    window.max_index = window.tsne_reduction.length;
-
-    //if scores are not computed yet, initialize with empty vector
-    if (window.scores == null) {
-        window.scores = new Array(window.max_index).fill(0);
-    }
-    toggle_reduction.style.display = "block";
-    update_scores(window.current_index);
 
     reduction_plot_loader.style.display = "none";
     general_loader.style.display = "none";
@@ -427,7 +443,6 @@ const generate_color_map = (current_index, cmap) => {
                     }
                 }
             }
-
             break;
         } 
 
@@ -507,7 +522,7 @@ const reduction_method_buttons = document.querySelectorAll('input[name="select_r
 // Function to handle the colormap change
 const handle_color_map_change = () => {
     const selected_value = document.querySelector('input[name="select_color_map"]:checked').value;
-    window.cmap = selected_value;
+    window.colormap = selected_value;
 
     //redraw components
     plot_dimension_reduction(window.current_index);
@@ -842,8 +857,10 @@ const selection_mouse_move = (event) => {
         y: (window.selection_top_left.y + window.selection_bot_right.y) / 2 };
 
     selection_mouse_down_point = mouse_position;
-    window.all_boxes[window.focused_sentence] = [window.selection_top_left.x, window.selection_top_left.y, 
-        window.selection_bot_right.x, window.selection_bot_right.y];
+    window.all_boxes[window.focused_sentence][0] = window.selection_top_left.x;
+    window.all_boxes[window.focused_sentence][1] = window.selection_top_left.y; 
+    window.all_boxes[window.focused_sentence][2] = window.selection_bot_right.x; 
+    window.all_boxes[window.focused_sentence][3] = window.selection_bot_right.y;
     update_focused_box();
 
     // Redraw the content
@@ -962,7 +979,11 @@ toggle_reduction.addEventListener("click", () => {
 
         window.selection_top_left = { x: x1, y: y1 };
         window.selection_bot_right = { x: x2, y:  y2};
-        window.all_boxes[window.focused_sentence] = [x1, y1, x2, y2];
+        
+        window.all_boxes[window.focused_sentence][0] = x1;
+        window.all_boxes[window.focused_sentence][1] = y1; 
+        window.all_boxes[window.focused_sentence][2] = x2; 
+        window.all_boxes[window.focused_sentence][3] = y2;
         update_focused_box();
 
         plot_dimension_reduction(window.current_index);

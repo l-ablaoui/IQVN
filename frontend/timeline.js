@@ -98,17 +98,6 @@ timeline.addEventListener("mousemove", (event) => {
 timeline.addEventListener("mouseup", (event) => {
     update_frame_index_onclick(timeline, 0, 0, 0, window.max_index, event);
     is_timeline_dragging = false;
-
-    const today = new Date;
-    const time_log = `${today.getDate()}/${today.getMonth() + 1}/${today.getFullYear()} `
-        + `${today.getHours()}:${today.getMinutes()}:${today.getSeconds()} : `
-        + ` frame selection in timeline: ${window.current_index}`;
-
-    fetch (`${server_url}/log/`, {
-        method: 'POST', 
-        body: JSON.stringify({interaction_log: time_log}),
-        headers: {'Content-Type': 'application/json'}
-    });
 });
 timeline.addEventListener("mouseout", () => { is_timeline_dragging = false; });
 

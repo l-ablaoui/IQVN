@@ -10,7 +10,7 @@ let selected_score_spikes = [];
 let generate_score_color_map = () => {
     let color_map = [];
 
-    for (let i = 0;i < window.scores.length;++i) {
+    for (let i = 0;i < window.max_index;++i) {
         //check if current point is selected
         let found = false;
         for (let j = 0;j < window.selected_points.length;++j) {
@@ -154,7 +154,8 @@ const plot_score_curve = (current_index) => {
 };
 
 const get_scores_above_threshold = (scores, threshold) => {
-    if (scores == null) { return; }
+    if (scores == null) { return []; }
+    if (scores.length == 0) { return []; }
 
     //normalize scores array
     let min_score = Math.min(...scores);

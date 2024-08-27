@@ -53,7 +53,8 @@
                         btn btn-secondary"/>
                     <input type="button" value="(0, 0, 20, 20)" class="box_selection_button col-1 
                         button_space btn btn-secondary"/>
-                </div><div class="connector row justify-content-center x_adaptable">
+                </div>
+                <div class="connector row justify-content-center x_adaptable">
                     <input type="button" value="show" class="utils btn btn-sm btn-outline-success 
                         col-1 button_space"/>
                     <input type="button" value="OR" class="bool_op or btn btn-sm btn-secondary 
@@ -244,6 +245,9 @@
     window.pca_cluster_frames = null;
     window.umap_cluster_frames = null;
     
+    //time of navigation/query completion
+    window.start_time = Date.now() / 1000.0;
+
     //HERE Hidden elements that can be added later
     reduction_method_radio_group.style.display = "none";
     depthmap_computation_button.style.display = "none";

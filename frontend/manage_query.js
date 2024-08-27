@@ -153,7 +153,9 @@ const add_new_sentence = (composite_query) => {
  */
 const remove_sentence = (event) => {
     let parent = event.target.parentNode;
-    let sentence = parent.previousSibling;
+    let sentence = parent.previousElementSibling;
+
+    console.log(sentence);
 
     const all_sentences = document.getElementById("composite_text_query").querySelectorAll(".sentence");
     for (let i = 0;i < all_sentences.length;++i) {
@@ -191,7 +193,7 @@ const add_bool_operators = (composite_query) => {
     let display_button = document.createElement("input");
     display_button.type = "button";
     display_button.value = "show";
-    display_button.style.display = "none";
+    display_button.style.display = "block";
     display_button.classList.add("utils", "btn", "btn-sm", "btn-outline-success", "col-1", "button_space");
     display_button.addEventListener("click", focus_my_sentence_onclick);
 
@@ -270,14 +272,14 @@ const modify_boolean_operator_onclick = (event) => {
     let parent = node.parentNode;
 
     let bool_children = parent.querySelectorAll(".bool_op");
-    let utils_children = parent.querySelectorAll(".utils");
+    //let utils_children = parent.querySelectorAll(".btn-outline-danger");
 
     let sibling = (bool_children[0] == node)? bool_children[1] : bool_children[0];
     if (sibling.style.display == "none") { 
         show_all_my_bros(event);
-        utils_children.forEach((element) => {
+        /*utils_children.forEach((element) => {
             element.style.display = "none";
-        })
+        })*/
     }
     else if (sibling.style.display == "block") { 
         //finding the index of the current operator to modify it
@@ -290,9 +292,9 @@ const modify_boolean_operator_onclick = (event) => {
         }
 
         hide_all_but_me(event);
-        utils_children.forEach((element) => {
+        /*utils_children.forEach((element) => {
             element.style.display = "block";
-        });
+        });*/
     } 
 };
 
@@ -399,6 +401,7 @@ const parse_query = (sentence_element) => {
 };
 
 /**
+ * parse every sentence and return parsing for server processing
  * @returns array of processed queries
  */
 const process_text_query = () => {
@@ -413,10 +416,32 @@ const process_text_query = () => {
 };
 
 /**
+ * parse every sentence and return parsing for display/log
+ * @returns string of composite query
+ */
+const parse_text_query = () => {
+    const query_array = process_text_query();
+    if (query_array.length == 1) { return query_array[0]; }
+    if (query_array.length == 0) { return "<empty string>"; }
+
+    let operators = [];
+    const composite_text_query = document.getElementById("composite_text_query");
+    const visible_operators = Array.from(composite_text_query.querySelectorAll(".bool_op"));
+    operators.push(...visible_operators);
+   
+    let parsed_query = query_array[0];
+    for (let i = 1;i < query_array.length;++i) {
+        console.log(operators, query_array.length, operators.length, i - 1);
+        parsed_query += " " + (operators[i - 1].value) + " " +  query_array[i];
+    }
+
+    return parsed_query;
+}
+
+/**
  * display threshold results on clicked element's sentence query results alone
  * without considering other sentence queries or reduction plot selection
  * @param {*} event used to get the clicked element (assumed button)
- * @returns 
  */
 const display_threshold_onclick = (event) => {
     if (window.all_scores == null) { return; }
@@ -503,6 +528,10 @@ const display_bounding_box_onclick = (event) => {
     }
 };
 
+/**
+ * when clicking on an element of a query parent, update (logically, not the DOM) 
+ * the focus of the sentence on that of the clicked element 
+ */
 const update_focused_box = () => {
     try {
         // Locate the clicked sentence or its parent node that has the class 'sentence'
@@ -526,6 +555,12 @@ const update_focused_box = () => {
     }
 }; 
 
+/**
+ * used when displaying query result by pressing "show" of the respective query sentence
+ * apply OR on threshold selection and bbox selection and returns all selected points 
+ * @param {*} index currently displayed image, needed for bbox selection
+ * @returns all selected points by either thresholding or bbox selection (array of ints)
+ */
 const get_sentence_result = (index) => {
     //initial sentence processed (in case its the only one)
     const thresold_results = get_scores_above_threshold(window.all_scores[index], window.all_thresholds[index]);
@@ -609,6 +644,17 @@ text_search_button.addEventListener("click", async () => {
 
         let display_composition = document.getElementById("display_composition");
         display_composition.style.display = "block";
+
+        const today = new Date;
+        const time_log = `${today.getDate()}/${today.getMonth() + 1}/${today.getFullYear()} `
+            + `${today.getHours()}:${today.getMinutes()}:${today.getSeconds()} : `
+            + ` search with query: ${parse_text_query()}`;
+
+        await fetch (`${server_url}/log/`, {
+            method: 'POST', 
+            body: JSON.stringify({interaction_log: time_log}),
+            headers: {'Content-Type': 'application/json'}
+        });
     } 
     catch (error) {
         console.error("Error loading similarity scores for text query: ", error);

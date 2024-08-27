@@ -83,12 +83,6 @@ def video2images(video_path):
 
     vid.release()
 
-def load_embeddings(output_path, frameCount):
-    embeddings = []
-    for i in range(frameCount):
-        embeddings.append(np.load(output_path+f"/embedding_{i}.npy"))
-    return np.vstack(embeddings)
-
 def compute_embeddings_dim_reduction(video_path):  
     output_path = video_path.replace(".mp4", "")
     if not os.path.exists(output_path):
@@ -115,7 +109,7 @@ def compute_embeddings_dim_reduction(video_path):
     else:
         vid = cv2.VideoCapture(video_path)
         frameCount = int(int(vid.get(cv2.CAP_PROP_FRAME_COUNT)) * FPS / int(vid.get(cv2.CAP_PROP_FPS)))
-        classifier.video_embeddings = load_embeddings(output_path, frameCount)
+        classifier.load_video_features(output_path, frameCount)
         vid.release()
         
     if not os.path.exists(f"{output_path}/tsne_reduction.npy"):
@@ -230,7 +224,7 @@ def find_mp4_files(relative_path):
     
     return mp4_file_names
 
-async def annotate_video(video_path, output_path):
+async def perform_object_detection(video_path, output_path):
     detector = ObjectDetector(video_path=video_path, output_results=output_path+"-output.csv", \
                 model_name="yolov5s.pt", fps=FPS)
     return detector()
@@ -338,28 +332,6 @@ async def get_image(prediction_path: str, filename: str):
         img_path = os.path.join(VIDEOS_DIR, f"{prediction_path}").replace("\\","/")+f"/{filename}"
     return FileResponse(img_path)
 
-@app.post("/upload_png/")
-async def upload_png(image_data: dict):
-    global current_video_path
-
-    data_url = image_data.get('image_data', '')
-    
-    image_data_str = data_url.split(",")[1]
-    image_bytes = base64.b64decode(image_data_str)
-    image_array = np.frombuffer(image_bytes, dtype=np.uint8)
-    img = cv2.imdecode(image_array, cv2.IMREAD_COLOR)
-
-    if not os.path.exists("images/"):
-        os.mkdir("images")
-    cv2.imwrite(OUTPUT_CROP_IMAGE, img)
-
-    similarity_scores = compute_cosine_similarity(current_video_path, IMAGE_CROP_QUERY)
-    
-    return {
-        "query": IMAGE_CROP_QUERY, 
-        "scores": similarity_scores
-    }
-
 @app.get("/video/")
 async def get_video_names():
     video_names = find_mp4_files("./videos")
@@ -398,7 +370,7 @@ async def get_video(filename: str):
     output_path = os.path.join(VIDEOS_DIR, f"{name}").replace("\\","/")
 
     if not os.path.exists(output_path+"-output.csv"):
-        await annotate_video(video_path, output_path)
+        await perform_object_detection(video_path, output_path)
 
     paths = glob.glob(output_path+"/*.png")
     result = pd.read_csv(output_path+"-output.csv")
@@ -450,4 +422,34 @@ async def get_video_fps(filename: str):
         return { "fps": -1 }
     else:
         return { "fps": FPS } #int(vid.get(cv2.CAP_PROP_FPS)) }
+    
+@app.post("/upload_png/")
+async def upload_png(image_data: dict):
+    global current_video_path
+
+    data_url = image_data.get('image_data', '')
+    
+    image_data_str = data_url.split(",")[1]
+    image_bytes = base64.b64decode(image_data_str)
+    image_array = np.frombuffer(image_bytes, dtype=np.uint8)
+    img = cv2.imdecode(image_array, cv2.IMREAD_COLOR)
+
+    if not os.path.exists("images/"):
+        os.mkdir("images")
+    cv2.imwrite(OUTPUT_CROP_IMAGE, img)
+
+    similarity_scores = compute_cosine_similarity(current_video_path, IMAGE_CROP_QUERY)
+    
+    return {
+        "query": IMAGE_CROP_QUERY, 
+        "scores": similarity_scores
+    }
+
+@app.post("/log/")
+async def write_log(log_data: dict):
+    print(log_data.get("interaction_log", ""))
+
+if __name__ == "__main__":
+    import uvicorn
+    uvicorn.run("main:app", port=8000, log_level="info")
     

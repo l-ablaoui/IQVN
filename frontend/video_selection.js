@@ -7,13 +7,35 @@ let video_name_selection = document.getElementById("video_names_selection");
  */
 const load_video = async () => {
     try {
+        //record execution time for old video navigation
+        const old_value = window.current_video;
+        if (old_value != "") {
+            const today = new Date;
+            const time_log = `${today.getDate()}/${today.getMonth() + 1}/${today.getFullYear()} `
+                + `${today.getHours()}:${today.getMinutes()}:${today.getSeconds()} : `
+                + `navigation of "${old_value}" lasted ` +     
+                `${(Date.now() / 1000.0 - window.start_time).toFixed(2)} s`;
+
+            console.log(time_log);
+            await fetch (`${server_url}/log/`, {
+                method: 'POST', 
+                body: JSON.stringify({interaction_log: time_log}),
+                headers: {'Content-Type': 'application/json'}
+            });
+        }
+
         //update video name locally
         window.current_video = video_name_selection.value;
 
+        //reset timer
+        window.start_time = Date.now() / 1000.0;
+
         //update video name in server
-        const response = await fetch(`${server_url}/select_video/`, 
-        {method: 'POST', body: JSON.stringify({ video_name: window.current_video }), 
-        headers: {'Content-Type': 'application/json'}});
+        const response = await fetch(`${server_url}/select_video/`, {
+            method: 'POST', 
+            body: JSON.stringify({ video_name: window.current_video }), 
+            headers: {'Content-Type': 'application/json'}
+        });
         const body = await response.json();
         console.log(body);
 

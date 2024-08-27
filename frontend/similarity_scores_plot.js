@@ -167,7 +167,20 @@ const get_scores_above_threshold = (scores, threshold) => {
     }, []);
 };
 
-const threshold_mouse_down = () => { is_threshold_dragging = true; };
+const threshold_mouse_down = () => { 
+    is_threshold_dragging = true; 
+
+    const today = new Date;
+    const time_log = `${today.getDate()}/${today.getMonth() + 1}/${today.getFullYear()} `
+        + `${today.getHours()}:${today.getMinutes()}:${today.getSeconds()} : `
+        + ` begin thresholding in score plot`;
+
+    fetch (`${server_url}/log/`, {
+        method: 'POST', 
+        body: JSON.stringify({interaction_log: time_log}),
+        headers: {'Content-Type': 'application/json'}
+    });
+};
 
 const threshold_mouse_move = (event, offset_y, svg) => { 
     if (!is_threshold_dragging) { return; }
@@ -196,6 +209,17 @@ const threshold_mouse_up = (event, offset_y, svg) => {
     selected_score_spikes = get_scores_above_threshold(window.scores, threshold);
     window.selected_points = selected_score_spikes;
     update_scores(window.current_index);
+
+    const today = new Date;
+    const time_log = `${today.getDate()}/${today.getMonth() + 1}/${today.getFullYear()} `
+        + `${today.getHours()}:${today.getMinutes()}:${today.getSeconds()} : `
+        + ` end thresholding in score plot. Current threshold: ${threshold.toFixed(2)}`;
+
+    fetch (`${server_url}/log/`, {
+        method: 'POST', 
+        body: JSON.stringify({interaction_log: time_log}),
+        headers: {'Content-Type': 'application/json'}
+    });
 }
 
 //duplicating the storage of mouseup and mousemove for the sake of keeping a deletable reference

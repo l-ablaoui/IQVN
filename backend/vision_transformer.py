@@ -89,6 +89,12 @@ class VisionTransformer:
         vid.release()
         return np.vstack(embeddings)
     
+    def load_video_features(self, output_path, frameCount):
+        embeddings = []
+        for i in range(frameCount):
+            embeddings.append(np.load(output_path+f"/embedding_{i}.npy"))
+        self.video_embeddings =  np.vstack(embeddings)
+
     def cosine_similarity(self, embeds1, embeds2):
         # Reshape 1D arrays to 2D if necessary
         if embeds1.ndim == 1:

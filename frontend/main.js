@@ -368,6 +368,17 @@ const update_frame_index_onclick = async (svg, offset_left, offset_right, offset
     const frame_index = Math.trunc((mouseX - offset_left) / (plot_width - offset_right - offset_left) 
         * (nb_values - 1));
     await fetch_frame_by_index (frame_index);
+
+    const today = new Date;
+    const time_log = `${today.getDate()}/${today.getMonth() + 1}/${today.getFullYear()} `
+        + `${today.getHours()}:${today.getMinutes()}:${today.getSeconds()} : `
+        + ` selected frame (on click): ${window.current_index}`;
+
+    await fetch (`${server_url}/log/`, {
+        method: 'POST', 
+        body: JSON.stringify({interaction_log: time_log}),
+        headers: {'Content-Type': 'application/json'}
+    });
 };
 
 /** makes element focusable */
@@ -407,6 +418,17 @@ const navigate_video_onkeydown = async (event) => {
         window.current_frame.src = image_url;
         update_video(window.current_frame.src);
         update_scores(window.current_index);
+
+        const today = new Date;
+        const time_log = `${today.getDate()}/${today.getMonth() + 1}/${today.getFullYear()} `
+            + `${today.getHours()}:${today.getMinutes()}:${today.getSeconds()} : `
+            + ` selected frame (buttons): ${window.current_index}`;
+
+        fetch (`${server_url}/log/`, {
+            method: 'POST', 
+            body: JSON.stringify({interaction_log: time_log}),
+            headers: {'Content-Type': 'application/json'}
+        });
     }
     catch (error) {
         console.error("Error getting video frame ", window.current_frame, " : ", error);
@@ -424,7 +446,7 @@ const getDataURL = async (file) => {
 
 /*Image-based search, needs the cropped image to be defined (hover over the video)
 and expecting an array of window.scores plus a reduction array from the server*/
-image_search_button.addEventListener('click', async () => {
+image_search_button.addEventListener("click", async () => {
     let score_plot_loader = document.getElementById("score_plot_loader");
     let reduction_plot_loader = document.getElementById("reduction_plot_loader");
     let general_loader = document.getElementById("general_loader");

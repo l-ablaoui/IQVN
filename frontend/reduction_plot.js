@@ -571,7 +571,7 @@ reduction_plot.addEventListener("click", async (event) => {
         return;
     }
 
-    for (i = 0;i < window.displayed_reduction.length;++i) {
+    for (let i = 0;i < window.displayed_reduction.length;++i) {
         //get each point's coordinates after current zoom/pan
         if (i >= window.max_index || i > window.displayed_reduction.length) {
                 console.error("onclick event error: loop index (", i, ") is higher",  
@@ -770,6 +770,17 @@ const selection_mouse_down = (event) => {
     if (min_index == 2) selection_state = "dc";
     if (min_index == 3) selection_state = "dctr";
     if (min_index == 4) selection_state = "dcbl";
+
+    const today = new Date;
+    const time_log = `${today.getDate()}/${today.getMonth() + 1}/${today.getFullYear()} `
+        + `${today.getHours()}:${today.getMinutes()}:${today.getSeconds()} : `
+        + ` begin selection in semantic plot`;
+
+    fetch (`${server_url}/log/`, {
+        method: 'POST', 
+        body: JSON.stringify({interaction_log: time_log}),
+        headers: {'Content-Type': 'application/json'}
+    });
 };
 
 const selection_mouse_move = (event) => {
@@ -850,6 +861,18 @@ const selection_mouse_up = () => {
     window.selected_points = update_selected(window.current_index, window.selection_top_left,
         window.selection_bot_right);
     update_scores(window.current_index);
+
+    const today = new Date;
+    const time_log = `${today.getDate()}/${today.getMonth() + 1}/${today.getFullYear()} `
+        + `${today.getHours()}:${today.getMinutes()}:${today.getSeconds()} : `
+        + ` end selection in semantic plot. Bounding box: [${window.selection_top_left.x}, `
+        + `${window.selection_top_left.y}, ${window.selection_bot_right.x}, ${window.selection_bot_right.y}]`;
+
+    fetch (`${server_url}/log/`, {
+        method: 'POST', 
+        body: JSON.stringify({interaction_log: time_log}),
+        headers: {'Content-Type': 'application/json'}
+    });
 }
 
 /*zoom/pan reset option (or reset all?)*/

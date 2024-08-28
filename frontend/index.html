@@ -210,12 +210,7 @@
     window.is_selection = false;
     window.selected_points = [];
     window.current_selection = 0;
-    const SELECTION_COLORS = [ 
-        {red: 65, green: 105, blue: 255}, //royalblue
-        {red: 178, green: 34, blue: 34},  //brickred
-        {red: 225, green: 185, blue: 65}, //honeyyellow
-        {red: 34, green: 139, blue: 34} //forestgreen
-    ];
+    const SELECTION_COLOR = "rgba(65, 105, 255, 0.8)"; //royalblue
 
     //query result slot
     window.sentences_count = 1;
@@ -251,6 +246,8 @@
     //HERE Hidden elements that can be added later
     reduction_method_radio_group.style.display = "none";
     depthmap_computation_button.style.display = "none";
+
+    const server_url = "http://localhost:8000"
 </script>
 <!--main script-->
 <script defer src="main.js"></script>

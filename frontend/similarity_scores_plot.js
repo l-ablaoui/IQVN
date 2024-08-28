@@ -18,9 +18,7 @@ let generate_score_color_map = () => {
                 found = true;
             }
         }
-        color_map.push((found)? `rgb(${SELECTION_COLORS[0].red},
-            ${SELECTION_COLORS[0].green},
-            ${SELECTION_COLORS[0].blue})` : window.REGULAR_COLOR);
+        color_map.push((found)? SELECTION_COLOR: window.REGULAR_COLOR);
     }
 
     return color_map;

@@ -869,8 +869,6 @@ const selection_mouse_move = (event) => {
     update_scores(window.current_index);
 }
 
-const debounced_selection_mouse_move = debounce(selection_mouse_move, 200);
-
 const selection_mouse_up = () => { 
     selection_state = "idle"; 
 

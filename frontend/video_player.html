@@ -6,6 +6,14 @@
 <link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/4.5.2/css/bootstrap.min.css">
 <link rel="stylesheet" href="style.css">
 <title>Standard Navigation In Videos</title>
+<style>
+    #sdtimeline { 
+    height: 19vh; 
+    width: 60vw;
+    border: 1px solid lightgray; 
+    margin: 0 auto;
+}
+</style>
 </head>
 <body>
     <div class="container-fluid adaptable justify-content-center" >
@@ -19,18 +27,48 @@
                     <option value="video_3.mp4">video 3</option>
                     <option value="video_4.mp4">video 4</option>
                 </select>
+                <input type="button" value="copy selected" id="copy_selected" class="btn btn-secondary"/>
             </div>
-            <video id="standard_video" controls>
+            <video class="row" id="standard_video" controls>
                 <source id="standard_video_src" src="../backend/videos/video_0.mp4" type="video/mp4" />
             </video>
+            <div class="row x_adaptable justify-content-center">
+                <canvas tabindex="0" id="sdtimeline"></canvas> 
+            </div>
+            
         </div>
     </div>
 </body>
+<script src="utils.js"></script>
 <script>
+    const SELECTION_COLOR = "rgba(65, 105, 255, 0.8)"; //royalblue
+
+    let ctrl_pressed = false;
+    let shift_pressed = false;
+    let is_selection_dragging = false;
+
+    let interval_start = -1;
+    let interval_end = -1;
+
     let video = document.getElementById("standard_video");
     let source = document.getElementById("standard_video_src");
+    let timeline = document.getElementById("sdtimeline");
+    timeline.width = timeline.offsetWidth;
+    timeline.height = timeline.offsetHeight;
+    let selected_points = [];
+
+    let max_index = 0;
 
     video.load();
+    video.addEventListener("loadedmetadata", () => {
+        plot_timeline(timeline, 0, selected_points, Math.trunc(video.duration), 1);
+        max_index = Math.trunc(video.duration);
+    });
+
+    video.addEventListener('timeupdate', () => {
+        plot_timeline(timeline, video.currentTime, selected_points, Math.trunc(video.duration), 1);
+    });
+
     video.addEventListener("keydown", (event) => {
         if (event.key == "+") {
             video.playbackRate = Math.min(5, video.playbackRate + 0.5); 
@@ -57,6 +95,46 @@
             video.style.width = "auto";
             video.style.height = "auto"; 
         });
+        video.muted = true;
     });
+
+    timeline.addEventListener("mousedown", (event) => {
+        timeline_selection_mousedown(timeline, 0, 0, 0, max_index, event);
+        is_selection_dragging = true;
+    });
+    timeline.addEventListener("mousemove", (event) => {
+        is_selection_dragging && timeline_selection_mousemove(timeline, 0, 0, 0, max_index, 
+            selected_points, event);
+    });
+    timeline.addEventListener("mouseup", (event) => {
+        is_selection_dragging && timeline_selection_mousemove(timeline, 0, 0, 0, max_index,
+            selected_points, event);
+        is_selection_dragging = false;
+        console.log(selected_points);
+    });
+    timeline.addEventListener("mouseout", (event) => {
+        is_selection_dragging && timeline_selection_mousemove(timeline, 0, 0, 0, max_index,
+            selected_points, event);
+        is_selection_dragging = false;
+        console.log(selected_points);
+    });
+
+    timeline.addEventListener("keydown", timeline_selection_keychange);
+    timeline.addEventListener("keyup", timeline_selection_keychange);
+
+
+
+    document.getElementById("copy_selected").addEventListener("click", () => {
+    const parsed_selected_frames = parse_selected_frames(max_index, selected_points);
+
+    navigator.clipboard.writeText(parsed_selected_frames)
+            .then(() => {
+                console.log('Text copied to clipboard');
+            })
+            .catch(err => {
+                console.error('Failed to copy text: ', err);
+            });
+    });
+
 </script>
 </html>

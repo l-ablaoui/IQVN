@@ -14,7 +14,7 @@ body {
     width: auto; /* Allow width to adjust based on the height */
     height: auto; /* Allow height to adjust naturally */
     max-width: 100%; /* Prevent the video from exceeding the container's width */
-    max-height: 80vh; /* Prevent the video from exceeding 80% of the viewport height */
+    max-height: 75vh; /* Prevent the video from exceeding 80% of the viewport height */
     object-fit: contain; /* Scale the video while maintaining its aspect ratio */
     display: block; /* Centering the video horizontally (requires margin: auto on parent) */
     margin: auto; /* Center the video within its container */

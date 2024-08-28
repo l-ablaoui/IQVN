@@ -1,26 +1,20 @@
 from fastapi import FastAPI, File, UploadFile
 from fastapi.exceptions import HTTPException
 from fastapi.responses import FileResponse, JSONResponse
-import os
 from fastapi.middleware.cors import CORSMiddleware
 
-import glob
 from object_detection import ObjectDetector
 from vision_transformer import VisionTransformer
 from depthmap import DepthMapEstimation
 
-import cv2
 import time
-import numpy as np
 import base64
 
 from sklearn.preprocessing import LabelEncoder
-from sklearn.cluster import DBSCAN
-from sklearn.neighbors import NearestNeighbors
-
-from tqdm import tqdm
 
 import pandas as pd
+
+from utils import *
 
 app = FastAPI()
 
@@ -47,43 +41,6 @@ EMBEDDINGS_LENGTH = 512
 FPS = 10
 
 log_file = open("log_file.txt", "a+")
-
-# save image as individual frames in the folder to facilitate fetching
-def video2images(video_path):
-    output_path = video_path.replace(".mp4", "")
-    vid = cv2.VideoCapture(video_path)
-
-    if not vid.isOpened():
-        print(">>>>> loading video problem")
-        return
-
-    width = int(vid.get(cv2.CAP_PROP_FRAME_WIDTH))
-    height = int(vid.get(cv2.CAP_PROP_FRAME_HEIGHT))
-    total_count = int(vid.get(cv2.CAP_PROP_FRAME_COUNT))
-    fps = int(vid.get(cv2.CAP_PROP_FPS))
-
-    skipAhead = 0
-    if fps > FPS:
-        skipAhead =  int(fps / FPS) 
-        total_count = int(total_count * FPS / fps)
-
-    frameCount = 0
-    with tqdm(total=total_count, desc="saving original frames: ") as pbar:
-        while vid.isOpened():
-            for _ in range(skipAhead - 1):
-                okay, frame = vid.read()
-                if not okay:
-                    break
-            okay, frame = vid.read()
-            if not okay:
-                break
-
-            frame_to_save = cv2.resize(frame, (width, height))
-            cv2.imwrite(output_path+f"/{frameCount}.png", frame_to_save)
-            frameCount += 1
-            pbar.update(1)
-
-    vid.release()
 
 def compute_embeddings_dim_reduction(video_path):  
     output_path = video_path.replace(".mp4", "")
@@ -213,31 +170,11 @@ def compute_cosine_similarity(video_path, query_text):
     print(f"done in {(toc-tic):.2f} seconds...")
 
     return similarity_scores
- 
-def find_mp4_files(relative_path):
-    # Get the absolute path of the directory
-    abs_path = os.path.abspath(relative_path)
-    
-    # Use glob to find all .mp4 files in the directory
-    mp4_files = glob.glob(os.path.join(abs_path, '*.mp4'))
-    
-    # Extract the file names from the full paths
-    mp4_file_names = [os.path.basename(file) for file in mp4_files]
-    
-    return mp4_file_names
 
 async def perform_object_detection(video_path, output_path):
     detector = ObjectDetector(video_path=video_path, output_results=output_path+"-output.csv", \
                 model_name="yolov5s.pt", fps=FPS)
     return detector()
-
-#apply bounding box to the image pixels
-async def crop_image(image, bbox):
-    x_min, y_min, x_max, y_max = bbox
-    x_min, y_min, x_max, y_max = int(x_min), int(y_min), int(x_max), int(y_max)
-    cropped_image = image[y_min:y_max, x_min:x_max]
-    
-    return cropped_image
 
 async def compute_depth_map(video_path, output_path):
     if not os.path.exists(output_path):
@@ -245,62 +182,6 @@ async def compute_depth_map(video_path, output_path):
 
     depth_estimator = DepthMapEstimation(FPS, video_path=video_path)
     depth_estimator(save_path=output_path)
-
-# Function to calculate the centroid
-def calculate_centroid(indices, vectors):
-    cluster_vectors = vectors[indices]
-    centroid = np.mean(cluster_vectors, axis=0)
-    return centroid
-
-# Function to find the index of the vector closest to the centroid
-def closest_vector_index(centroid, indices, vectors):
-    cluster_vectors = vectors[indices]
-    distances = np.linalg.norm(cluster_vectors - centroid, axis=1)
-    closest_index = indices[np.argmin(distances)]
-    return closest_index
-
-def choose_eps(vectors, k=4, percentile=90):
-    neigh = NearestNeighbors(n_neighbors=k)
-    nbrs = neigh.fit(vectors)
-    distances, _ = nbrs.kneighbors(vectors)
-    distances = np.sort(distances[:, k-1], axis=0)
-    eps = np.percentile(distances, percentile)
-    return eps
-
-def get_clusters(vectors, min_samples=5):
-    eps = choose_eps(vectors, min_samples, 100)
-    clusters = DBSCAN(eps=eps, min_samples=min_samples).fit(vectors).labels_
-    return clusters
-
-def get_centroids(clusters, vectors, max_clusters):
-    # Determine the number of unique classes
-    unique_clusters = np.unique(clusters)
-
-    # Create a dictionary to store vectors by class
-    clustered_indices = {cls: [] for cls in unique_clusters}
-
-    # Populate the dictionary with vectors
-    for i in range(clusters.size):
-        clustered_indices[clusters[i]].append(i)
-
-    # Sort clusters by size (number of vectors), largest first
-    sorted_clusters = sorted(clustered_indices.items(), key=lambda item: len(item[1]), reverse=True)
-
-    # Keep only the largest clusters
-    max_clusters = max_clusters
-    sorted_clusters = sorted_clusters[:max_clusters]
-
-    # Calculate centroids and find closest vectors
-    centroids = {}
-    closest_vectors = {}
-    for cls, indices in sorted_clusters:
-        centroid = calculate_centroid(indices, vectors)
-        closest_idx = closest_vector_index(centroid, indices, vectors)
-        centroids[cls] = centroid
-        closest_vectors[cls] = closest_idx
-    
-    return sorted_clusters, centroids, closest_vectors
-
 
 @app.get("/search")
 async def search(query: str):
@@ -366,7 +247,7 @@ async def select_video(name_data: dict):
         }
 
 @app.get("/video/objects/{filename}")
-async def get_video(filename: str):
+async def get_objects_in_video(filename: str):
     video_path = os.path.join(VIDEOS_DIR, filename).replace("\\","/")
     name = filename.split(".")[0]
     output_path = os.path.join(VIDEOS_DIR, f"{name}").replace("\\","/")
@@ -415,7 +296,6 @@ async def get_video_embeddings(filename: str):
         "umap_cluster_frames": umap_cluster_frames
     }
 
-
 @app.get("/video/{filename}/fps")
 async def get_video_fps(filename: str):
     video_path = os.path.join(VIDEOS_DIR, filename).replace("\\","/")
@@ -457,5 +337,5 @@ async def write_log(log_data: dict):
 
 if __name__ == "__main__":
     import uvicorn
-    uvicorn.run("main:app", port=8000, log_level="info")
+    uvicorn.run("main:app", port=8000, reload=True, log_level="info")
     

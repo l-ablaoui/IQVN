@@ -30,12 +30,7 @@ toggle_scores.style.display = "none";
 toggle_reduction.style.display = "none";
 toggle_depth.style.display = "none";
 
-const server_url = 'http://localhost:8000';
-
-/*********************/
 /*methods declaration*/
-/*********************/
-
 const union = (array_a, array_b) => {
     let set = new Set([...array_a, ...array_b]); // Use a Set to automatically handle duplicates
     return Array.from(set);
@@ -150,8 +145,8 @@ const plot_axes = (offset_left, offset_right, offset_y, svg) => {
 /**
  * plots the current time (window.current_index / window.fps) either on the left or the right
  * of the marker (assuming this one is drawn). assumes also a 2D curve plot
- * @param {*} current_index selected video frame index
- * @param {*} max_index number of frames in the video, assumed to be a non-zero positive integer
+ * @param {*} current_index selected video frame index (positive integer)
+ * @param {*} max_index number of frames in the video (positive integer)
  * @param {*} fps video fps rate, assumed to be a non-zero positive integer
  * @param {*} svg canvas element where the time is to be drawn
  * @param {*} offset_left space to be left on the left of the X axis
@@ -169,7 +164,7 @@ let plot_current_timer = (current_index, max_index, fps, svg, offset_left, offse
 
     let x = offset_left + current_index / max_index * (plot_width - offset_left - offset_right);
     ctx.beginPath();
-    ctx.fillStyle = "darkgray";
+    ctx.fillStyle = "black";
     ctx.font = "10px arial";
     ctx.fillText(
         `${Math.trunc((timestamp) / 60)}:${Math.trunc((timestamp)) % 60}`,
@@ -179,12 +174,12 @@ let plot_current_timer = (current_index, max_index, fps, svg, offset_left, offse
 
 /**
  * drawing of the small triangle above the timestamp line marker
- * @param {*} current_index 
- * @param {*} max_index 
- * @param {*} svg 
- * @param {*} offset_left 
- * @param {*} offset_right 
- * @param {*} offset_y 
+ * @param {*} current_index selected video frame index (positive integer)
+ * @param {*} max_index number of frames in the video (positive integer)
+ * @param {*} svg canvas element where the time is to be drawn
+ * @param {*} offset_left space to be left on the left of the X axis
+ * @param {*} offset_right space to be right on the left of the X axis
+ * @param {*} offset_y both top and bottom margin
  */
 let plot_marker_triangle = (current_index, max_index, svg, offset_left, offset_right, offset_y, fill_color) => {
     let ctx = svg.getContext("2d");
@@ -258,7 +253,7 @@ const update_scores = (frame_index) => {
         window.current_index = frame_index; 
     }
     // Update plot
-    plot_timeline(frame_index, window.max_index, window.fps);
+    plot_timeline(timeline, frame_index, window.selected_points, window.max_index, window.fps);
     if (obj_plot.style.display == "block") {
         console.log("plotting object graph");
         plot_objects(frame_index);
@@ -279,24 +274,6 @@ const update_scores = (frame_index) => {
 /***********/
 /*Listeners*/
 /***********/
-
-/**
- * debouce prevents function call before the delay passes, used to offload mousemove calls
- * @param {*} func  function to be debounced
- * @param {*} delay ms unit 
- * @returns debounced function reference
- */
-let debounce = (func, delay) => {
-    let timeout_id;
-    return (...args) => {
-        if (timeout_id) {
-            clearTimeout(timeout_id);
-        }
-        timeout_id = setTimeout(() => {
-            func.apply(this, args);
-        }, delay);
-    };
-};
 
 //resize listener has to addapt the sizes of each component that has height as a function of width
 window.addEventListener("resize", () => {
@@ -355,17 +332,17 @@ const fetch_frame_by_index = async (frame_index) =>  {
  * @param {*} event captures the coordinates of the click 
  */
 const update_frame_index_onclick = async (svg, offset_left, offset_right, offset_y, nb_values, event) => {
-    const mouseX = event.offsetX;
-    const mouseY = event.offsetY;
+    const mouse_x = event.offsetX;
+    const mouse_y = event.offsetY;
 
     const plot_width = svg.width;
     const plot_height = svg.height;
 
     //case clicked on the offset
-    if (offset_y > mouseY || mouseY > plot_height - offset_y) { return; }
-    if (offset_left > mouseX || mouseX > plot_width - offset_right) { return; }
+    if (offset_y > mouse_y || mouse_y > plot_height - offset_y) { return; }
+    if (offset_left > mouse_x || mouse_x > plot_width - offset_right) { return; }
 
-    const frame_index = Math.trunc((mouseX - offset_left) / (plot_width - offset_right - offset_left) 
+    const frame_index = Math.trunc((mouse_x - offset_left) / (plot_width - offset_right - offset_left) 
         * (nb_values - 1));
     await fetch_frame_by_index (frame_index);
 
@@ -552,5 +529,3 @@ document.getElementById("copy_selected").addEventListener("click", () => {
             console.error('Failed to copy text: ', err);
         });
 });
-//hide button but leave it for later use
-document.getElementById("copy_selected").style.display = "none";

@@ -40,8 +40,6 @@ MAX_NB_CLUSTERS = 20
 EMBEDDINGS_LENGTH = 512
 FPS = 10
 
-log_file = open("log_file.txt", "a+")
-
 def compute_embeddings_dim_reduction(video_path):  
     output_path = video_path.replace(".mp4", "")
     if not os.path.exists(output_path):
@@ -329,11 +327,13 @@ async def upload_png(image_data: dict):
 
 @app.post("/log/")
 async def write_log(log_data: dict):
-    global log_file
+    log_file = open("log_file.txt", "a+")   
 
     log_file.write(log_data.get("interaction_log", "") + "\n")
     log_file.flush()
     print(log_data.get("interaction_log", ""))
+
+    log_file.close()
 
 if __name__ == "__main__":
     import uvicorn

@@ -122,7 +122,18 @@
     timeline.addEventListener("keydown", timeline_selection_keychange);
     timeline.addEventListener("keyup", timeline_selection_keychange);
 
+    video.addEventListener("keyup", async (event) => {
+        const today = new Date;
+        const time_log = `${today.getDate()}/${today.getMonth() + 1}/${today.getFullYear()} `
+            + `${today.getHours()}:${today.getMinutes()}:${today.getSeconds()} : `
+            + ` pressed key ${event.key}`;
 
+        fetch (`${server_url}/log/`, {
+            method: 'POST', 
+            body: JSON.stringify({interaction_log: time_log}),
+            headers: {'Content-Type': 'application/json'}
+        });
+    });
 
     document.getElementById("copy_selected").addEventListener("click", () => {
     const parsed_selected_frames = parse_selected_frames(max_index, selected_points);

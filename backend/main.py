@@ -48,7 +48,7 @@ def compute_embeddings_dim_reduction(video_path):
         os.mkdir(output_path)
 
     if not os.path.exists(f"{output_path}/0.png"):
-        video2images(video_path)
+        video2images(video_path, FPS)
 
     #Getting video embeddings 
     classifier = VisionTransformer(FPS, video_path, MODEL_NAME)
@@ -126,7 +126,7 @@ def compute_cosine_similarity(video_path, query_text):
         os.mkdir(output_path)
 
     if not os.path.exists(f"{output_path}/0.png"):
-        video2images(video_path)
+        video2images(video_path, FPS)
 
     classifier = VisionTransformer(FPS, video_path, MODEL_NAME)
 
@@ -235,7 +235,7 @@ async def select_video(name_data: dict):
             os.mkdir(output_path)
 
         if not os.path.exists(f"{output_path}/0.png"):
-            video2images(current_video_path)
+            video2images(current_video_path, FPS)
 
         frameCount = int(vid.get(cv2.CAP_PROP_FRAME_COUNT))
         originalFps = int(vid.get(cv2.CAP_PROP_FPS))

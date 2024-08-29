@@ -1,7 +1,7 @@
 import cv2
 import numpy as np
 
-import tqdm
+from tqdm import tqdm
 
 import os
 import glob

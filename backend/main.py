@@ -1,20 +1,20 @@
+import uvicorn
 from fastapi import FastAPI, File, UploadFile
 from fastapi.exceptions import HTTPException
 from fastapi.responses import FileResponse, JSONResponse
 from fastapi.middleware.cors import CORSMiddleware
 
+import argparse
+import time
+import base64
+from sklearn.preprocessing import LabelEncoder
+import pandas as pd
+
 from object_detection import ObjectDetector
 from vision_transformer import VisionTransformer
 from depthmap import DepthMapEstimation
 
-import time
-import base64
-
-from sklearn.preprocessing import LabelEncoder
-
-import pandas as pd
-
-from utils import *
+from utilities import *
 
 app = FastAPI()
 
@@ -27,26 +27,24 @@ app.add_middleware(
 )
 
 IMAGES_DIR = "images"
-VIDEOS_DIR = "videos"
-
 MODEL_NAME = "openai/clip-vit-base-patch16"
-#MODEL_NAME = "google/owlvit-base-patch32"
-#MODEL_NAME = "google/owlv2-base-patch16-ensemble"
-current_video_path = "./videos/video_0.mp4"
-
 IMAGE_CROP_QUERY = "<image-loaded>"
 OUTPUT_CROP_IMAGE = "images/search-image.png"
 MAX_NB_CLUSTERS = 20
 EMBEDDINGS_LENGTH = 512
 FPS = 10
 
-def compute_embeddings_dim_reduction(video_path):  
+videos_dir = "videos"
+logging = False
+current_video_path = videos_dir + "/video_0.mp4"
+
+async def compute_embeddings_dim_reduction(video_path):  
     output_path = video_path.replace(".mp4", "")
     if not os.path.exists(output_path):
         os.mkdir(output_path)
 
     if not os.path.exists(f"{output_path}/0.png"):
-        video2images(video_path, FPS)
+        await video2images(video_path, FPS)
 
     #Getting video embeddings 
     classifier = VisionTransformer(FPS, video_path, MODEL_NAME)
@@ -114,17 +112,18 @@ def compute_embeddings_dim_reduction(video_path):
     toc = time.time() 
     print(f"done in {(toc-tic):.2f} seconds...")
 
+    del classifier
     return tsne, pca, umap, tsne_clusters, pca_clusters, umap_clusters, tsne_cluster_frames,\
          pca_cluster_frames, umap_cluster_frames
 
 
-def compute_cosine_similarity(video_path, query_text):    
+async def compute_cosine_similarity(video_path, query_text):    
     output_path = video_path.replace(".mp4", "")
     if not os.path.exists(output_path):
         os.mkdir(output_path)
 
     if not os.path.exists(f"{output_path}/0.png"):
-        video2images(video_path, FPS)
+        await video2images(video_path, FPS)
 
     classifier = VisionTransformer(FPS, video_path, MODEL_NAME)
 
@@ -141,6 +140,7 @@ def compute_cosine_similarity(video_path, query_text):
             for i in range(embeddings.shape[0]):
                 np.save(output_path+f"/embedding_{i}.npy", embeddings[i])
                 pbar.update(1)
+        del embeddings
 
     #query type (text/image)
     if query_text == IMAGE_CROP_QUERY:
@@ -167,11 +167,11 @@ def compute_cosine_similarity(video_path, query_text):
     toc = time.time() 
     print(f"done in {(toc-tic):.2f} seconds...")
 
+    del classifier, 
     return similarity_scores
 
 async def perform_object_detection(video_path, output_path):
-    detector = ObjectDetector(video_path=video_path, output_results=output_path+"-output.csv", \
-                model_name="yolov5s.pt", fps=FPS)
+    detector = ObjectDetector(video_path=video_path, output_results=output_path+"-output.csv", model_name="yolov5s.pt", fps=FPS)
     return detector()
 
 async def compute_depth_map(video_path, output_path):
@@ -185,32 +185,21 @@ async def compute_depth_map(video_path, output_path):
 async def search(query: str):
     global current_video_path
 
-    similarity_scores = compute_cosine_similarity(current_video_path, query)
+    similarity_scores = await compute_cosine_similarity(current_video_path, query)
 
     return {
         "query": query, 
         "scores": similarity_scores
     }
 
-@app.get("/search/image/{folder}/{image_path}")
-async def image_search(folder: str, image_path: str, xmin: int, xmax: int, ymin: int, ymax: int):
-    image = cv2.imread("videos/"+folder+"/"+image_path)
-    cropped_image = await crop_image(image, [xmin, ymin, xmax, ymax])
-    if not os.path.exists("images/"):
-        os.mkdir("images")
-    cv2.imwrite(OUTPUT_CROP_IMAGE, cropped_image)
-
-    return {
-        "path": "images",
-        "name": "search-image.png"
-    }
-
 @app.get("/image/{prediction_path}/{filename}")
 async def get_image(prediction_path: str, filename: str):
+    global videos_dir
+
     if prediction_path == "images":
         img_path = f"images/{filename}"
     else:
-        img_path = os.path.join(VIDEOS_DIR, f"{prediction_path}").replace("\\","/")+f"/{filename}"
+        img_path = os.path.join(videos_dir, f"{prediction_path}").replace("\\","/")+f"/{filename}"
     return FileResponse(img_path)
 
 @app.get("/video/")
@@ -233,7 +222,7 @@ async def select_video(name_data: dict):
             os.mkdir(output_path)
 
         if not os.path.exists(f"{output_path}/0.png"):
-            video2images(current_video_path, FPS)
+            await video2images(current_video_path, FPS)
 
         frameCount = int(vid.get(cv2.CAP_PROP_FRAME_COUNT))
         originalFps = int(vid.get(cv2.CAP_PROP_FPS))
@@ -246,9 +235,11 @@ async def select_video(name_data: dict):
 
 @app.get("/video/objects/{filename}")
 async def get_objects_in_video(filename: str):
-    video_path = os.path.join(VIDEOS_DIR, filename).replace("\\","/")
+    global videos_dir
+
+    video_path = os.path.join(videos_dir, filename).replace("\\","/")
     name = filename.split(".")[0]
-    output_path = os.path.join(VIDEOS_DIR, f"{name}").replace("\\","/")
+    output_path = os.path.join(videos_dir, f"{name}").replace("\\","/")
 
     if not os.path.exists(output_path+"-output.csv"):
         await perform_object_detection(video_path, output_path)
@@ -264,9 +255,11 @@ async def get_objects_in_video(filename: str):
 
 @app.get("/video/depth/{filename}")
 async def get_depth_video(filename: str):
-    video_path = os.path.join(VIDEOS_DIR, filename).replace("\\","/")
+    global videos_dir
+
+    video_path = os.path.join(videos_dir, filename).replace("\\","/")
     name = filename.split(".")[0]
-    output_path = os.path.join(VIDEOS_DIR, f"depth-{name}").replace("\\","/")
+    output_path = os.path.join(videos_dir, f"depth-{name}").replace("\\","/")
 
     if not os.path.exists(output_path) or not os.path.exists(output_path+"/depth_frame_0.png"):
         await compute_depth_map(video_path, output_path)
@@ -276,11 +269,13 @@ async def get_depth_video(filename: str):
 
 @app.get("/video/embeddings/{filename}")
 async def get_video_embeddings(filename: str):
+    global videos_dir
+
     print(filename)
-    video_path = os.path.join(VIDEOS_DIR, filename).replace("\\","/")
+    video_path = os.path.join(videos_dir, filename).replace("\\","/")
     print(video_path)
     tsne, pca, umap, tsne_clusters, pca_clusters, umap_clusters, tsne_cluster_frames, \
-        pca_cluster_frames, umap_cluster_frames = compute_embeddings_dim_reduction(video_path)
+        pca_cluster_frames, umap_cluster_frames = await compute_embeddings_dim_reduction(video_path)
     
     return {
         "tsne": [{'x': float(tsne[i, 0]), 'y': float(tsne[i, 1])} for i in range(len(tsne))],
@@ -296,7 +291,9 @@ async def get_video_embeddings(filename: str):
 
 @app.get("/video/{filename}/fps")
 async def get_video_fps(filename: str):
-    video_path = os.path.join(VIDEOS_DIR, filename).replace("\\","/")
+    global videos_dir 
+
+    video_path = os.path.join(videos_dir, filename).replace("\\","/")
     vid = cv2.VideoCapture(video_path)
     if (not vid.isOpened):
         return { "fps": -1 }
@@ -316,9 +313,10 @@ async def upload_png(image_data: dict):
 
     if not os.path.exists("images/"):
         os.mkdir("images")
-    cv2.imwrite(OUTPUT_CROP_IMAGE, img)
+    async with aiofiles.open(OUTPUT_CROP_IMAGE, mode='wb') as file:
+        await file.write(cv2.imencode('.png', img)[1].tobytes())
 
-    similarity_scores = compute_cosine_similarity(current_video_path, IMAGE_CROP_QUERY)
+    similarity_scores = await compute_cosine_similarity(current_video_path, IMAGE_CROP_QUERY)
     
     return {
         "query": IMAGE_CROP_QUERY, 
@@ -327,15 +325,33 @@ async def upload_png(image_data: dict):
 
 @app.post("/log/")
 async def write_log(log_data: dict):
-    log_file = open("log_file.txt", "a+")   
+    global logging
+    
+    print(logging)
 
-    log_file.write(log_data.get("interaction_log", "") + "\n")
-    log_file.flush()
-    print(log_data.get("interaction_log", ""))
+    if logging == 1:
+        log_file = open("log_file.txt", "a+")   
 
-    log_file.close()
+        log_file.write(log_data.get("interaction_log", "") + "\n")
+        log_file.flush()
+        print(log_data.get("interaction_log", ""))
+
+        log_file.close()
 
 if __name__ == "__main__":
-    import uvicorn
-    uvicorn.run("main:app", port=8000, reload=True, log_level="info")
+    parser = argparse.ArgumentParser(description="Video analysis fastAPI server")
+    parser.add_argument("-d", "--directory", default="videos", type=dir_path, action="store")
+    parser.add_argument("-p", "--port", default=8000, type=int, action="store")
+    parser.add_argument("-l", "--log", action='store_true')
+
+    args = parser.parse_args()
+    
+    port = 8000
+    if args.directory:
+        videos_dir = args.directory
+    if args.port:
+        port = args.port
+    logging = args.log
+
+    uvicorn.run("main:app", port=port, reload=True, log_level="info")
     

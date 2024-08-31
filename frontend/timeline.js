@@ -1,6 +1,7 @@
 let ctrl_pressed = false;
 let shift_pressed = false;
 let is_selection_dragging = false;
+let is_selection_clicking = false;
 
 let interval_start = -1;
 let interval_end = -1;
@@ -93,14 +94,31 @@ const plot_timeline = (svg, current_index, selected_points, max_index, fps) => {
 };
 
 //mouse mouvement listeners
-const navigate_mousedown = () => { is_timeline_dragging = true; }
+const get_integer_interval = (interval_start, interval_end) => {
+    //create array of selected frames [interval_start, interval_end]
+    const interval_length = interval_end - interval_start + 1;
+    let interval;
+    if (interval_length > 0) {
+        interval = Array.from({ length: interval_length }, (_, i) => interval_start + i);
+    }
+    else {
+        interval = [interval_start];
+    }
+
+    return interval;
+};
+
+const navigate_mousedown = () => { is_timeline_dragging = true; };
+
 const navigate_mousemove = (event) => { 
     is_timeline_dragging && update_frame_index_onclick(timeline, 0, 0, 0, window.max_index, event); 
 };
+
 const navigate_mouseup = (event) => {
     is_timeline_dragging && update_frame_index_onclick(timeline, 0, 0, 0, window.max_index, event);
     is_timeline_dragging = false;
 }; 
+
 const navigate_mouseout = () => { is_timeline_dragging = false; };
 
 timeline.addEventListener("mousedown", navigate_mousedown);
@@ -114,10 +132,62 @@ timeline.addEventListener("click", focus_onclick);
 
 timeline.addEventListener("keydown", navigate_video_onkeydown);
 
-//selection handling
+/** capture ctrl and shift click for selection*/
 const timeline_selection_keychange = (event) => {
     ctrl_pressed = event.ctrlKey;
+
+    //if ctrl is in keyup state, stop any current selection
+    if (!ctrl_pressed) {
+        is_selection_clicking = false;
+        is_selection_dragging = false;
+    }
+
     shift_pressed = event.shiftKey;
+};
+
+/** if left/right keys are pressed while ctrl is pressed, apply selection*/
+const timeline_selection_left_right_keydown = (event, current_index, selected_points) => {
+    //ctrl aint pressed, skip
+    if (!ctrl_pressed) { return; }
+
+    // the first time a key is pressed while ctrl is pressed, init intervals
+    // the beginning of the interval is always the current index (frozen when  selecting intervals)
+    if (!is_selection_clicking) {
+        is_selection_clicking = true;
+        interval_start = current_index;
+        interval_end = current_index;
+    }
+    // update intervals and selection depending on the key pressed (left/right)
+    else {
+        //update intervals
+        if (event.key == "ArrowRight") {
+            ++interval_end;
+        }
+        if (event.key == "ArrowLeft") {
+            --interval_end;
+            if (interval_end < interval_start) {
+                let temp = interval_end;
+                interval_end = interval_start
+                interval_start = temp;
+            }
+        }
+
+        //update selection
+        let new_selected_points = get_integer_interval(interval_start, interval_end);
+
+        if (shift_pressed) {
+            new_selected_points = difference(selected_points, new_selected_points);
+        } 
+        else {
+            new_selected_points = union(selected_points, new_selected_points);
+        }
+    
+        // Update the passed array by clearing it and repopulating it
+        selected_points.length = 0; // Clear the original array
+        Array.prototype.push.apply(selected_points, new_selected_points); // Add new elements
+    
+        update_scores(current_index);
+    }
 };
 
 /**
@@ -148,7 +218,6 @@ const timeline_selection_mousedown = (svg, offset_left, offset_right, offset_y, 
     //init start and end of selection interval
     interval_start = frame_index;
     interval_end = frame_index;
-    console.log(interval_start, interval_end, frame_index);
 }
 
 /**
@@ -187,23 +256,14 @@ const timeline_selection_mousemove = (svg, offset_left, offset_right, offset_y, 
     interval_start = Math.min(interval_start, frame_index);
     interval_end = Math.max(interval_end, frame_index);
 
-    //create array of selected frames [interval_start, interval_end]
-    const interval_length = interval_end - interval_start + 1;
-    let interval;
-    if (interval_length > 0) {
-        interval = Array.from({ length: interval_length }, (_, i) => interval_start + i);
-    }
-    else {
-        interval = [interval_start];
-    }
-    console.log(interval_start, interval_end, interval);
+    let new_selected_points = get_integer_interval(interval_start, interval_end);
 
     // Combine interval with selected points depending on pressed keys
-    let new_selected_points;
     if (shift_pressed) {
-        new_selected_points = difference(selected_points, interval);
-    } else {
-        new_selected_points = union(selected_points, interval);
+        new_selected_points = difference(selected_points, new_selected_points);
+    } 
+    else {
+        new_selected_points = union(selected_points, new_selected_points);
     }
 
     // Update the passed array by clearing it and repopulating it
@@ -217,22 +277,25 @@ timeline.addEventListener("mousedown", (event) => {
     timeline_selection_mousedown(timeline, 0, 0, 0, window.max_index, event);
     is_selection_dragging = true;
 });
+
 timeline.addEventListener("mousemove", (event) => {
     is_selection_dragging && timeline_selection_mousemove(timeline, 0, 0, 0, window.max_index, 
         window.selected_points, event);
 });
+
 timeline.addEventListener("mouseup", (event) => {
     is_selection_dragging && timeline_selection_mousemove(timeline, 0, 0, 0, window.max_index,
         window.selected_points, event);
     is_selection_dragging = false;
-    console.log(window.selected_points);
 });
+
 timeline.addEventListener("mouseout", (event) => {
     is_selection_dragging && timeline_selection_mousemove(timeline, 0, 0, 0, window.max_index,
         window.selected_points, event);
     is_selection_dragging = false;
-    console.log(window.selected_points);
 });
 
 timeline.addEventListener("keydown", timeline_selection_keychange);
 timeline.addEventListener("keyup", timeline_selection_keychange);
+timeline.addEventListener("keydown", (event) => 
+    timeline_selection_left_right_keydown(event, window.current_index, window.selected_points) );

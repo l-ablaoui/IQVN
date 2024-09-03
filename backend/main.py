@@ -223,7 +223,7 @@ async def select_video(name_data: dict):
     global current_video_path
 
     video_name = name_data.get("video_name", "")
-    current_video_path = read_config()["videos_dir"] + video_name
+    current_video_path = read_config()["videos_dir"] + "/" + video_name
 
     vid = cv2.VideoCapture(current_video_path)
     if vid.isOpened:

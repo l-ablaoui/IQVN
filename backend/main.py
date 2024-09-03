@@ -5,6 +5,8 @@ from fastapi.responses import FileResponse, JSONResponse
 from fastapi.middleware.cors import CORSMiddleware
 
 import argparse
+import json
+
 import time
 import base64
 from sklearn.preprocessing import LabelEncoder
@@ -34,9 +36,19 @@ MAX_NB_CLUSTERS = 20
 EMBEDDINGS_LENGTH = 512
 FPS = 10
 
-videos_dir = "videos"
-logging = False
-current_video_path = videos_dir + "/video_0.mp4"
+CONFIG_FILE = "config.json"
+
+def read_config ():
+    with open(CONFIG_FILE, "r") as json_file:
+        config = json.load(json_file)
+    return config
+
+def write_config (config):
+    with open(CONFIG_FILE, "w") as json_file:
+        json.dump(config, json_file)
+        json_file.flush()
+
+current_video_path = "/videos/video_0.mp4"
 
 async def compute_embeddings_dim_reduction(video_path):  
     output_path = video_path.replace(".mp4", "")
@@ -194,12 +206,10 @@ async def search(query: str):
 
 @app.get("/image/{prediction_path}/{filename}")
 async def get_image(prediction_path: str, filename: str):
-    global videos_dir
-
     if prediction_path == "images":
         img_path = f"images/{filename}"
     else:
-        img_path = os.path.join(videos_dir, f"{prediction_path}").replace("\\","/")+f"/{filename}"
+        img_path = os.path.join(read_config()["videos_dir"], f"{prediction_path}").replace("\\","/")+f"/{filename}"
     return FileResponse(img_path)
 
 @app.get("/video/")
@@ -213,7 +223,7 @@ async def select_video(name_data: dict):
     global current_video_path
 
     video_name = name_data.get("video_name", "")
-    current_video_path = "./videos/" + video_name
+    current_video_path = read_config()["videos_dir"] + video_name
 
     vid = cv2.VideoCapture(current_video_path)
     if vid.isOpened:
@@ -235,11 +245,9 @@ async def select_video(name_data: dict):
 
 @app.get("/video/objects/{filename}")
 async def get_objects_in_video(filename: str):
-    global videos_dir
-
-    video_path = os.path.join(videos_dir, filename).replace("\\","/")
+    video_path = os.path.join(read_config()["videos_dir"], filename).replace("\\","/")
     name = filename.split(".")[0]
-    output_path = os.path.join(videos_dir, f"{name}").replace("\\","/")
+    output_path = os.path.join(read_config()["videos_dir"], f"{name}").replace("\\","/")
 
     if not os.path.exists(output_path+"-output.csv"):
         await perform_object_detection(video_path, output_path)
@@ -255,11 +263,9 @@ async def get_objects_in_video(filename: str):
 
 @app.get("/video/depth/{filename}")
 async def get_depth_video(filename: str):
-    global videos_dir
-
-    video_path = os.path.join(videos_dir, filename).replace("\\","/")
+    video_path = os.path.join(read_config()["videos_dir"], filename).replace("\\","/")
     name = filename.split(".")[0]
-    output_path = os.path.join(videos_dir, f"depth-{name}").replace("\\","/")
+    output_path = os.path.join(read_config()["videos_dir"], f"depth-{name}").replace("\\","/")
 
     if not os.path.exists(output_path) or not os.path.exists(output_path+"/depth_frame_0.png"):
         await compute_depth_map(video_path, output_path)
@@ -269,10 +275,8 @@ async def get_depth_video(filename: str):
 
 @app.get("/video/embeddings/{filename}")
 async def get_video_embeddings(filename: str):
-    global videos_dir
-
     print(filename)
-    video_path = os.path.join(videos_dir, filename).replace("\\","/")
+    video_path = os.path.join(read_config()["videos_dir"], filename).replace("\\","/")
     print(video_path)
     tsne, pca, umap, tsne_clusters, pca_clusters, umap_clusters, tsne_cluster_frames, \
         pca_cluster_frames, umap_cluster_frames = await compute_embeddings_dim_reduction(video_path)
@@ -291,9 +295,7 @@ async def get_video_embeddings(filename: str):
 
 @app.get("/video/{filename}/fps")
 async def get_video_fps(filename: str):
-    global videos_dir 
-
-    video_path = os.path.join(videos_dir, filename).replace("\\","/")
+    video_path = os.path.join(read_config()["videos_dir"], filename).replace("\\","/")
     vid = cv2.VideoCapture(video_path)
     if (not vid.isOpened):
         return { "fps": -1 }
@@ -325,13 +327,8 @@ async def upload_png(image_data: dict):
 
 @app.post("/log/")
 async def write_log(log_data: dict):
-    global logging
-    
-    print(logging)
-
-    if logging == 1:
-        log_file = open("log_file.txt", "a+")   
-
+    if (read_config()["log_interaction"]):
+        log_file = open(read_config()["log_file_name"], "a+")
         log_file.write(log_data.get("interaction_log", "") + "\n")
         log_file.flush()
         print(log_data.get("interaction_log", ""))
@@ -342,16 +339,19 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="Video analysis fastAPI server")
     parser.add_argument("-d", "--directory", default="videos", type=dir_path, action="store")
     parser.add_argument("-p", "--port", default=8000, type=int, action="store")
-    parser.add_argument("-l", "--log", action='store_true')
+    parser.add_argument("-l", "--log", action="store_true")
+    parser.add_argument("-n", "--log_file_name", default="log_file.txt", type=str, action="store")
 
     args = parser.parse_args()
-    
-    port = 8000
-    if args.directory:
-        videos_dir = args.directory
-    if args.port:
-        port = args.port
-    logging = args.log
+    config = {
+        "videos_dir" : args.directory, 
+        "log_interaction" : args.log,
+        "log_file_name" : args.log_file_name, 
+        "port" : args.port
+    }
+    write_config(config)
+    print(read_config()["log_interaction"])
 
-    uvicorn.run("main:app", port=port, reload=True, log_level="info")
+    uvicorn.run("main:app", port=config["port"], reload=True, log_level="info")
+    os.remove(CONFIG_FILE)
     

@@ -310,7 +310,7 @@ plot_reduction_plot.addEventListener("click", async () => {
         const today = new Date;
         const time_log = `${today.getDate()}/${today.getMonth() + 1}/${today.getFullYear()} `
             + `${today.getHours()}:${today.getMinutes()}:${today.getSeconds()} : `
-            + ` plotted semantic distribution`;
+            + ` selected frame (reduction plot): ${window.current_index}`;
 
         await fetch (`${server_url}/log/`, {
             method: 'POST', 
@@ -622,6 +622,17 @@ reduction_plot.addEventListener("click", async (event) => {
                     //update component
                     update_scores(i);
                 })
+                
+                const today = new Date;
+                const time_log = `${today.getDate()}/${today.getMonth() + 1}/${today.getFullYear()} `
+                    + `${today.getHours()}:${today.getMinutes()}:${today.getSeconds()} : `
+                    + ` begin selection in semantic plot`;
+            
+                fetch (`${server_url}/log/`, {
+                    method: 'POST', 
+                    body: JSON.stringify({interaction_log: time_log}),
+                    headers: {'Content-Type': 'application/json'}
+                });
                 
                 return;
             }

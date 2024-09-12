@@ -309,7 +309,8 @@ plot_reduction_plot.addEventListener("click", async () => {
 
         const today = new Date;
         const time_log = `${today.getDate()}/${today.getMonth() + 1}/${today.getFullYear()} `
-            + `${today.getHours()}:${today.getMinutes()}:${today.getSeconds()} : `
+            + `${today.getHours().toString().padStart(2, '0')}:${today.getMinutes().toString().padStart(2, '0')}:`
+            + `${today.getSeconds().toString().padStart(2, '0')} : `
             + ` selected frame (reduction plot): ${window.current_index}`;
 
         await fetch (`${server_url}/log/`, {
@@ -545,10 +546,10 @@ const handle_reduction_method_change = () => {
 
 // Add change event listener to each radio button
 color_radio_buttons.forEach(radio => { 
-    radio.addEventListener('change', handle_color_map_change); 
+    radio.addEventListener("change", handle_color_map_change); 
 });
 reduction_method_buttons.forEach(radio => { 
-    radio.addEventListener('change', handle_reduction_method_change); 
+    radio.addEventListener("change", handle_reduction_method_change); 
 });
 
 /*On click handling for navigating the video frames*/
@@ -606,7 +607,7 @@ reduction_plot.addEventListener("click", async (event) => {
         if (dist <= dot_radius * dot_radius) {
             try {
             //fetch current frame
-                let image_url = null;
+/*                let image_url = null;
 
                 async function fetch_image () {
                     let name_processed = window.current_video.split(".")[0]; 
@@ -615,17 +616,30 @@ reduction_plot.addEventListener("click", async (event) => {
                     image_url = URL.createObjectURL(blob);
                 }
 
-                fetch_image().then(()=> {
+                fetch_image().then(()=> {*/
+
+                //fetch current frame
+                let name_processed = window.current_video.split(".")[0]; 
+                //server call
+                /*
+                const response = await fetch(`${server_url}/image/${name_processed}/${frame_index}.png`);
+                const blob = await response.blob();
+                const image_url = URL.createObjectURL(blob);
+                */
+
+                //local call
+                const image_url =  `../backend/videos/${name_processed}/${i}.png`;
                     window.current_frame.src = image_url;
                     update_video(image_url);
     
                     //update component
                     update_scores(i);
-                })
+                //})
                 
                 const today = new Date;
                 const time_log = `${today.getDate()}/${today.getMonth() + 1}/${today.getFullYear()} `
-                    + `${today.getHours()}:${today.getMinutes()}:${today.getSeconds()} : `
+                    + `${today.getHours().toString().padStart(2, '0')}:${today.getMinutes().toString().padStart(2, '0')}:`
+                    + `${today.getSeconds().toString().padStart(2, '0')} : `
                     + ` begin selection in semantic plot`;
             
                 fetch (`${server_url}/log/`, {
@@ -637,7 +651,7 @@ reduction_plot.addEventListener("click", async (event) => {
                 return;
             }
             catch (error) {
-                console.log("failed selecting frame from reduction plot: ", error);
+                console.error("failed selecting frame from reduction plot: ", error);
             }
         }
     }
@@ -799,7 +813,8 @@ const selection_mouse_down = (event) => {
 
     const today = new Date;
     const time_log = `${today.getDate()}/${today.getMonth() + 1}/${today.getFullYear()} `
-        + `${today.getHours()}:${today.getMinutes()}:${today.getSeconds()} : `
+        + `${today.getHours().toString().padStart(2, '0')}:${today.getMinutes().toString().padStart(2, '0')}:`
+        + `${today.getSeconds().toString().padStart(2, '0')} : `
         + ` begin selection in semantic plot`;
 
     fetch (`${server_url}/log/`, {
@@ -890,7 +905,8 @@ const selection_mouse_up = () => {
 
     const today = new Date;
     const time_log = `${today.getDate()}/${today.getMonth() + 1}/${today.getFullYear()} `
-        + `${today.getHours()}:${today.getMinutes()}:${today.getSeconds()} : `
+        + `${today.getHours().toString().padStart(2, '0')}:${today.getMinutes().toString().padStart(2, '0')}:`
+        + `${today.getSeconds().toString().padStart(2, '0')} : `
         + ` end selection in semantic plot. Bounding box: [${window.selection_top_left.x}, `
         + `${window.selection_top_left.y}, ${window.selection_bot_right.x}, ${window.selection_bot_right.y}]`;
 

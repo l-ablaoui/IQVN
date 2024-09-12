@@ -171,7 +171,8 @@ const threshold_mouse_down = () => {
 
     const today = new Date;
     const time_log = `${today.getDate()}/${today.getMonth() + 1}/${today.getFullYear()} `
-        + `${today.getHours()}:${today.getMinutes()}:${today.getSeconds()} : `
+        + `${today.getHours().toString().padStart(2, '0')}:${today.getMinutes().toString().padStart(2, '0')}:`
+        + `${today.getSeconds().toString().padStart(2, '0')} : `
         + ` begin thresholding in score plot`;
 
     fetch (`${server_url}/log/`, {
@@ -211,7 +212,8 @@ const threshold_mouse_up = (event, offset_y, svg) => {
 
     const today = new Date;
     const time_log = `${today.getDate()}/${today.getMonth() + 1}/${today.getFullYear()} `
-        + `${today.getHours()}:${today.getMinutes()}:${today.getSeconds()} : `
+        + `${today.getHours().toString().padStart(2, '0')}:${today.getMinutes().toString().padStart(2, '0')}:`
+        + `${today.getSeconds().toString().padStart(2, '0')} : `
         + ` end thresholding in score plot. Current threshold: ${threshold.toFixed(2)}`;
 
     fetch (`${server_url}/log/`, {

@@ -198,7 +198,7 @@ let plot_marker_triangle = (current_index, max_index, svg, offset_left, offset_r
     let mid_right = { x: plot_x + triangle_length * 2 / 3, y: offset_y + triangle_length };
     let bottom_center = { x: plot_x, y: offset_y + triangle_length * 2 };
 
-    // Start drawing the triangle
+    //start drawing the triangle
     ctx.beginPath();
     ctx.moveTo(bottom_center.x, bottom_center.y); // Bottom point
     ctx.lineTo(mid_left.x, mid_left.y); // Mid left point
@@ -207,37 +207,37 @@ let plot_marker_triangle = (current_index, max_index, svg, offset_left, offset_r
     ctx.lineTo(mid_right.x, mid_right.y); // Mid right point
     ctx.closePath();
 
-    // Fill the triangle with a color
+    //fill the triangle with a color
     ctx.fillStyle = fill_color;
     ctx.fill();
 };
 
 /**
  * draw video frame in the dedicated video canvas
- * @param {*} image_url video's current frame
+ * @param {*} image_url video"s current frame
  */
 const update_video = (image_url) => {
-    // Set the image source to the created URL
+    //set the image source to the created URL
     window.current_frame.src = image_url;
 
-    // Wait for the image to load
+    //wait for the image to load
     window.current_frame.onload = () => {
-        // Access the width and height properties
+        //access the width and height properties
         const width = window.current_frame.width;
         const height = window.current_frame.height;
 
-        // Get the canvas element
+        //get the canvas element
         const canvas = document.getElementById("video");
         const ctx = canvas.getContext("2d");
 
-        // Set canvas dimensions to match the image
+        //set canvas dimensions to match the image
         canvas.width = width;
         canvas.height = height;
 
-        // Clear any previous content on the canvas
+        //clear any previous content on the canvas
         ctx.clearRect(0, 0, canvas.width, canvas.height);
 
-        // Draw the image onto the canvas
+        //draw the image onto the canvas
         ctx.drawImage(window.current_frame, 0, 0, width, height);
 
         if (window.is_crop_visible) { draw_cropped(); }
@@ -246,24 +246,21 @@ const update_video = (image_url) => {
 
 /**
  * this function is called to update all data visualisation components
- * @param {*} frame_index currently visualised video frame's index
+ * @param {*} frame_index currently visualised video frame"s index
  */
 const update_scores = (frame_index) => {
     if (window.current_index != frame_index) { 
         window.current_index = frame_index; 
     }
-    // Update plot
+    //update plot
     plot_timeline(timeline, frame_index, window.selected_points, window.max_index, window.fps);
     if (obj_plot.style.display == "block") {
-        console.log("plotting object graph");
         plot_objects(frame_index);
     }
     if (score_plot.style.display == "block") {
-        console.log("plotting score curve");
         plot_score_curve(frame_index);
     }
     if (reduction_plot.style.display == "block") {
-        console.log("plotting semantic distribution");
         plot_dimension_reduction(frame_index);
     }
     if (depth_video.style.display == "block") {
@@ -277,7 +274,7 @@ const update_scores = (frame_index) => {
 
 //resize listener has to addapt the sizes of each component that has height as a function of width
 window.addEventListener("resize", () => {
-    //update components' relative sizes
+    //update components" relative sizes
     let video_canvas = document.getElementById("video");
     video_canvas.width = video_canvas.offsetWidth;
     video_canvas.height = video_canvas.offsetHeight;
@@ -308,10 +305,16 @@ const fetch_frame_by_index = async (frame_index) =>  {
     try {
         //fetch current frame
         let name_processed = window.current_video.split(".")[0]; 
+        //server call
+        /*
         const response = await fetch(`${server_url}/image/${name_processed}/${frame_index}.png`);
         const blob = await response.blob();
         const image_url = URL.createObjectURL(blob);
-    
+        */
+
+        //local call
+        const image_url =  `../backend/videos/${name_processed}/${frame_index}.png`;
+
         window.current_frame.src = image_url;
         update_video(window.current_frame.src);
         update_scores(frame_index);
@@ -348,13 +351,14 @@ const update_frame_index_onclick = async (svg, offset_left, offset_right, offset
 
     const today = new Date;
     const time_log = `${today.getDate()}/${today.getMonth() + 1}/${today.getFullYear()} `
-        + `${today.getHours()}:${today.getMinutes()}:${today.getSeconds()} : `
+        + `${today.getHours().toString().padStart(2, '0')}:${today.getMinutes().toString().padStart(2, '0')}:`
+        + `${today.getSeconds().toString().padStart(2, '0')} : `
         + ` selected frame (on click): ${window.current_index}`;
 
     await fetch (`${server_url}/log/`, {
-        method: 'POST', 
+        method: "POST", 
         body: JSON.stringify({interaction_log: time_log}),
-        headers: {'Content-Type': 'application/json'}
+        headers: {"Content-Type": "application/json"}
     });
 };
 
@@ -385,12 +389,17 @@ const navigate_video_onkeydown = async (event) => {
     }
 
     try {
+        //fetch current frame
         let name_processed = window.current_video.split(".")[0]; 
-        const response = await fetch(
-            `${server_url}/image/${name_processed}/${window.current_index}.png`
-        );
+        //server call
+        /*
+        const response = await fetch(`${server_url}/image/${name_processed}/${frame_index}.png`);
         const blob = await response.blob();
         const image_url = URL.createObjectURL(blob);
+        */
+
+        //local call
+        const image_url =  `../backend/videos/${name_processed}/${window.current_index}.png`;
 
         window.current_frame.src = image_url;
         update_video(window.current_frame.src);
@@ -398,13 +407,14 @@ const navigate_video_onkeydown = async (event) => {
 
         const today = new Date;
         const time_log = `${today.getDate()}/${today.getMonth() + 1}/${today.getFullYear()} `
-            + `${today.getHours()}:${today.getMinutes()}:${today.getSeconds()} : `
+            + `${today.getHours().toString().padStart(2, '0')}:${today.getMinutes().toString().padStart(2, '0')}:`
+            + `${today.getSeconds().toString().padStart(2, '0')} : `
             + ` selected frame (buttons): ${window.current_index}`;
 
         fetch (`${server_url}/log/`, {
-            method: 'POST', 
+            method: "POST", 
             body: JSON.stringify({interaction_log: time_log}),
-            headers: {'Content-Type': 'application/json'}
+            headers: {"Content-Type": "application/json"}
         });
     }
     catch (error) {
@@ -432,27 +442,29 @@ image_search_button.addEventListener("click", async () => {
     general_loader.style.display = "block";
 
     try {
-        let dataURL = cropped.toDataURL('image/png');
+        let dataURL = cropped.toDataURL("image/png");
         if (window.is_crop_visible == false) {
             const file = image_load.files[0];
             if (file) { dataURL = await getDataURL(file); }
         }
         const response = await fetch(`${server_url}/upload_png/`, 
-            {method: 'POST', body: JSON.stringify({ image_data: dataURL }), 
-            headers: {'Content-Type': 'application/json'}});
+            {method: "POST", body: JSON.stringify({ image_data: dataURL }), 
+            headers: {"Content-Type": "application/json"}});
         const body = await response.json();
         console.log(body);
 
         //only keep window.scores and tsne reduction values
-        window.scores = body['scores'].map(function(value, index) { return value[1]; });
+        window.scores = body["scores"].map(function(value, index) { return value[1]; });
         
         //update component
         update_video(window.current_frame);
 
         //show buttons for toggling window.scores/reduction
         toggle_scores.style.display = "block";
-        document.getElementById("score_plot").addEventListener("click", (event) => update_frame_index_onclick(score_plot, 
-            score_plot_offset_left, score_plot_offset_right, score_plot_offset_y, window.max_index, event));
+        document.getElementById("score_plot").addEventListener("click", (event) => 
+            update_frame_index_onclick(score_plot, score_plot_offset_left, score_plot_offset_right, 
+                score_plot_offset_y, window.max_index, event)
+        );
 
         //update the curve plot
         update_scores(window.current_index);
@@ -513,7 +525,7 @@ const parse_selected_frames = () => {
         if (!cur && arr[i - 1]) acc[acc.length - 1].push(i); // End of an interval
         if (cur && i === arr.length - 1) acc[acc.length - 1].push(i + 1); // End interval if last element is 1
         return acc;
-    }, []).map(([start, end]) => `${format_time(start)}-${format_time(end - 1)}`).join('; ');
+    }, []).map(([start, end]) => `${format_time(start)}-${format_time(end - 1)}`).join("; ");
 
     return intervals;
 };
@@ -521,11 +533,20 @@ const parse_selected_frames = () => {
 document.getElementById("copy_selected").addEventListener("click", () => {
     const parsed_selected_frames = parse_selected_frames();
 
-    navigator.clipboard.writeText(parsed_selected_frames)
-        .then(() => {
-            console.log('Text copied to clipboard');
-        })
-        .catch(err => {
-            console.error('Failed to copy text: ', err);
+    navigator.clipboard.writeText(parsed_selected_frames).then(() => {
+        console.log("Text copied to clipboard");
+        const today = new Date;
+        const time_log = `${today.getDate()}/${today.getMonth() + 1}/${today.getFullYear()} `
+            + `${today.getHours().toString().padStart(2, '0')}:${today.getMinutes().toString().padStart(2, '0')}:`
+            + `${today.getSeconds().toString().padStart(2, '0')} : `
+            + ` selection copied to clipboard: ${parsed_selected_frames}`;
+
+        fetch (`${server_url}/log/`, {
+            method: "POST", 
+            body: JSON.stringify({interaction_log: time_log}),
+            headers: {"Content-Type": "application/json"}
         });
+    }).catch(err => {
+        console.error("Failed to copy text: ", err);
+    });
 });

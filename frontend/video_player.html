@@ -70,7 +70,7 @@
         plot_timeline(timeline, video.currentTime, selected_points, Math.trunc(video.duration), 1);
     });
 
-    video.addEventListener("keydown", (event) => {
+    /*video.addEventListener("keydown", (event) => {
         if (event.key == "+") {
             video.playbackRate = Math.min(5, video.playbackRate + 0.5); 
             video.play();
@@ -81,12 +81,13 @@
             video.play();
             console.log("-", video.playbackRate);
         }
-    });
+    });*/
 
     video.addEventListener("play", (event) => {
         const today = new Date;
         const time_log = `${today.getDate()}/${today.getMonth() + 1}/${today.getFullYear()} `
-            + `${today.getHours()}:${today.getMinutes()}:${today.getSeconds()} : `
+            + `${today.getHours().toString().padStart(2, '0')}:${today.getMinutes().toString().padStart(2, '0')}:`
+            + `${today.getSeconds().toString().padStart(2, '0')} : `
             + ` playing video`;
 
         fetch (`${server_url}/log/`, {
@@ -99,7 +100,8 @@
     video.addEventListener("pause", (event) => {
         const today = new Date;
         const time_log = `${today.getDate()}/${today.getMonth() + 1}/${today.getFullYear()} `
-            + `${today.getHours()}:${today.getMinutes()}:${today.getSeconds()} : `
+            + `${today.getHours().toString().padStart(2, '0')}:${today.getMinutes().toString().padStart(2, '0')}:`
+            + `${today.getSeconds().toString().padStart(2, '0')} : `
             + ` video paused`;
 
         fetch (`${server_url}/log/`, {
@@ -112,7 +114,8 @@
     video.addEventListener("seeked", (event) => {
         const today = new Date;
         const time_log = `${today.getDate()}/${today.getMonth() + 1}/${today.getFullYear()} `
-            + `${today.getHours()}:${today.getMinutes()}:${today.getSeconds()} : `
+            + `${today.getHours().toString().padStart(2, '0')}:${today.getMinutes().toString().padStart(2, '0')}:`
+            + `${today.getSeconds().toString().padStart(2, '0')} : `
             + ` sought second ${video.currentTime}`;
 
         fetch (`${server_url}/log/`, {
@@ -179,7 +182,8 @@
     video.addEventListener("keyup", async (event) => {
         const today = new Date;
         const time_log = `${today.getDate()}/${today.getMonth() + 1}/${today.getFullYear()} `
-            + `${today.getHours()}:${today.getMinutes()}:${today.getSeconds()} : `
+            + `${today.getHours().toString().padStart(2, '0')}:${today.getMinutes().toString().padStart(2, '0')}:`
+            + `${today.getSeconds().toString().padStart(2, '0')} : `
             + ` pressed key ${event.key}`;
 
         fetch (`${server_url}/log/`, {

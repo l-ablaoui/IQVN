@@ -674,7 +674,8 @@ text_search_button.addEventListener("click", async () => {
 
         const today = new Date;
         const time_log = `${today.getDate()}/${today.getMonth() + 1}/${today.getFullYear()} `
-            + `${today.getHours()}:${today.getMinutes()}:${today.getSeconds()} : `
+            + `${today.getHours().toString().padStart(2, '0')}:${today.getMinutes().toString().padStart(2, '0')}:`
+            + `${today.getSeconds().toString().padStart(2, '0')} : `
             + ` search with query: ${parse_text_query()}`;
 
         await fetch (`${server_url}/log/`, {

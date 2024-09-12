@@ -1,4 +1,4 @@
-let update_depth_video = async (current_index) => {
+const update_depth_video = async (current_index) => {
     if (!window.depth) { return; }
     
     try {
@@ -33,8 +33,7 @@ let update_depth_video = async (current_index) => {
     catch (error) {
         console.error("Error drawing the depth frame: ", error);
     }
-    
-}
+};
 
 toggle_depth.addEventListener("click", () => {
     let depth_div = document.getElementById("depth_div");

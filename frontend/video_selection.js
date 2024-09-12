@@ -12,15 +12,15 @@ const load_video = async () => {
         if (old_value != "") {
             const today = new Date;
             const time_log = `${today.getDate()}/${today.getMonth() + 1}/${today.getFullYear()} `
-                + `${today.getHours()}:${today.getMinutes()}:${today.getSeconds()} : `
+                + `${today.getHours().toString().padStart(2, '0')}:${today.getMinutes().toString().padStart(2, '0')}:`
+                + `${today.getSeconds().toString().padStart(2, '0')} : `
                 + `navigation of "${old_value}" lasted ` +     
                 `${(Date.now() / 1000.0 - window.start_time).toFixed(2)} s`;
-
-            console.log(time_log);
+                
             await fetch (`${server_url}/log/`, {
-                method: 'POST', 
+                method: "POST", 
                 body: JSON.stringify({interaction_log: time_log}),
-                headers: {'Content-Type': 'application/json'}
+                headers: {"Content-Type": "application/json"}
             });
         }
 
@@ -32,9 +32,9 @@ const load_video = async () => {
 
         //update video name in server
         const response = await fetch(`${server_url}/select_video/`, {
-            method: 'POST', 
+            method: "POST", 
             body: JSON.stringify({ video_name: window.current_video }), 
-            headers: {'Content-Type': 'application/json'}
+            headers: {"Content-Type": "application/json"}
         });
         const body = await response.json();
         console.log(body);

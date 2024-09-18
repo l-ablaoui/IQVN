@@ -70,7 +70,7 @@
         plot_timeline(timeline, video.currentTime, selected_points, Math.trunc(video.duration), 1);
     });
 
-    /*video.addEventListener("keydown", (event) => {
+    video.addEventListener("keydown", (event) => {
         if (event.key == "+") {
             video.playbackRate = Math.min(5, video.playbackRate + 0.5); 
             video.play();
@@ -81,7 +81,7 @@
             video.play();
             console.log("-", video.playbackRate);
         }
-    });*/
+    });
 
     video.addEventListener("play", (event) => {
         const today = new Date;

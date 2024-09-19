@@ -1,6 +1,5 @@
 // Get the drawing context
 let video = document.getElementById("video");
-let cropped = document.getElementById("crop");
 
 let crop_state = "idle";
 let crop_mouse_down = { x: 0, y: 0 };

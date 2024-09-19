@@ -32,7 +32,7 @@ This command will start the server at `http://localhost:8000`.
 ## Frontend (HTML/JS)
 
 ### Running the Frontend
-1. Navigate to the `frontend` directory.
+1. Navigate to the `root` directory.
 2. Run the simple python server:
 
 .. code:

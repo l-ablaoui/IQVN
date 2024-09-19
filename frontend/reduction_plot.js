@@ -628,7 +628,7 @@ reduction_plot.addEventListener("click", async (event) => {
                 */
 
                 //local call
-                const image_url =  `../backend/videos/${name_processed}/${i}.png`;
+                const image_url =  `http://localhost:8888/backend/videos/${name_processed}/${i}.png`;
                     window.current_frame.src = image_url;
                     update_video(image_url);
     

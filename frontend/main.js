@@ -8,6 +8,7 @@ let reduction_plot_offset_y = 20;
 //document components
 let text_search_button = document.getElementById("text_search_button");
 let image_search_button = document.getElementById("image_search_button");
+let cropped = document.getElementById("crop");
 
 let object_detection_button = document.getElementById("object_detection_button");
 let depthEstimate = document.getElementById("depthmap_computation_button");
@@ -313,7 +314,9 @@ const fetch_frame_by_index = async (frame_index) =>  {
         */
 
         //local call
-        const image_url =  `../backend/videos/${name_processed}/${frame_index}.png`;
+        const image_url =  `http://localhost:8888/backend/videos/${name_processed}/${frame_index}.png`;
+
+        console.log(image_url);
 
         window.current_frame.src = image_url;
         update_video(window.current_frame.src);
@@ -399,7 +402,7 @@ const navigate_video_onkeydown = async (event) => {
         */
 
         //local call
-        const image_url =  `../backend/videos/${name_processed}/${window.current_index}.png`;
+        const image_url =  `http://localhost:8888/backend/videos/${name_processed}/${window.current_index}.png`;
 
         window.current_frame.src = image_url;
         update_video(window.current_frame.src);
@@ -442,7 +445,7 @@ image_search_button.addEventListener("click", async () => {
     general_loader.style.display = "block";
 
     try {
-        let dataURL = cropped.toDataURL("image/png");
+        let dataURL = cropped.toDataURL();
         if (window.is_crop_visible == false) {
             const file = image_load.files[0];
             if (file) { dataURL = await getDataURL(file); }

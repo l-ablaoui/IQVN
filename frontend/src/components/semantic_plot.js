@@ -26,7 +26,7 @@ import Color_map_bar from './color_map_bar';
 import React, { useEffect, useRef, useState } from 'react';
 import { fetch_video_semantic_representation } from '../utilities/api_methods';
 
-const Semantic_plot = ({video_src, scores, current_index, update_time, selected_points}) => {
+const Semantic_plot = ({video_src, scores, current_index, update_time, max_index, selected_points}) => {
     const semantic_plot_ref = useRef(null);
 
     const [points, set_points] = useState([]);
@@ -140,9 +140,6 @@ const Semantic_plot = ({video_src, scores, current_index, update_time, selected_
     
             let {x, y} = get_semantic_plot_coordinates({ x: min_x, y: min_y }, { x: max_x, y: max_y }, 
                 { width: plot_width, height: plot_height}, i);
-            if (i < 10) {
-                console.log(color_map[i]);
-            }
             ctx.fillStyle = color_map[i];
             dot_radius = radius_map[i];
 
@@ -403,7 +400,7 @@ const Semantic_plot = ({video_src, scores, current_index, update_time, selected_
                     }
                     else {
                         if (clusters[i] == -1) { 
-                            color_map.push(REGULAR_COLOR + "0.5)");
+                            color_map.push(REGULAR_COLOR);
                         }
                         else {
                             color_map.push(colors[clusters[i]]);
@@ -442,6 +439,9 @@ const Semantic_plot = ({video_src, scores, current_index, update_time, selected_
                 className="row" 
                 cmap={cmap}
                 set_cmap={set_cmap}
+                clusters={clusters}
+                scores={scores}
+                max_index={max_index}
             />
         </div>
     );

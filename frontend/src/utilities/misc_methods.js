@@ -67,7 +67,7 @@ export const generate_selected_points_color_map = (nb_points, selected_points) =
                 found = true;
             }
         }
-        color_map.push((found)? SELECTION_COLOR + "0.5": REGULAR_COLOR + "0.5");
+        color_map.push((found)? SELECTION_COLOR + "0.5": REGULAR_COLOR);
     }
 
     return color_map;

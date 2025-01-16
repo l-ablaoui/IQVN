@@ -215,8 +215,19 @@ async def get_image(prediction_path: str, filename: str):
 @app.get("/video/")
 async def get_video_names():
     video_names = find_mp4_files("./videos")
+    if not video_names:
+        raise HTTPException(status_code=404, detail="No videos found")
     video_names.sort()
+    print(video_names)
     return video_names
+
+@app.get("/video/{video_name}")
+async def get_video(video_name: str):
+    video_path = os.path.join("./videos", video_name)
+    if not os.path.exists(video_path) or not video_path.endswith('.mp4'):
+        raise HTTPException(status_code=404, detail="Video not found")
+    print(video_path)
+    return FileResponse(video_path, media_type="video/mp4")
 
 @app.post("/select_video/")
 async def select_video(name_data: dict):

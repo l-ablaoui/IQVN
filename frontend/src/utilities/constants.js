@@ -1,7 +1,7 @@
 export const REGULAR_RADIUS = 3;
 export const EMPHASIS_RADIUS = 6;
 
-export const REGULAR_COLOR = "rgba(125, 125, 125,"; // grey
+export const REGULAR_COLOR = "rgba(125, 125, 125, 0.5)"; // grey
 export const EMPHASIS_COLOR = "rgba(255, 0, 0, 0.9)"; // red
 export const SELECTION_COLOR = "rgba(65, 105, 255,"; //royal blue
 export const TIME_START_COLOR = {red: 255, green: 212, blue: 191}; // deep purple

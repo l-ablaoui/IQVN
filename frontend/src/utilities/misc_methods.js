@@ -144,3 +144,28 @@ export const handle_zoom_pan_mousemove = (svg, is_dragging, set_translate, drag_
 export const handle_zoom_pan_mouseup = (set_dragging) => {
     set_dragging(false);
 };
+
+export const handle_selection_area_mousedown = (svg, limit_top_left, limit_bot_right, 
+    set_selection_top_left, set_selection_bot_right, event) => {
+    const rect = svg.getBoundingClientRect();
+    let x = event.clientX - rect.left;
+    let y = event.clientY - rect.top;
+    x = Math.min(Math.max(x, limit_top_left.x), limit_bot_right.x);
+    y = Math.min(Math.max(y, limit_top_left.y), limit_bot_right.y);
+
+    set_selection_top_left({x: x, y: y});
+    set_selection_bot_right({x: x, y: y});
+};
+
+export const handle_selection_area_mousemove = (svg, limit_top_left, limit_bot_right,
+    selection_top_left, set_selection_bot_right, event) => {
+    if (selection_top_left.x !== 0 && selection_top_left.y !== 0) {
+        const rect = svg.getBoundingClientRect();
+        let x = event.clientX - rect.left;
+        let y = event.clientY - rect.top;
+        x = Math.min(Math.max(x, limit_top_left.x), limit_bot_right.x);
+        y = Math.min(Math.max(y, limit_top_left.y), limit_bot_right.y);
+
+        set_selection_bot_right({x: x, y: y});
+    }
+};

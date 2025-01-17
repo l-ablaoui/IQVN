@@ -1,14 +1,34 @@
+import "../App.css";
+import { 
+    EMPHASIS_COLOR, 
+    HIGH_SCORE_COLOR, 
+    LOW_SCORE_COLOR, 
+    REGULAR_COLOR, 
+    SELECTION_COLOR, 
+    TIME_END_COLOR, 
+    TIME_START_COLOR 
+} from '../utilities/constants';
+import { generate_HSL_colors } from '../utilities/misc_methods';
+import { get_border_radius } from "../utilities/rendering_methods";
+
 import React, { useEffect, useRef, useState } from 'react';
 
-const Color_map_bar = ({cmap, set_cmap}) => {
+const Color_map_bar = ({cmap, set_cmap, clusters, scores, max_index}) => {
     const color_map_bar_ref = useRef(null);
+
+    useEffect(() => {
+        if (color_map_bar_ref.current) {
+            color_map_bar_ref.current.width = color_map_bar_ref.current.offsetWidth;
+            color_map_bar_ref.current.height = color_map_bar_ref.current.offsetHeight;
+            render_color_map_bar(cmap);
+        }
+    }, [cmap, clusters, scores, max_index]);
 
     const handle_cmap_buttons_on_click = (event) => {
         let button = event.target;
         let parent = event.target?.parentElement;
         const value = event.target?.value;
 
-        console.log(value);
         // set current button to primary
         button.className = "col-2 btn btn-primary";
 
@@ -23,27 +43,115 @@ const Color_map_bar = ({cmap, set_cmap}) => {
         set_cmap(value);
     };
 
-    const render_color_map_bar = () => {
-        const canvas = color_map_bar_ref.current;
-        const ctx = canvas.getContext("2d");
-        const width = canvas.width;
-        const height = canvas.height;
-        const nb_colors = 100;
-        
-        const saturation = 100;
-        const lightness = 50;
-        const colors = [];
-
-        for (let i = 0; i < nb_colors; i++) {
-            const hue = Math.floor((360 / nb_colors) * i);
-            colors.push(`hsla(${hue}, ${saturation}%, ${lightness}%, 0.7)`);
+    const render_color_map_bar = (cmap) => {
+        if (cmap === "default") {
+            render_color_map_bar_blocks([REGULAR_COLOR, SELECTION_COLOR + "1)", EMPHASIS_COLOR]);
         }
+        else if (cmap === "clusters" && clusters?.length > 0) {
+            // get the number of clusters 
+            let max_label = clusters[0];
+            for (let i = 1;i < clusters.length;++i) {
+                if (max_label < clusters[i]) {
+                    max_label = clusters[i];
+                }
+            }
+            const nb_clusters = max_label + 1;
 
-        const color_width = width / nb_colors;
+            // generate the random colors
+            const colors = generate_HSL_colors(nb_clusters);
+            render_color_map_bar_blocks(colors);
+        }
+        else if (cmap === "timestamps") {
+            render_color_map_bar_gradient(0, max_index, TIME_START_COLOR, TIME_END_COLOR);
+        }
+        else if (cmap === "scores" && scores?.length > 0) {
+            // get the min and max values
+            let min_value = scores[0];
+            let max_value = scores[0];
+            for (let i = 1;i < scores.length;++i) {
+                if (min_value > scores[i]) {
+                    min_value = scores[i];
+                }
+                if (max_value < scores[i]) {
+                    max_value = scores[i];
+                }
+            }
+
+            render_color_map_bar_gradient(min_value, max_value, LOW_SCORE_COLOR, HIGH_SCORE_COLOR);
+        }
+    }
+
+    const render_color_map_bar_blocks = (colors) => {
+        const color_map_bar = color_map_bar_ref.current;
+        const ctx = color_map_bar.getContext("2d", {alpha: true});
+        const width = color_map_bar.width;
+        const height = color_map_bar.height;
+
+        ctx.clearRect(0, 0, width, height);
+        const radius = get_border_radius(color_map_bar);
+
+        // Clip to rounded rectangle
+        ctx.beginPath();
+        ctx.moveTo(radius, 0);
+        ctx.lineTo(width - radius, 0);
+        ctx.quadraticCurveTo(width, 0, width, radius);
+        ctx.lineTo(width, height - radius);
+        ctx.quadraticCurveTo(width, height, width - radius, height);
+        ctx.lineTo(radius, height);
+        ctx.quadraticCurveTo(0, height, 0, height - radius);
+        ctx.lineTo(0, radius);
+        ctx.quadraticCurveTo(0, 0, radius, 0);
+        ctx.closePath();
+        ctx.clip();
+
+        const nb_colors = colors.length;
+        const block_width = width / nb_colors;
         for (let i = 0; i < nb_colors; i++) {
             ctx.fillStyle = colors[i];
-            ctx.fillRect(i * color_width, 0, color_width, height);
+            ctx.fillRect(i * block_width, 0, block_width, height);
         }
+    };
+
+    const render_color_map_bar_gradient = (min_value, max_value, min_color, max_color) => {
+        const color_map_bar = color_map_bar_ref.current;
+        const ctx = color_map_bar.getContext("2d", {alpha: true});
+        const width = color_map_bar.width;
+        const height = color_map_bar.height;
+
+        min_value = Math.trunc(min_value * 100) / 100;
+        max_value = Math.trunc(max_value * 100) / 100;
+
+        ctx.clearRect(0, 0, width, height);
+        const radius = get_border_radius(color_map_bar);
+
+        // Clip to rounded rectangle
+        ctx.beginPath();
+        ctx.moveTo(radius, 0);
+        ctx.lineTo(width - radius, 0);
+        ctx.quadraticCurveTo(width, 0, width, radius);
+        ctx.lineTo(width, height - radius);
+        ctx.quadraticCurveTo(width, height, width - radius, height);
+        ctx.lineTo(radius, height);
+        ctx.quadraticCurveTo(0, height, 0, height - radius);
+        ctx.lineTo(0, radius);
+        ctx.quadraticCurveTo(0, 0, radius, 0);
+        ctx.closePath();
+        ctx.clip();
+
+
+        const gradient = ctx.createLinearGradient(0, 0, width, 0);
+        gradient.addColorStop(0, `rgb(${min_color.red}, ${min_color.green}, ${min_color.blue})`);  
+        gradient.addColorStop(1, `rgb(${max_color.red}, ${max_color.green}, ${max_color.blue})`);  
+        ctx.fillStyle = gradient;
+        ctx.fillRect(0, 0, width, height);
+    
+        // Add min and max values
+        ctx.fillStyle = 'black';
+        ctx.font = '18px Arial';
+        ctx.textAlign = 'center';
+        ctx.fillText(min_value, 18, height / 2 + 5); // Min value at the left
+        //ctx.fillStyle = 'white';
+        ctx.fillText(max_value, width - 18, height / 2 + 5); // Max value at the right
     };
 
     return (
@@ -73,7 +181,7 @@ const Color_map_bar = ({cmap, set_cmap}) => {
                 onClick={handle_cmap_buttons_on_click}
             />
             <canvas 
-                className="col-4"
+                className="col-4 d-block rounded"
                 ref={color_map_bar_ref}>
             </canvas>
         </div>

@@ -1,3 +1,4 @@
+import "../App.css";
 import { 
     EMPHASIS_COLOR, 
     HIGH_SCORE_COLOR, 
@@ -8,6 +9,7 @@ import {
     TIME_START_COLOR 
 } from '../utilities/constants';
 import { generate_HSL_colors } from '../utilities/misc_methods';
+import { get_border_radius } from "../utilities/rendering_methods";
 
 import React, { useEffect, useRef, useState } from 'react';
 
@@ -16,6 +18,8 @@ const Color_map_bar = ({cmap, set_cmap, clusters, scores, max_index}) => {
 
     useEffect(() => {
         if (color_map_bar_ref.current) {
+            color_map_bar_ref.current.width = color_map_bar_ref.current.offsetWidth;
+            color_map_bar_ref.current.height = color_map_bar_ref.current.offsetHeight;
             render_color_map_bar(cmap);
         }
     }, [cmap, clusters, scores, max_index]);
@@ -84,6 +88,22 @@ const Color_map_bar = ({cmap, set_cmap, clusters, scores, max_index}) => {
         const height = color_map_bar.height;
 
         ctx.clearRect(0, 0, width, height);
+        const radius = get_border_radius(color_map_bar);
+
+        // Clip to rounded rectangle
+        ctx.beginPath();
+        ctx.moveTo(radius, 0);
+        ctx.lineTo(width - radius, 0);
+        ctx.quadraticCurveTo(width, 0, width, radius);
+        ctx.lineTo(width, height - radius);
+        ctx.quadraticCurveTo(width, height, width - radius, height);
+        ctx.lineTo(radius, height);
+        ctx.quadraticCurveTo(0, height, 0, height - radius);
+        ctx.lineTo(0, radius);
+        ctx.quadraticCurveTo(0, 0, radius, 0);
+        ctx.closePath();
+        ctx.clip();
+
         const nb_colors = colors.length;
         const block_width = width / nb_colors;
         for (let i = 0; i < nb_colors; i++) {
@@ -102,6 +122,23 @@ const Color_map_bar = ({cmap, set_cmap, clusters, scores, max_index}) => {
         max_value = Math.trunc(max_value * 100) / 100;
 
         ctx.clearRect(0, 0, width, height);
+        const radius = get_border_radius(color_map_bar);
+
+        // Clip to rounded rectangle
+        ctx.beginPath();
+        ctx.moveTo(radius, 0);
+        ctx.lineTo(width - radius, 0);
+        ctx.quadraticCurveTo(width, 0, width, radius);
+        ctx.lineTo(width, height - radius);
+        ctx.quadraticCurveTo(width, height, width - radius, height);
+        ctx.lineTo(radius, height);
+        ctx.quadraticCurveTo(0, height, 0, height - radius);
+        ctx.lineTo(0, radius);
+        ctx.quadraticCurveTo(0, 0, radius, 0);
+        ctx.closePath();
+        ctx.clip();
+
+
         const gradient = ctx.createLinearGradient(0, 0, width, 0);
         gradient.addColorStop(0, `rgb(${min_color.red}, ${min_color.green}, ${min_color.blue})`);  
         gradient.addColorStop(1, `rgb(${max_color.red}, ${max_color.green}, ${max_color.blue})`);  
@@ -113,7 +150,7 @@ const Color_map_bar = ({cmap, set_cmap, clusters, scores, max_index}) => {
         ctx.font = '18px Arial';
         ctx.textAlign = 'center';
         ctx.fillText(min_value, 18, height / 2 + 5); // Min value at the left
-        ctx.fillStyle = 'white';
+        //ctx.fillStyle = 'white';
         ctx.fillText(max_value, width - 18, height / 2 + 5); // Max value at the right
     };
 
@@ -144,7 +181,7 @@ const Color_map_bar = ({cmap, set_cmap, clusters, scores, max_index}) => {
                 onClick={handle_cmap_buttons_on_click}
             />
             <canvas 
-                className="col-4 d-block border border-dark rounded"
+                className="col-4 d-block rounded"
                 ref={color_map_bar_ref}>
             </canvas>
         </div>

@@ -7,7 +7,7 @@ import {
     TIME_END_COLOR, 
     LOW_SCORE_COLOR, 
     HIGH_SCORE_COLOR
-} from '../utilities/constants';
+} from "../utilities/constants";
 import {
     fill_circle, 
     draw_rectangle, 
@@ -19,12 +19,14 @@ import {
     handle_zoom_pan_wheel,
     handle_zoom_pan_mousedown,
     handle_zoom_pan_mousemove, 
-    handle_zoom_pan_mouseup
-} from '../utilities/misc_methods';
-import Color_map_bar from './color_map_bar';
+    handle_zoom_pan_mouseup,
+    handle_selection_area_mousedown,
+    handle_selection_area_mousemove
+} from "../utilities/misc_methods";
+import Color_map_bar from "./color_map_bar";
 
-import React, { useEffect, useRef, useState } from 'react';
-import { fetch_video_semantic_representation } from '../utilities/api_methods';
+import React, { useEffect, useRef, useState } from "react";
+import { fetch_video_semantic_representation } from "../utilities/api_methods";
 
 const Semantic_plot = ({video_src, scores, current_index, update_time, max_index, selected_points}) => {
     const semantic_plot_ref = useRef(null);
@@ -44,8 +46,21 @@ const Semantic_plot = ({video_src, scores, current_index, update_time, max_index
     const [semantic_plot_drag_offset, set_SP_drag_offset] = useState({x: 0, y: 0});
     const [is_SP_dragging, set_SP_dragging] = useState(false);
 
-    const [selection_top_left, set_selection_top_left] = useState({x: 0, y: 0});
-    const [selection_bot_right, set_selection_bot_right] = useState({x: 0, y: 0});
+    const [selection_top_left, set_selection_top_left] = useState({x: -10, y: -10});
+    const [selection_bot_right, set_selection_bot_right] = useState({x: -10, y: -10});
+    const [is_selecting, set_selecting] = useState(false);
+
+    // prevent right click menu on this specific component
+    useEffect(() => {
+        function handle_context_menu(e) {
+          e.preventDefault(); // prevents the default right-click menu from appearing
+        }
+        semantic_plot_ref.current.addEventListener("contextmenu", handle_context_menu);
+
+        return () => {
+            semantic_plot_ref.current.removeEventListener("contextmenu", handle_context_menu);
+        };
+    }, []);
 
     useEffect(() => {
         if (semantic_plot_ref.current) {
@@ -53,7 +68,8 @@ const Semantic_plot = ({video_src, scores, current_index, update_time, max_index
             semantic_plot_ref.current.height = semantic_plot_ref.current.offsetHeight;
             render_semantic_plot(points, current_index);
         }
-    }, [current_index, points, clusters, cluster_frames, scores, semantic_plot_scale, semantic_plot_translate, cmap]);
+    }, [current_index, points, clusters, cluster_frames, scores, semantic_plot_scale, 
+        semantic_plot_translate, selection_top_left, selection_bot_right, cmap]);
 
     useEffect(() => {
         if (video_src != "") {
@@ -76,27 +92,122 @@ const Semantic_plot = ({video_src, scores, current_index, update_time, max_index
     };
 
     const handle_mousedown = (event) => {
-        handle_zoom_pan_mousedown(
-            semantic_plot_ref.current,
-            set_SP_dragging,
-            semantic_plot_translate,
-            set_SP_drag_offset,
-            event
-        );
-    };
-
-    const handle_mouseup = () => { 
-        handle_zoom_pan_mouseup(set_SP_dragging);
+        if (event.nativeEvent.button == 0) {
+            handle_zoom_pan_mousedown(
+                semantic_plot_ref.current,
+                set_SP_dragging,
+                semantic_plot_translate,
+                set_SP_drag_offset,
+                event
+            );
+        }
+        else if (event.nativeEvent.button == 2) {
+            event.preventDefault();
+            const width = semantic_plot_ref.current.width;
+            const height = semantic_plot_ref.current.height;
+            handle_selection_area_mousedown(semantic_plot_ref.current, {x: 0, y: 0},
+                {x: width, y: height}, set_selection_top_left, set_selection_bot_right, event);
+            console.log(selection_top_left, selection_bot_right);
+            set_selecting(true);
+        }
     };
 
     const handle_mousemove = (event) => {
-        handle_zoom_pan_mousemove(
-            semantic_plot_ref.current,
-            is_SP_dragging, 
-            set_SP_translate,
-            semantic_plot_drag_offset,
-            event
-        );
+        if (event.nativeEvent.button == 0) {
+            handle_zoom_pan_mousemove(
+                semantic_plot_ref.current,
+                is_SP_dragging, 
+                set_SP_translate,
+                semantic_plot_drag_offset,
+                event
+            );
+        }
+        if (is_selecting) {
+            event.preventDefault();
+            const width = semantic_plot_ref.current.width;
+            const height = semantic_plot_ref.current.height;
+            handle_selection_area_mousemove(semantic_plot_ref.current, {x: 0, y: 0},
+                {x: width, y: height}, selection_top_left, set_selection_bot_right, event);
+            console.log(selection_top_left, selection_bot_right);
+        }
+    };
+
+    const handle_mouseup = (event) => { 
+        if (event.nativeEvent.button == 0) {
+            handle_zoom_pan_mouseup(set_SP_dragging);
+        }
+        if (is_selecting) {
+            event.preventDefault();
+            const width = semantic_plot_ref.current.width;
+            const height = semantic_plot_ref.current.height;
+            handle_selection_area_mousemove(semantic_plot_ref.current, {x: 0, y: 0},
+                {x: width, y: height}, selection_top_left, set_selection_bot_right, event);
+            set_selecting(false);
+        }
+    };
+
+    /**
+         * triggers a time update when a point on the semantic plot is clicked
+         * @todo fix bug where some points are hard to click on
+         * @param {*} event expected onClick event
+         */
+    const handle_onclick = (event) => {
+        event.preventDefault();
+        if (event.nativeEvent.button == 2) { return; };
+        if (points?.length == 0) { return; }
+        
+        const rect = semantic_plot_ref.current.getBoundingClientRect();
+        const mouse_x = event.clientX - rect.left;
+        const mouse_y = event.clientY - rect.top;
+
+        //reduction_plot width/length
+        let plot_width = semantic_plot_ref.current.offsetWidth;
+        let plot_height = semantic_plot_ref.current.offsetHeight;
+
+        //if touching the offsets, ignore
+        if (mouse_x < semantic_plot_offset_x - EMPHASIS_RADIUS 
+            || mouse_x > plot_width - semantic_plot_offset_x + EMPHASIS_RADIUS) { 
+            return; 
+        }
+
+        //get min/max to later normalize reduction values
+        let min_x = points[0]['x'];
+        let max_x = points[0]['x'];
+        let min_y = points[0]['y'];
+        let max_y = points[0]['y'];
+
+        points.forEach(point => {
+            min_x = Math.min(min_x, point['x']);
+            max_x = Math.max(max_x, point['x']);
+            min_y = Math.min(min_y, point['y']);
+            max_y = Math.max(max_y, point['y']);
+        });
+        
+        //if clicking on the current frame index (big red dot), do nothing
+        let {x, y} = get_semantic_plot_coordinates({ x: min_x, y: min_y }, { x: max_x, y: max_y }, 
+            { width: plot_width, height: plot_height}, current_index);
+
+        let dot_radius = EMPHASIS_RADIUS;
+
+        let dist = (mouse_x - x) * (mouse_x - x) + (mouse_y - y) * (mouse_y - y);
+        if (dist <= dot_radius * dot_radius) {
+            return;
+        }
+
+        for (let i = 0;i < points.length;++i) {
+            //get each point's coordinates after current zoom/pan
+            let {x, y} = get_semantic_plot_coordinates({ x: min_x, y: min_y }, { x: max_x, y: max_y }, 
+                { width: plot_width, height: plot_height}, i);
+
+            dot_radius = REGULAR_RADIUS;
+            let dist = length2({x: mouse_x, y: mouse_y}, {x: x, y: y});
+
+            //if the user clicked inside the dot, update the frameIndex
+            if (dist <= dot_radius * dot_radius) {
+                update_time(i);
+                return;
+            } 
+        } 
     };
 
     /**
@@ -157,8 +268,11 @@ const Semantic_plot = ({video_src, scores, current_index, update_time, max_index
         ctx.lineWidth = 2;
         ctx.strokeStyle = "black";
         ctx.stroke();
-    
-        draw_rectangle(ctx, selection_top_left, selection_bot_right); 
+        
+        if (is_selecting) { 
+            draw_rectangle(ctx, selection_top_left, selection_bot_right); 
+            //update whatever selection is going on
+        }
     
         //drawing rectangles to hide the points when zooming 
         //draw in white and then draw the color (transparency issues)
@@ -194,71 +308,6 @@ const Semantic_plot = ({video_src, scores, current_index, update_time, max_index
         );
     
         //draw_cluster_frames(color_map, min_x, min_y, max_x, max_y);
-    };
-
-    /**
-     * triggers a time update when a point on the semantic plot is clicked
-     * @todo fix bug where some points are hard to click on
-     * @param {*} event expected onClick event
-     */
-    const handle_onclick = (event) => {
-        //prevent overlap with drag interaction
-        if (points?.length == 0) { return; }
-
-        event.preventDefault();
-        
-        const rect = semantic_plot_ref.current.getBoundingClientRect();
-        const mouse_x = event.clientX - rect.left;
-        const mouse_y = event.clientY - rect.top;
-    
-        //reduction_plot width/length
-        let plot_width = semantic_plot_ref.current.offsetWidth;
-        let plot_height = semantic_plot_ref.current.offsetHeight;
-    
-        //if touching the offsets, ignore
-        if (mouse_x < semantic_plot_offset_x - EMPHASIS_RADIUS 
-            || mouse_x > plot_width - semantic_plot_offset_x + EMPHASIS_RADIUS) { 
-            return; 
-        }
-    
-        //get min/max to later normalize reduction values
-        let min_x = points[0]['x'];
-        let max_x = points[0]['x'];
-        let min_y = points[0]['y'];
-        let max_y = points[0]['y'];
-
-        points.forEach(point => {
-            min_x = Math.min(min_x, point['x']);
-            max_x = Math.max(max_x, point['x']);
-            min_y = Math.min(min_y, point['y']);
-            max_y = Math.max(max_y, point['y']);
-        });
-         
-        //if clicking on the current frame index (big red dot), do nothing
-        let {x, y} = get_semantic_plot_coordinates({ x: min_x, y: min_y }, { x: max_x, y: max_y }, 
-            { width: plot_width, height: plot_height}, current_index);
-    
-        let dot_radius = EMPHASIS_RADIUS;
-    
-        let dist = (mouse_x - x) * (mouse_x - x) + (mouse_y - y) * (mouse_y - y);
-        if (dist <= dot_radius * dot_radius) {
-            return;
-        }
-    
-        for (let i = 0;i < points.length;++i) {
-            //get each point's coordinates after current zoom/pan
-            let {x, y} = get_semantic_plot_coordinates({ x: min_x, y: min_y }, { x: max_x, y: max_y }, 
-                { width: plot_width, height: plot_height}, i);
-    
-            dot_radius = REGULAR_RADIUS;
-            let dist = length2({x: mouse_x, y: mouse_y}, {x: x, y: y});
-    
-            //if the user clicked inside the dot, update the frameIndex
-            if (dist <= dot_radius * dot_radius) {
-                update_time(i);
-                return;
-            } 
-        } 
     };
 
     /**

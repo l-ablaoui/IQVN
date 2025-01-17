@@ -262,3 +262,10 @@ export const draw_selector = (threshold, offset_left, offset_right, offset_y, sv
     ctx.fill();
     ctx.closePath();
 };
+
+// Function to get the border-radius dynamically
+export const get_border_radius = (element) => {
+    const style = window.getComputedStyle(element);
+    const border_radius = style.borderTopLeftRadius; // Get the top-left radius (they're usually the same)
+    return parseFloat(border_radius) || 0; // Return as a number (default to 0 if not set)
+};

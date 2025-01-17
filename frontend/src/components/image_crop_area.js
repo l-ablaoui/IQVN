@@ -1,6 +1,7 @@
 import "../App.css";
 import { DEACTIVATED_COLOR } from "../utilities/constants";
 import { draw_rectangle } from "../utilities/rendering_methods";
+import { handle_selection_area_mousedown, handle_selection_area_mousemove } from "../utilities/misc_methods";
 
 import React, { useEffect, useRef, useState } from 'react';
 
@@ -10,42 +11,26 @@ import React, { useEffect, useRef, useState } from 'react';
 const Image_crop_area = ({crop_area_ref, selection_top_left, selection_bot_right, 
     set_selection_top_left, set_selection_bot_right, apply_effect, video_top_left,
     video_bot_right}) => {
+        
     useEffect(() => {
         render_crop_area();
     }, [selection_top_left, selection_bot_right]);
 
     const handle_crop_area_mousedown = (event) => {
-        const rect = crop_area_ref.current.getBoundingClientRect();
-        let x = event.clientX - rect.left;
-        let y = event.clientY - rect.top;
-        x = Math.min(Math.max(x, video_top_left.x), video_bot_right.x);
-        y = Math.min(Math.max(y, video_top_left.y), video_bot_right.y);
-
-        set_selection_top_left({x: x, y: y});
-        set_selection_bot_right({x: x, y: y});
+        handle_selection_area_mousedown(crop_area_ref.current, video_top_left,
+            video_bot_right, set_selection_top_left, set_selection_bot_right, event);
     };
 
     const handle_crop_area_mousemove = (event) => {
-        if (selection_top_left.x !== 0 && selection_top_left.y !== 0) {
-            const rect = crop_area_ref.current.getBoundingClientRect();
-            let x = event.clientX - rect.left;
-            let y = event.clientY - rect.top;
-            x = Math.min(Math.max(x, video_top_left.x), video_bot_right.x);
-            y = Math.min(Math.max(y, video_top_left.y), video_bot_right.y);
-
-            set_selection_bot_right({x: x, y: y});
-        };
+        handle_selection_area_mousemove(crop_area_ref.current, video_top_left,
+            video_bot_right, selection_top_left, set_selection_bot_right, event);
     };
 
     const handle_crop_area_mouseup = (event) => {
-        if (selection_top_left.x !== 0 && selection_top_left.y !== 0) {
-            const rect = crop_area_ref.current.getBoundingClientRect();
-            let x = event.clientX - rect.left;
-            let y = event.clientY - rect.top;
-            x = Math.min(Math.max(x, video_top_left.x), video_bot_right.x);
-            y = Math.min(Math.max(y, video_top_left.y), video_bot_right.y);
+        handle_selection_area_mousemove(crop_area_ref.current, video_top_left,
+            video_bot_right, selection_top_left, set_selection_bot_right, event);
 
-            set_selection_bot_right({x: x, y: y});
+        if (selection_top_left.x !== 0 && selection_top_left.y !== 0) {
             apply_effect();
             crop_area_ref.current.className = "d-none image_crop_area";
         }

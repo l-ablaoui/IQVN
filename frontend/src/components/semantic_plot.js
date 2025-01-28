@@ -31,9 +31,7 @@ import { fetch_video_semantic_representation } from "../utilities/api_methods";
 
 import React, { useEffect, useRef, useState } from "react";
 
-/**
- * This component represents the semantic (from a VLM standpoint) 2D representation of the video frames
- */
+/** This component represents the semantic (from a VLM standpoint) 2D representation of the video frames */
 const Semantic_plot = ({video_ref, video_src, scores, current_index, update_time, 
     max_index, selected_points, set_selected_points}) => {
     const semantic_plot_ref = useRef(null);
@@ -42,6 +40,7 @@ const Semantic_plot = ({video_ref, video_src, scores, current_index, update_time
     const [points, set_points] = useState([]);
     const [clusters, set_clusters] = useState([]);
     const [cluster_frames, set_cluster_frames] = useState([]);
+    const [frames_horizontal, set_frames_horizontal] = useState(true);
 
     /** semantic plot color map, possible values= default (show selected points), clusters, timestamps and scores */
     const [cmap, set_cmap] = useState("default");
@@ -77,8 +76,26 @@ const Semantic_plot = ({video_ref, video_src, scores, current_index, update_time
     // re-rendering effect
     useEffect(() => {
         if (semantic_plot_ref.current) {
+            // update the canvas size
             semantic_plot_ref.current.width = semantic_plot_ref.current.offsetWidth;
             semantic_plot_ref.current.height = semantic_plot_ref.current.offsetHeight;
+            const offset_width = semantic_plot_ref.current.width;
+            const offset_height = semantic_plot_ref.current.height;
+
+            // check if the cluster frames should be rendered horizontally or vertically
+            set_frames_horizontal(offset_width > offset_height);
+
+            // update plot offsets
+            if (frames_horizontal) {
+                set_SP_offset_y(offset_height / 14);
+                set_SP_offset_x((offset_width - 6 * offset_height / 7) / 2);
+            }
+            else {
+                set_SP_offset_x(offset_width / 14);
+                set_SP_offset_y((offset_height - 6 * offset_width / 7) / 2);
+            }
+
+            console.log(semantic_plot_offset_x, semantic_plot_offset_y, offset_width, offset_height);
             render_semantic_plot(points, current_index);
         }
     }, [current_index, points, clusters, cluster_frames, scores, semantic_plot_scale, 
@@ -95,10 +112,8 @@ const Semantic_plot = ({video_ref, video_src, scores, current_index, update_time
         }
     }, [video_src]);
 
-    /**
-     * onwheel zoom handler for the semantic plot
-     * @param {*} event expected a wheel event
-     */
+    /** onwheel zoom handler for the semantic plot
+     * @param {*} event expected a wheel event */
     const handle_onwheel = (event) => { 
         handle_zoom_pan_wheel(
             semantic_plot_ref.current,
@@ -109,10 +124,8 @@ const Semantic_plot = ({video_ref, video_src, scores, current_index, update_time
         ); 
     };
 
-    /**
-     * mousedown handles left click pan and right click selection
-     * @param {*} event expected mousedown event
-     */
+    /** mousedown handles left click pan and right click selection
+     * @param {*} event expected mousedown event */
     const handle_mousedown = (event) => {
         if (event.nativeEvent.button == 0) {
             handle_zoom_pan_mousedown(
@@ -133,10 +146,8 @@ const Semantic_plot = ({video_ref, video_src, scores, current_index, update_time
         }
     };
 
-    /**
-     * mousemove handles left click pan and right click selection
-     * @param {*} event expected mousemove event
-     */
+    /** mousemove handles left click pan and right click selection
+     * @param {*} event expected mousemove event */
     const handle_mousemove = (event) => {
         if (event.nativeEvent.button == 0) {
             handle_zoom_pan_mousemove(
@@ -168,10 +179,8 @@ const Semantic_plot = ({video_ref, video_src, scores, current_index, update_time
         }
     };
 
-    /**
-     * mouseup handles left click pan and right click selection
-     * @param {*} event expected mouseup event
-     */
+    /** mouseup handles left click pan and right click selection
+     * @param {*} event expected mouseup event */
     const handle_mouseup = (event) => { 
         if (event.nativeEvent.button == 0) {
             handle_zoom_pan_mouseup(set_SP_dragging);
@@ -203,11 +212,9 @@ const Semantic_plot = ({video_ref, video_src, scores, current_index, update_time
         set_ctrl_pressed(event.ctrlKey);
     };
 
-    /**
-     * triggers a time update when a point on the semantic plot is clicked
+    /** triggers a time update when a point on the semantic plot is clicked
      * @todo fix bug where some points are hard to click on
-     * @param {*} event expected onClick event
-     */
+     * @param {*} event expected onClick event */
     const handle_onclick = (event) => {
         if (event.nativeEvent.button == 2) { return; };
         if (points?.length == 0) { return; }
@@ -255,11 +262,9 @@ const Semantic_plot = ({video_ref, video_src, scores, current_index, update_time
         } 
     };
 
-    /**
-     * scale points to fit in the semantic plot canvas and renders them as dots
+    /** scale points to fit in the semantic plot canvas and renders them as dots
      * @param {*} points expected array of 2D points (dicts with x and y properties)
-     * @param {*} current_index expected positive integer between 0 and points.length
-     */
+     * @param {*} current_index expected positive integer between 0 and points.length */
     const render_semantic_plot = (points, current_index) => {
         if (points?.length == 0) { return; }
 
@@ -306,7 +311,8 @@ const Semantic_plot = ({video_ref, video_src, scores, current_index, update_time
         
         // render selection rectangle if selecting
         if (is_selecting) { 
-            draw_rectangle(ctx, selection_top_left, selection_bot_right); 
+            draw_rectangle(ctx, selection_top_left, selection_bot_right, 
+                "rgba(100, 200, 255, 1)", "rgba(100, 200, 255, 0.3)"); 
         }
     
         // rendering rectangles to hide the points when zooming 
@@ -315,43 +321,42 @@ const Semantic_plot = ({video_ref, video_src, scores, current_index, update_time
         ctx.fillRect(
             0, 
             0, 
-            semantic_plot_offset_x - window.EMPHASIS_RADIUS, 
-            plot_height
+            (frames_horizontal)? semantic_plot_offset_x - EMPHASIS_RADIUS : plot_width, 
+            (frames_horizontal)? plot_height : semantic_plot_offset_y - EMPHASIS_RADIUS
         );
         ctx.fillStyle = "white";
         ctx.fillRect(
-            plot_width - semantic_plot_offset_x + window.EMPHASIS_RADIUS, 
-            0, 
-            semantic_plot_offset_x, plot_height
+            (frames_horizontal)? plot_width - semantic_plot_offset_x + EMPHASIS_RADIUS : 0, 
+            (frames_horizontal)? 0 : plot_height - semantic_plot_offset_y + EMPHASIS_RADIUS, 
+            (frames_horizontal)? semantic_plot_offset_x : plot_width, 
+            (frames_horizontal)? plot_height : semantic_plot_offset_y - EMPHASIS_RADIUS
         );
-        ctx.fillStyle = "rgba(255, 150, 0, 0.1)";
+        ctx.fillStyle = "rgba(255, 255, 255, 0.1)";
         ctx.fillRect(
             0, 
             0, 
-            semantic_plot_offset_x - window.EMPHASIS_RADIUS, 
-            plot_height
+            (frames_horizontal)? semantic_plot_offset_x - EMPHASIS_RADIUS : plot_width, 
+            (frames_horizontal)? plot_height : semantic_plot_offset_y - EMPHASIS_RADIUS
         );
-        ctx.fillStyle = "rgba(255, 150, 0, 0.1)";
+        ctx.fillStyle = "rgba(255, 255, 255, 0.1)";
         ctx.fillRect(
-            plot_width - semantic_plot_offset_x + window.EMPHASIS_RADIUS, 
-            0, 
-            semantic_plot_offset_x, 
-            plot_height
+            (frames_horizontal)? plot_width - semantic_plot_offset_x + EMPHASIS_RADIUS : 0, 
+            (frames_horizontal)? 0 : plot_height - semantic_plot_offset_y + EMPHASIS_RADIUS, 
+            (frames_horizontal)? semantic_plot_offset_x : plot_width, 
+            (frames_horizontal)? plot_height : semantic_plot_offset_y - EMPHASIS_RADIUS
         );
         
         // render the cluster frames
         render_cluster_frames(semantic_plot_ref.current, color_map, min_x, min_y, max_x, max_y);
     };
 
-    /**
-     * renders frame snippets ob svg that represent the centroids of each cluster
+    /** renders frame snippets ob svg that represent the centroids of each cluster
      * @param {*} svg expected canvas element
      * @param {*} color_map expected array of string coded colors for each point
      * @param {*} min_x expected float, minimum x value of the points
      * @param {*} min_y expected float, minimum y value of the points
      * @param {*} max_x expected float, maximum x value of the points
-     * @param {*} max_y expected float, maximum y value of the points
-     */
+     * @param {*} max_y expected float, maximum y value of the points */
     const render_cluster_frames = (svg, color_map, min_x, min_y, max_x, max_y) => {
         if (cluster_frames?.length < 2) { return; }
         
@@ -377,21 +382,44 @@ const Semantic_plot = ({video_ref, video_src, scores, current_index, update_time
         let small_frame_height = plot_height / l - l * 0.5; // - l * 2 is to keep a little margin between frames
         let small_frame_width = original_frame_width * small_frame_height / original_frame_height;
         
-        // if the width of the frame is too much to draw on the margin, reduce 
+        // if the width/height of the frame is too much to draw on the margin, reduce 
         // it to the max the margin can take and adjust the height accordingly
-        if (small_frame_width > semantic_plot_offset_x - 10) {
+        if (frames_horizontal && small_frame_width > semantic_plot_offset_x - 10) {
             let new_small_width = semantic_plot_offset_x - 10;
             small_frame_height = small_frame_height * new_small_width / small_frame_width;
             small_frame_width = new_small_width;
+            if (small_frame_height > plot_height / (l + 1)) {
+                let new_small_height = plot_height / (l + 1) - l * 0.5;
+                small_frame_width = small_frame_width * new_small_height / small_frame_height;
+                small_frame_height = new_small_height;
+            }
+        }
+        else if (!frames_horizontal && small_frame_height > semantic_plot_offset_y - 10) {
+            let new_small_height = semantic_plot_offset_y - 10;
+            small_frame_width = small_frame_width * new_small_height / small_frame_height;
+            small_frame_height = new_small_height;
+            if (small_frame_width > plot_width / (l + 1)) {
+                let new_small_width = plot_width / (l + 1) - l * 0.5;
+                small_frame_height = small_frame_height * new_small_width / small_frame_width;
+                small_frame_width = new_small_width;
+            }
         }
 
         for (let i = 0;i < l;++i) {
             // center the image in terms of width
-            const x = semantic_plot_offset_x / 2 - small_frame_width / 2;
-            const y = i * plot_height / l;
+            const x = (frames_horizontal)? semantic_plot_offset_x / 2 - small_frame_width / 2 : i * plot_width / l;
+            const y = (frames_horizontal)? i * plot_height / l : semantic_plot_offset_y / 2 - small_frame_height / 2;
             const img = new Image();
             img.src = centroids[i]["src"];
             img.onload = () => {
+                // render the line from centroid image to its corresponding dot
+                ctx.strokeStyle = color_map[centroids[i]["idx"]];
+                ctx.beginPath();
+                ctx.moveTo(centroids[i]["x"], centroids[i]["y"]);
+                ctx.lineTo(x + small_frame_width / 2, y + small_frame_height / 2); 
+                ctx.stroke();
+
+                // render the image
                 ctx.drawImage(img, x, y, small_frame_width, small_frame_height);
     
                 // render border for each image
@@ -402,25 +430,28 @@ const Semantic_plot = ({video_ref, video_src, scores, current_index, update_time
                 ctx.lineTo(x + small_frame_width, y + small_frame_height);
                 ctx.lineTo(x, y + small_frame_height);
                 ctx.lineTo(x, y);
-                ctx.stroke();
-    
-                // render the line from centroid image to its corresponding dot
-                ctx.strokeStyle = color_map[centroids[i]["idx"]];
-                ctx.beginPath();
-                ctx.moveTo(centroids[i]["x"], centroids[i]["y"]);
-                ctx.lineTo(x + small_frame_width, y + small_frame_height / 2); // Adjust to point to the center of the label
                 ctx.stroke();
             };
         }
     
         for (let i = l;i < cluster_frames.length;++i) {
             const remains = (l * 2 == cluster_frames.length)? l : (l + 1);
-            const x = plot_width - semantic_plot_offset_x / 2 - small_frame_width / 2;
-            const y = (i - l) * plot_height / remains;
+            const x = (frames_horizontal)? plot_width - semantic_plot_offset_x / 2 - small_frame_width / 2 : 
+                (i - l) * plot_width / remains;
+            const y = (frames_horizontal)? (i - l) * plot_height / remains :
+                plot_height - semantic_plot_offset_y / 2 - small_frame_height / 2;
             const img = new Image();
             
             img.src = centroids[i]["src"];
             img.onload = () => {
+                // render the line from centroid image to its corresponding dot
+                ctx.strokeStyle = color_map[centroids[i]["idx"]];
+                ctx.beginPath();
+                ctx.moveTo(centroids[i]["x"], centroids[i]["y"]);
+                ctx.lineTo(x + small_frame_width / 2, y + small_frame_height / 2); 
+                ctx.stroke();
+
+                // render the image
                 ctx.drawImage(img, x, y, small_frame_width, small_frame_height);
     
                 // render border for each image
@@ -432,24 +463,15 @@ const Semantic_plot = ({video_ref, video_src, scores, current_index, update_time
                 ctx.lineTo(x, y + small_frame_height);
                 ctx.lineTo(x, y);
                 ctx.stroke();
-    
-                // render the line from centroid image to its corresponding dot
-                ctx.strokeStyle = color_map[centroids[i]["idx"]];
-                ctx.beginPath();
-                ctx.moveTo(centroids[i]["x"], centroids[i]["y"]);
-                ctx.lineTo(x, y + small_frame_height / 2); // Adjust to point to the center of the label
-                ctx.stroke();
             };
         }
     };
 
-    /**
-     * generate a radius value array that maps the 2D points to be rendered
+    /** generate a radius value array that maps the 2D points to be rendered
      * depending on which points need to be highlighted (bigger radius size 
      * compared to regular points)
      * @param {*} indices point IDs that need to be highlighted when rendered
-     * @returns 2D points matching map for radius value when rendered 
-     */
+     * @returns 2D points matching map for radius value when rendered */
     const generate_radius_map = (points, indices) => {
         let radius_map = [];
     
@@ -467,17 +489,19 @@ const Semantic_plot = ({video_ref, video_src, scores, current_index, update_time
         return radius_map;
     };
 
-    /**
-     * sorts 2D points for the least overlap when displaying their representative 
+    /** sorts 2D points for the least overlap when displaying their representative 
      * frames on the sides
      * @param {*} centroids 2D points (expected floats) 
-     * @returns input 2D points list sorted for least label overlap
-     */
+     * @returns input 2D points list sorted for least label overlap */
     const sort_cluster_frames = (centroids) => {
-        centroids.sort((c1, c2) => c1["x"] - c2["x"]);
+        centroids.sort((c1, c2) => (frames_horizontal)? c1["x"] - c2["x"] : c1["y"] - c2["y"]);
         const middle = Math.trunc(centroids.length / 2);
-        let first_half = centroids.slice(0, middle).sort((c1, c2) => c1["y"] - c2["y"]);
-        let second_half = centroids.slice(middle, centroids.length).sort((c1, c2) => c1["y"] - c2["y"]);
+        let first_half = centroids.slice(0, middle).sort((c1, c2) => 
+            (frames_horizontal)? c1["y"] - c2["y"] : c1["x"] - c2["x"]
+        );
+        let second_half = centroids.slice(middle, centroids.length).sort((c1, c2) => 
+            (frames_horizontal)? c1["y"] - c2["y"] : c1["x"] - c2["x"]
+        );
 
         for (let i = 0;i < centroids.length;++i) {
             if (i < middle) {
@@ -491,14 +515,12 @@ const Semantic_plot = ({video_ref, video_src, scores, current_index, update_time
         return centroids;
     };
 
-    /**
-     * apply zoom/pan transformations to the 2D points to be rendered
+    /** apply zoom/pan transformations to the 2D points to be rendered
      * @param {*} min_point expected 2D point with x and y float properties
      * @param {*} max_point expected 2D point with x and y float properties, max_point > min_point
      * @param {*} plot_dim expected 2D point with width and height float properties
      * @param {*} i expected integer, index of the point to be transformed
-     * @returns expected 2D point with x and y float properties, transformed
-     */
+     * @returns expected 2D point with x and y float properties, transformed */
     const get_semantic_plot_coordinates = (min_point, max_point, plot_dim, i) => {
         let x = (semantic_plot_offset_x + (points[i]['x'] - min_point.x) / 
             (max_point.x - min_point.x) * (plot_dim.width - 2 * semantic_plot_offset_x));
@@ -511,8 +533,7 @@ const Semantic_plot = ({video_ref, video_src, scores, current_index, update_time
         return { x, y };
     };
 
-    /**
-     * generate a string array that represents colors that map the 2D points
+    /** generate a string array that represents colors that map the 2D points
      * 
      * the generated colors depend on the state of the color map
      * Possible color maps:
@@ -520,10 +541,9 @@ const Semantic_plot = ({video_ref, video_src, scores, current_index, update_time
      * - clusters (colors are generated with generate_HSL_colors and affected to each cluster)
      * - time (colors change depending on the timestamp of each point(frame) in the video)
      * - score (colors change depending on the cosine similarity value)
-     * @param {*} current_index 
-     * @param {*} cmap 
-     * @returns 
-     */
+     * @param {*} current_index expected integer, index of the currently displayed frame
+     * @param {*} cmap expected string, color map type [default, clusters, timestamps, scores]
+     * @returns string coded colors array */
     const generate_color_map = (points, current_index, cmap) => {
         let color_map = [];
 
@@ -563,7 +583,6 @@ const Semantic_plot = ({video_ref, video_src, scores, current_index, update_time
                                                 //using root square to prevent drastic behavior    
                 }
                 color_map[current_index] = EMPHASIS_COLOR;
-                //draw_color_scale(min_score, max_score, LOW_SCORE_COLOR, HIGH_SCORE_COLOR);
                 break;
             }
             case "clusters": {
@@ -604,12 +623,10 @@ const Semantic_plot = ({video_ref, video_src, scores, current_index, update_time
         return color_map;
     };
 
-    /**
-     * isolates the points that are inside the selection box delimited by top_left and bot_right
+    /** isolates the points that are inside the selection box delimited by top_left and bot_right
      * @param {*} top_left expected 2D point with x and y float properties
      * @param {*} bot_right expected 2D point with x and y float properties
-     * @returns expected integer array with the IDs of the selected points
-     */
+     * @returns expected integer array with the IDs of the selected points */
     const select_points_in_box = (top_left, bot_right) => {
         let selected_points = [];
         let [min_x, max_x, min_y, max_y] = get_bounding_box(points);

@@ -169,3 +169,19 @@ export const handle_selection_area_mousemove = (svg, limit_top_left, limit_bot_r
         set_selection_bot_right({x: x, y: y});
     }
 };
+
+export const get_bounding_box = (points) => {
+    let min_x = points[0]['x'];
+    let max_x = points[0]['x'];
+    let min_y = points[0]['y'];
+    let max_y = points[0]['y'];
+
+    points.forEach(point => {
+        min_x = Math.min(min_x, point['x']);
+        max_x = Math.max(max_x, point['x']);
+        min_y = Math.min(min_y, point['y']);
+        max_y = Math.max(max_y, point['y']);
+    });
+
+    return  [min_x, max_x, min_y, max_y];
+};

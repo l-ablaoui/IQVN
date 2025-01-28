@@ -8,14 +8,16 @@ import Search_field from './components/search_field';
 import { useRef, useState } from 'react';
 
 function App() {
-    const [current_index, set_current_index] = useState(0);
-    const [max_index, set_max_index] = useState(0);
-    const [selected_points, set_selected_points] = useState([]);
-    const [scores, set_scores] = useState([]);
-
     const [video_src, set_video_src] = useState('');
     const video_ref = useRef(null);
     const fps = 10;
+
+    const [current_index, set_current_index] = useState(0);
+    const [max_index, set_max_index] = useState(0);
+
+    const [selected_points, set_selected_points] = useState([]);
+    
+    const [scores, set_scores] = useState([]);
 
     const update_time = (current_index) => {
         if (video_ref.current) {
@@ -62,6 +64,7 @@ function App() {
                         current_index={current_index} 
                         update_time={update_time}
                         max_index={max_index}
+                        video_ref={video_ref}
                         video_src={video_src}
                         set_selected_points={set_selected_points}
                         selected_points={selected_points}

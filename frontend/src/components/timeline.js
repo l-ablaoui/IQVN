@@ -41,72 +41,9 @@ const Timeline = ({current_index, update_time, max_index, fps, selected_points, 
         }
     }, [current_index, max_index, selected_points, scores]);
 
-    const render_timeline = (selected_points, current_index) => {
-        let ctx = timeline_ref.current.getContext("2d", { alpha: true });
-
-        let plot_width = timeline_ref.current.offsetWidth;
-        let plot_height = timeline_ref.current.offsetWidth;
-    
-        ctx.clearRect(0, 0, plot_width, plot_height);  
-    
-        //plot selected points highlight
-        if (selected_points != null) {
-            for (let i = 0; i < selected_points.length - 1; ++i)  {
-                let x1 = selected_points[i] / (max_index - 1) * plot_width;
-                ctx.beginPath();
-                ctx.moveTo(x1, 0);
-                ctx.rect(x1, 0, 1 / max_index - plot_width, plot_height);
-                ctx.strokeStyle = SELECTION_COLOR + "0.1)";
-                ctx.stroke();
-            }
-        }
-
-        plot_timestamps(max_index, fps, timeline_ref.current);
-        plot_marker_triangle(current_index, max_index, timeline_ref.current, offset_left, offset_right, offset_y, "black");
-        plot_current_timer(current_index, max_index, fps, timeline_ref.current, offset_left, offset_right);
-        plot_marker(current_index, max_index, offset_left, offset_right, offset_y, "black", 0.7, timeline_ref.current);
-        plot_axes(offset_left, offset_right, offset_y, timeline_ref.current);
-        render_score_curve(timeline_ref.current);
-    };
-
-    const render_score_curve = (svg) => {
-        if (!scores) { return; }
-
-        const plot_width = svg.offsetWidth;
-        const plot_height = svg.offsetHeight;
-
-        //normalize scores array
-        let min_score = Math.min(...scores);
-        let max_score = Math.max(...scores);
-        let scaled_scores = scores.map(score => (score - min_score) / (max_score - min_score));
-
-        //draw the curve
-        let ctx = svg.getContext("2d", { alpha: true });
-        ctx.beginPath();
-        let previous_x = offset_left;
-        let previous_y = plot_height - scaled_scores[0] * (plot_height - 2 * offset_y);
-        let color_map = generate_selected_points_color_map(max_index, selected_points); 
-
-        //iterate through the points
-        for (let i = 1; i < scaled_scores.length; i++) {
-            let x = offset_left + (i / (scaled_scores.length - 1)) * 
-                (plot_width - offset_right - offset_left);
-            let y = plot_height - offset_y - scaled_scores[i] * 
-                (plot_height - 2 * offset_y);
-
-            // Start a new path segment with the new color
-            let current_path = new Path2D();
-            current_path.moveTo(previous_x, previous_y);
-            current_path.lineTo(x, y);
-            ctx.strokeStyle = color_map[i];
-            ctx.stroke(current_path);
-
-            //update old position
-            previous_x = x;
-            previous_y = y;
-        }
-    };
-
+    /** mousedown handles cursor mouvement/video frame update and frames selection
+     * @param {*} event expected onMouseDown event with access to clientX/Y
+    */
     const handle_timeline_mousedown = (event) => { 
         // mouvement of the cursor when user clicks or drags
         set_timeline_dragging(true); 
@@ -117,6 +54,9 @@ const Timeline = ({current_index, update_time, max_index, fps, selected_points, 
         set_selection_dragging(true);
     };
 
+    /** mousemove handles cursor mouvement/video frame update and frames selection
+     * @param {*} event expected onMouseMove event with access to clientX/Y
+    */
     const handle_timeline_mousemove = (event) => { 
         // mouvement of the cursor when user clicks or drags
         is_timeline_dragging && update_time_onclick(offset_left, offset_right, offset_y, max_index, event); 
@@ -126,6 +66,9 @@ const Timeline = ({current_index, update_time, max_index, fps, selected_points, 
             offset_left, offset_right, offset_y, max_index, selected_points, event);
     };
 
+    /** mouseup handles cursor mouvement/video frame update and frames selection
+     * @param {*} event expected onMouseUp event with access to clientX/Y
+    */
     const handle_timeline_mouseup = (event) => {
         // mouvement of the cursor when user clicks or drags
         is_timeline_dragging && update_time_onclick(offset_left, offset_right, offset_y, max_index, event);
@@ -137,6 +80,9 @@ const Timeline = ({current_index, update_time, max_index, fps, selected_points, 
         set_selection_dragging(false);
     }; 
 
+    /** mouseout handles cursor mouvement/video frame update and frames selection
+     * @param {*} event expected onMouseOut event with access to clientX/Y
+    */
     const handle_timeline_mouseout = (event) => { 
         // mouvement of the cursor when user clicks or drags
         set_timeline_dragging(false); 
@@ -147,6 +93,9 @@ const Timeline = ({current_index, update_time, max_index, fps, selected_points, 
         set_selection_dragging(false);
     };
 
+    /** keydown handles left/right mouvement of the cursor and selection of frames
+     * @param {*} event expected onKeyDown event with access to key
+     */
     const handle_timeline_keydown = (event) => {
         // handle current_index mouvement
         if (event.key == "ArrowRight") {
@@ -161,6 +110,9 @@ const Timeline = ({current_index, update_time, max_index, fps, selected_points, 
         handle_timeline_selection_left_right_keydown(event, current_index, selected_points);
     };
 
+    /** keyup handles left/right mouvement of the cursor and selection of frames
+     * @param {*} event expected onKeyUp event with access to key
+     */
     const handle_timeline_keyup = (event) => {
         handle_timeline_selection_keychange(event);
     };
@@ -224,9 +176,8 @@ const Timeline = ({current_index, update_time, max_index, fps, selected_points, 
         }
     };
 
-    /**
-     * mousedown triggered method, initializes the selection intervals to the frame corresponding to the clicking 
-     * area
+    /** mousedown triggered method, initializes the selection intervals to the frame corresponding 
+     * to the clicking area
      * @param {*} svg timeline canvas element
      * @param {*} offset_left left margin that is ignored when clicking
      * @param {*} offset_right right margin that is ignored when clicking
@@ -255,11 +206,10 @@ const Timeline = ({current_index, update_time, max_index, fps, selected_points, 
         set_interval_end(frame_index);
     };
 
-    /**
-     * mousemove triggered method, updates the selected_points array according to the selected frames on the
-     * timeline using drag + ctrl + shift interaction. 
+    /** mousemove triggered method, updates the selected_points array according 
+     * to the selected frames on the timeline using drag + ctrl + shift interaction. 
      * 
-     * drag + ctrl => add selected points to the selection
+     * drag + ctrl => add selected points to the selection,
      * drag + ctrl + shift => remove selected points from the selection
      * @param {*} svg timeline canvas element
      * @param {*} offset_left left margin that is ignored when clicking
@@ -306,8 +256,7 @@ const Timeline = ({current_index, update_time, max_index, fps, selected_points, 
         set_selected_points(new_selected_points);
     };
 
-    /**
-     * 
+    /** update current frame (and current timer on video) based on the mouse click position
      * @param {*} offset_left expected positive integer
      * @param {*} offset_right expected positive integer
      * @param {*} offset_y offset_top + offset_bot, expected positive integer
@@ -330,6 +279,83 @@ const Timeline = ({current_index, update_time, max_index, fps, selected_points, 
             * (max_index - 1));
         update_time(new_index);
         render_timeline(selected_points, current_index);
+    };
+
+    /** render video timeline with timestamps and axes
+     * 
+     * selected points are represented with blue background,
+     * current frame is marked with a cursor, 
+     * scores are rendered as a curve if they have been computed
+     * @param {*} selected_points expected array of integers, IDs of selected points
+     * @param {*} current_index expected integer, ID of the currently displayed video frame
+     */
+    const render_timeline = (selected_points, current_index) => {
+        let ctx = timeline_ref.current.getContext("2d", { alpha: true });
+
+        let plot_width = timeline_ref.current.offsetWidth;
+        let plot_height = timeline_ref.current.offsetWidth;
+    
+        ctx.clearRect(0, 0, plot_width, plot_height);  
+    
+        //plot selected points highlight
+        if (selected_points != null) {
+            for (let i = 0; i < selected_points.length - 1; ++i)  {
+                let x1 = selected_points[i] / (max_index - 1) * plot_width;
+                ctx.beginPath();
+                ctx.moveTo(x1, 0);
+                ctx.rect(x1, 0, 1 / max_index - plot_width, plot_height);
+                ctx.strokeStyle = SELECTION_COLOR + "0.1)";
+                ctx.stroke();
+            }
+        }
+
+        render_score_curve(timeline_ref.current);
+        plot_timestamps(max_index, fps, timeline_ref.current);
+        plot_marker_triangle(current_index, max_index, timeline_ref.current, offset_left, offset_right, offset_y, "black");
+        plot_current_timer(current_index, max_index, fps, timeline_ref.current, offset_left, offset_right);
+        plot_marker(current_index, max_index, offset_left, offset_right, offset_y, "black", 0.7, timeline_ref.current);
+        plot_axes(offset_left, offset_right, offset_y, timeline_ref.current);
+    };
+
+    /** render scores as a curve on the given svg
+     * @param {*} svg expected canvas element
+     */
+    const render_score_curve = (svg) => {
+        if (!scores) { return; }
+
+        const plot_width = svg.offsetWidth;
+        const plot_height = svg.offsetHeight;
+
+        //normalize scores array
+        let min_score = Math.min(...scores);
+        let max_score = Math.max(...scores);
+        let scaled_scores = scores.map(score => (score - min_score) / (max_score - min_score));
+
+        //draw the curve
+        let ctx = svg.getContext("2d", { alpha: true });
+        ctx.beginPath();
+        let previous_x = offset_left;
+        let previous_y = plot_height - scaled_scores[0] * (plot_height - 2 * offset_y);
+        let color_map = generate_selected_points_color_map(max_index, selected_points); 
+
+        //iterate through the points
+        for (let i = 1; i < scaled_scores.length; i++) {
+            let x = offset_left + (i / (scaled_scores.length - 1)) * 
+                (plot_width - offset_right - offset_left);
+            let y = plot_height - offset_y - scaled_scores[i] * 
+                (plot_height - 2 * offset_y);
+
+            // Start a new path segment with the new color
+            let current_path = new Path2D();
+            current_path.moveTo(previous_x, previous_y);
+            current_path.lineTo(x, y);
+            ctx.strokeStyle = color_map[i];
+            ctx.stroke(current_path);
+
+            //update old position
+            previous_x = x;
+            previous_y = y;
+        }
     };
 
     return (

@@ -55,8 +55,8 @@ async def compute_embeddings_dim_reduction(video_path):
     if not os.path.exists(output_path):
         os.mkdir(output_path)
 
-    if not os.path.exists(f"{output_path}/0.png"):
-        await video2images(video_path, FPS)
+    '''if not os.path.exists(f"{output_path}/0.png"):
+        await video2images(video_path, FPS)'''
 
     #Getting video embeddings 
     classifier = VisionTransformer(FPS, video_path, MODEL_NAME)
@@ -112,6 +112,9 @@ async def compute_embeddings_dim_reduction(video_path):
     sorted_clusters, _, closest_vectors = get_centroids(tsne_clusters, tsne, MAX_NB_CLUSTERS)
     for cls, _ in sorted_clusters:
         tsne_cluster_frames.append({"cluster": int(cls), "centroid": int(closest_vectors[cls])})
+        # save cluster frames for later use in the frontend
+        save_frame_from_video(video_path, output_path+f"/{int(closest_vectors[cls])}.png",\
+            int(closest_vectors[cls]), FPS)
     
     sorted_clusters, _, closest_vectors = get_centroids(pca_clusters, pca, MAX_NB_CLUSTERS)
     for cls, _ in sorted_clusters:
@@ -134,8 +137,8 @@ async def compute_cosine_similarity(video_path, query_text):
     if not os.path.exists(output_path):
         os.mkdir(output_path)
 
-    if not os.path.exists(f"{output_path}/0.png"):
-        await video2images(video_path, FPS)
+    '''if not os.path.exists(f"{output_path}/0.png"):
+        await video2images(video_path, FPS)'''
 
     classifier = VisionTransformer(FPS, video_path, MODEL_NAME)
 
@@ -242,8 +245,8 @@ async def select_video(name_data: dict):
         if not os.path.exists(output_path):
             os.mkdir(output_path)
 
-        if not os.path.exists(f"{output_path}/0.png"):
-            await video2images(current_video_path, FPS)
+        '''if not os.path.exists(f"{output_path}/0.png"):
+            await video2images(current_video_path, FPS)'''
 
         frameCount = int(vid.get(cv2.CAP_PROP_FRAME_COUNT))
         originalFps = int(vid.get(cv2.CAP_PROP_FPS))

@@ -1,39 +1,35 @@
-/**
- * utility function to draw a dot in a canvas
+/** render a dot in a canvas
  * @param {*} ctx canvas context
  * @param {*} point coordinates (dot center)
- * @param {*} radius dot radius
- */
+ * @param {*} radius dot radius */
 export const fill_circle = (ctx, point, radius) => {
     ctx.beginPath();
     ctx.ellipse(point.x, point.y, radius, radius, 0, 0, 2 * Math.PI);
     ctx.fill();
 };
 
-/**
+/** draw a rentagle (full), its contour and the points of the corners
  * @param {*} ctx 2D context where the rectangle is drawn
  * @param {*} p1 top left corner
- * @param {*} p2 bottom right corner
- */
-export const draw_rectangle = (ctx, p1, p2) => {
+ * @param {*} p2 bottom right corner */
+export const draw_rectangle = (ctx, p1, p2, contour_color, rectangle_color) => {
     // Draw the points for the corners of the square
-    ctx.fillStyle = "rgba(100, 200, 255, 1)";
+    ctx.fillStyle = contour_color;
     fill_circle(ctx, p1, 5);
     fill_circle(ctx, p2, 5);
     fill_circle(ctx, { x: p1.x, y: p2.y }, 5);
     fill_circle(ctx, { x: p2.x, y: p1.y }, 5);
 
     // Draw the selection rectangle
-    ctx.fillStyle = "rgba(100, 200, 255, 0)";
+    ctx.fillStyle = rectangle_color;
     ctx.fillRect(p1.x, p1.y, p2.x - p1.x, p2.y - p1.y);
 
-    ctx.strokeStyle = "rgba(100, 200, 255, 1)";
+    ctx.strokeStyle = contour_color;
     ctx.rect(p1.x, p1.y, p2.x - p1.x, p2.y - p1.y);
     ctx.stroke();
 };
 
-/**
- * utility function to draw a vertical line in a 2d plot inside a canvas
+/** utility function to draw a vertical line in a 2d plot inside a canvas
  * @param {*} current_index logical x coordinate of the marker, corresponds to the current frame number (video frame) in this usecase
  * @param {*} max maximum value in the x axis, corresponds to the number of frame in the video in this usecase
  * @param {*} offset_left left offset to the beginning of the plot in the canvas (px unit)
@@ -41,8 +37,7 @@ export const draw_rectangle = (ctx, p1, p2) => {
  * @param {*} offset_y top and bottom offsets to the plot in the canvas (px unit)
  * @param {*} color color of the line marker
  * @param {*} line_width line width of the line marker
- * @param {*} svg canvas where the line is drawn
- */
+ * @param {*} svg canvas where the line is drawn */
 export const plot_marker = (current_index, max, offset_left, offset_right, offset_y, color, line_width, svg) => {
     let plot_width = svg.width;
     let plot_height = svg.height;
@@ -57,16 +52,14 @@ export const plot_marker = (current_index, max, offset_left, offset_right, offse
     ctx.stroke();
 };
 
-/**
- * plots the current time (window.current_index / window.fps) either on the left or the right
+/** plots the current time (window.current_index / window.fps) either on the left or the right
  * of the marker (assuming this one is drawn). assumes also a 2D curve plot
  * @param {*} current_index selected video frame index (positive integer)
  * @param {*} max_index number of frames in the video (positive integer)
  * @param {*} fps video fps rate, assumed to be a non-zero positive integer
  * @param {*} svg canvas element where the time is to be drawn
  * @param {*} offset_left space to be left on the left of the X axis
- * @param {*} offset_right space to be right on the left of the X axis
- */
+ * @param {*} offset_right space to be right on the left of the X axis */
 export const plot_current_timer = (current_index, max_index, fps, svg, offset_left, offset_right) => {
     let plot_width = svg.width;
     let plot_height = svg.height;
@@ -87,15 +80,13 @@ export const plot_current_timer = (current_index, max_index, fps, svg, offset_le
     );
 };
 
-/**
- * drawing of the small triangle above the timestamp line marker
+/** drawing of the small triangle above the timestamp line marker
  * @param {*} current_index selected video frame index (positive integer)
  * @param {*} max_index number of frames in the video (positive integer)
  * @param {*} svg canvas element where the time is to be drawn
  * @param {*} offset_left space to be left on the left of the X axis
  * @param {*} offset_right space to be right on the left of the X axis
- * @param {*} offset_y both top and bottom margin
- */
+ * @param {*} offset_y both top and bottom margin */
 export const plot_marker_triangle = (current_index, max_index, svg, offset_left, offset_right, offset_y, fill_color) => {
     let ctx = svg.getContext("2d", { alpha: true });
 
@@ -125,14 +116,12 @@ export const plot_marker_triangle = (current_index, max_index, svg, offset_left,
     ctx.fill();
 };
 
-/**
- * draws thin verticals lines representing timestamps
+/** draws thin verticals lines representing timestamps
  * the length of the interval between each line is computed dynamically
  * so that a total of no more than 10 lines are drawn in the canvas
  * @param {*} max_index the total number of frames in the video (expected to be a non zero positive integer)
  * @param {*} fps video fps rate (expected to be a non zero positive integer)
- * @param {*} svg the canvas where the lines are drawn, expected to be a 2D curve 
- */
+ * @param {*} svg the canvas where the lines are drawn, expected to be a 2D curve */
 export const plot_timestamps = (max_index, fps, svg) => {
     let plot_width = svg.width;
     let plot_height = svg.height;
@@ -169,13 +158,11 @@ export const plot_timestamps = (max_index, fps, svg) => {
     }
 };
 
-/**
- * utility function to draw the x/y axes of a 2D plot in a canvas
+/** utility function to draw the x/y axes of a 2D plot in a canvas
  * @param {*} offset_left left offset to the beginning of the plot in the canvas (px unit)
  * @param {*} offset_right right offset to the end of the plot in the canvas (px unit)
  * @param {*} offset_y top and bottom offsets to the plot in the canvas (px unit)
- * @param {*} svg canvas where the axes are drawn
- */
+ * @param {*} svg canvas where the axes are drawn */
 export const plot_axes = (offset_left, offset_right, offset_y, svg) => {
     let lenX = svg.width;
     let lenY = svg.height;
@@ -217,16 +204,14 @@ export const plot_axes = (offset_left, offset_right, offset_y, svg) => {
     ctx.stroke();
 };
 
-/**
- * Render a horizontal separator on a canvas (svg)'s full width
+/** Render a horizontal separator on a canvas (svg)'s full width
  * the separator is located at threshold percent of the height of the canvas
  * @param {*} threshold level in terms of height for drawing the selector, expected float between 0 and 1
  * @param {*} offset_left offset for left, expected positive integer
  * @param {*} offset_right offset for right, expected positive integer
  * @param {*} offset_y offset for top and bot, expected positive integer that falls 
  * in the range of the canvas' height
- * @param {*} svg expected html canvas element
- */
+ * @param {*} svg expected html canvas element */
 export const draw_selector = (threshold, offset_left, offset_right, offset_y, svg) => {
     let plot_width = svg.width;
     let plot_height = svg.height;
@@ -263,7 +248,7 @@ export const draw_selector = (threshold, offset_left, offset_right, offset_y, sv
     ctx.closePath();
 };
 
-// Function to get the border-radius dynamically
+/** get the border-radius dynamically from an html element */
 export const get_border_radius = (element) => {
     const style = window.getComputedStyle(element);
     const border_radius = style.borderTopLeftRadius; // Get the top-left radius (they're usually the same)

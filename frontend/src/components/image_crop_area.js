@@ -3,11 +3,10 @@ import { DEACTIVATED_COLOR } from "../utilities/constants";
 import { draw_rectangle } from "../utilities/rendering_methods";
 import { handle_selection_area_mousedown, handle_selection_area_mousemove } from "../utilities/misc_methods";
 
-import React, { useEffect, useRef, useState } from 'react';
+import React, { useEffect } from 'react';
 
-/**
- * @todo code the crop function for searching
- */
+/** This component handles a canvas that is used as an overlay to the video when cropping a part of it
+ * for searching.*/
 const Image_crop_area = ({crop_area_ref, selection_top_left, selection_bot_right, 
     set_selection_top_left, set_selection_bot_right, apply_effect, video_top_left,
     video_bot_right}) => {
@@ -16,16 +15,22 @@ const Image_crop_area = ({crop_area_ref, selection_top_left, selection_bot_right
         render_crop_area();
     }, [selection_top_left, selection_bot_right]);
 
+    /** mousedown handles the start of the selection area 
+     * @param {*} event expected mousedown event with access to clientX/Y */
     const handle_crop_area_mousedown = (event) => {
         handle_selection_area_mousedown(crop_area_ref.current, video_top_left,
             video_bot_right, set_selection_top_left, set_selection_bot_right, event);
     };
 
+    /** mousemove handles the updates on the selection area based on the mouse position 
+     * @param {*} event expected mousemove event with access to clientX/Y */
     const handle_crop_area_mousemove = (event) => {
         handle_selection_area_mousemove(crop_area_ref.current, video_top_left,
             video_bot_right, selection_top_left, set_selection_bot_right, event);
     };
 
+    /** mouseup handles the end of the selection area and triggers the apply_effect (search)
+     * @param {*} event expected mouseup event with access to clientX/Y */
     const handle_crop_area_mouseup = (event) => {
         handle_selection_area_mousemove(crop_area_ref.current, video_top_left,
             video_bot_right, selection_top_left, set_selection_bot_right, event);
@@ -36,6 +41,8 @@ const Image_crop_area = ({crop_area_ref, selection_top_left, selection_bot_right
         }
     };
 
+    /** renders the crop area to fit the whole screen (black) aside from the selected area. 
+     * Fitting the whole screens tacitly blocks access to other components (highest z-index)*/
     const render_crop_area = () => {
         const plot_width = crop_area_ref.current.width;
         const plot_height = crop_area_ref.current.height;
@@ -55,7 +62,7 @@ const Image_crop_area = ({crop_area_ref, selection_top_left, selection_bot_right
         ctx.fillRect(min_point.x, max_point.y, max_point.x - min_point.x, plot_height - max_point.y);
 
         if (min_point.x !== max_point.x && min_point.y !== max_point.y) {
-            draw_rectangle(ctx, min_point, max_point);
+            draw_rectangle(ctx, min_point, max_point, "rgba(100, 200, 255, 1)", "rgba(0, 0, 0, 0)");
         }
     };
 

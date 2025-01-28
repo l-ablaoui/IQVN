@@ -2,7 +2,7 @@ import '../App.css';
 import { BACKEND_SERVER_URL } from "../utilities/constants";
 import { fetch_server_videos_list, post_video_name } from "../utilities/api_methods";
 
-import { useRef, useState, useEffect } from "react";
+import { useState, useEffect } from "react";
 
 /**
  * Video component contains a <video> element that plays a video from the server and 
@@ -24,15 +24,16 @@ const Video_player = ({video_ref, video_src, set_video_src, set_current_index, s
             }
         };
         load_video_list();
-    }, [video_src]);
+    }, []);
 
-    //on option change in the <select> element
+    /** on option change in the <select> element, updates video_src*/
     const handle_video_selector_change = (event) => {
         const current_video_name = event.target.value;
         set_video_src(`${BACKEND_SERVER_URL}video/${current_video_name}`);
         post_video_name(current_video_name);
     };
 
+    /** keydown handles video speed change */
     const handle_video_keydown = (event) => {
         if (!video_ref.current) return;
 
@@ -55,13 +56,13 @@ const Video_player = ({video_ref, video_src, set_video_src, set_current_index, s
         }
     };
 
-    //on metadata load, set the max index for timeline and semantic plot to the number of frames
+    /** on metadata load, set the max index for timeline and semantic plot to the number of frames */
     const handle_video_loaded_metadata = () => {
         const total_duration = video_ref.current.duration;
         set_max_index(Math.trunc(total_duration * fps));
     };
 
-    //on time update (reading the video or navigating with the timeline)
+    /** on time update (reading the video or navigating with the timeline) */
     const handle_video_time_update = (event) => {
         set_current_index(Math.trunc(video_ref.current.currentTime * fps))
     };

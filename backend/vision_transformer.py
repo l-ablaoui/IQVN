@@ -51,20 +51,20 @@ class VisionTransformer:
     
     def get_video_features(self):
         vid = self.load_video()
-        frameCount = int(vid.get(cv2.CAP_PROP_FRAME_COUNT))
-        originalFps = int(vid.get(cv2.CAP_PROP_FPS))
+        frame_count = int(vid.get(cv2.CAP_PROP_FRAME_COUNT))
+        original_fps = int(vid.get(cv2.CAP_PROP_FPS))
 
-        skipAhead = 0
-        print(type(self.fps), type(originalFps))
-        if originalFps > self.fps:
-            skipAhead =  int(originalFps / self.fps) 
-            frameCount = int(frameCount * self.fps / originalFps)
+        skip_ahead = 0
+        print(type(self.fps), type(original_fps))
+        if original_fps > self.fps:
+            skip_ahead =  int(original_fps / self.fps) 
+            frame_count = int(frame_count * self.fps / original_fps)
 
         embeddings = []
         frames = []
-        with tqdm(total=frameCount, desc="computing video embeddings: ") as pbar:
+        with tqdm(total=frame_count, desc="computing video embeddings: ") as pbar:
             while vid.isOpened:
-                for _ in range(skipAhead - 1):
+                for _ in range(skip_ahead - 1):
                     okay, frame = vid.read()
                     if not okay:
                         break
@@ -89,9 +89,9 @@ class VisionTransformer:
         vid.release()
         return np.vstack(embeddings)
     
-    def load_video_features(self, output_path, frameCount):
+    def load_video_features(self, output_path, frame_count):
         embeddings = []
-        for i in range(frameCount):
+        for i in range(frame_count):
             embeddings.append(np.load(output_path+f"/embedding_{i}.npy"))
         self.video_embeddings =  np.vstack(embeddings)
 

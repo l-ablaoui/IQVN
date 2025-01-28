@@ -51,6 +51,17 @@ async def video2images(video_path, FPS):
 
     vid.release()
  
+def save_frame_from_video(video_path, output_path, frame_number, fps):
+    vid = cv2.VideoCapture(video_path)
+    orinigal_fps = int(vid.get(cv2.CAP_PROP_FPS))
+    frame_number = int(frame_number * orinigal_fps / fps)
+    vid.set(cv2.CAP_PROP_POS_FRAMES, frame_number)
+    okay, frame = vid.read()
+    if not okay:
+        raise Exception("Error loading video")
+    cv2.imwrite(output_path, frame)
+    vid.release()
+
 def find_mp4_files(relative_path):
     # Get the absolute path of the directory
     abs_path = os.path.abspath(relative_path)

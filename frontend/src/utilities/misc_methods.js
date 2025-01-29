@@ -259,3 +259,29 @@ export const get_video_inline_offset = (video) => {
 
     return { x_offset, y_offset };
 };
+
+/** parse selected frames into time intervals
+ * @param {*} selected_frames expected array of integers representing selected frames
+ * @param {*} max_index expected integer, maximum frame index
+ * @param {*} fps expected integer, frames per second
+ * @returns expected string representing time intervals */
+export const parse_selected_frames = (selected_frames, max_index, fps) => {
+    //represent the selected frames in a boolean manner
+    let bool_timeline_frames = new Array(max_index).fill(0);
+    selected_frames.forEach((element) => {
+        bool_timeline_frames[element] = 1;
+    });
+
+    //subsample frames to get seconds
+    const bool_timestamps = bool_timeline_frames.filter((_, index) => index % fps === 0);
+
+    //parse time intervals into string
+    const intervals = bool_timestamps.reduce((acc, cur, i, arr) => {
+        if (cur && (i === 0 || !arr[i - 1])) acc.push([i]);  // Start of a new interval
+        if (!cur && arr[i - 1]) acc[acc.length - 1].push(i); // End of an interval
+        if (cur && i === arr.length - 1) acc[acc.length - 1].push(i + 1); // End interval if last element is 1
+        return acc;
+    }, []).map(([start, end]) => `${format_time(start)}-${format_time(end - 1)}`).join("; ");
+
+    return intervals;
+};

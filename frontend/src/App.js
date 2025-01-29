@@ -1,5 +1,6 @@
 import './App.css';
 //import { App_provider } from './App_context';
+import Video_config_bar from './components/video_config_bar';
 import Video_player from './components/video_player';
 import Timeline from './components/timeline';
 import Semantic_plot from './components/semantic_plot'
@@ -32,6 +33,16 @@ function App() {
        // <App_provider>
             <div className="App container-fluid row">
                 <div className="col-7">
+                    <Video_config_bar 
+                        className="row" 
+                        set_video_src={set_video_src}
+                        set_current_index={set_current_index}
+                        set_scores={set_scores}
+                        max_index={max_index}
+                        fps={fps}
+                        selected_points={selected_points}
+                        set_selected_points={set_selected_points}
+                    />
                     <Video_player 
                         className="row" 
                         video_ref={video_ref}

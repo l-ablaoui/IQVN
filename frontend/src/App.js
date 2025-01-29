@@ -39,6 +39,7 @@ function App() {
                         set_video_src={set_video_src}
                         set_current_index={set_current_index}
                         set_max_index={set_max_index}
+                        set_scores={set_scores}
                         fps={fps}
                     />
                     <Timeline 

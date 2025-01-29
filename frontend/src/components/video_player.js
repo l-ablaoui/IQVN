@@ -4,13 +4,10 @@ import { fetch_server_videos_list, post_video_name } from "../utilities/api_meth
 
 import { useState, useEffect } from "react";
 
-/**
- * Video component contains a <video> element that plays a video from the server and 
+/** Video component contains a <video> element that plays a video from the server and 
  * a <select> element that allows the user to select a video from those available in 
- * the server.
- * @returns 
- */
-const Video_player = ({video_ref, video_src, set_video_src, set_current_index, set_max_index, fps}) => {
+ * the server. */
+const Video_player = ({video_ref, video_src, set_video_src, set_current_index, set_max_index, fps, set_scores}) => {
     const [video_names, set_video_names] = useState([]);
 
     useEffect(() => {
@@ -29,6 +26,9 @@ const Video_player = ({video_ref, video_src, set_video_src, set_current_index, s
     /** on option change in the <select> element, updates video_src*/
     const handle_video_selector_change = (event) => {
         const current_video_name = event.target.value;
+        if (!current_video_name) return;
+        set_current_index(0);
+        set_scores([]);
         set_video_src(`${BACKEND_SERVER_URL}video/${current_video_name}`);
         post_video_name(current_video_name);
     };

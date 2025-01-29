@@ -6,5 +6,6 @@ backend/videos/*.png
 backend/videos/**/*.npy
 backend/videos/*.csv
 backend/__pycache__/*
+backend/config.json
 __pycache__/*
 .DS_Store

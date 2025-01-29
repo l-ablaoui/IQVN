@@ -207,6 +207,40 @@ async def search(query: str):
         "scores": similarity_scores
     }
 
+@app.post("/crop_search/")
+async def crop_search(crop_data: dict):
+    global current_video_path
+
+    print(crop_data)
+    current_index = crop_data.get("current_index", 0)
+    crop_box = crop_data.get("crop_box", (0, 0, 0, 0))
+
+    vid = cv2.VideoCapture(current_video_path)
+    original_fps = int(vid.get(cv2.CAP_PROP_FPS))
+    vid.set(cv2.CAP_PROP_POS_FRAMES, current_index * original_fps / FPS)
+    okay, frame = vid.read()
+    if (not okay):
+        return { 
+            "query": "ERROR",
+            "scores": []
+        }
+    
+    x, y, w, h = crop_box
+    crop_img = frame[y:y+h, x:x+w]
+    if not os.path.exists("images/"):
+        os.mkdir("images")
+
+    async with aiofiles.open(OUTPUT_CROP_IMAGE, mode='wb') as file:
+        await file.write(cv2.imencode('.png', crop_img)[1].tobytes())
+
+    similarity_scores = await compute_cosine_similarity(current_video_path, IMAGE_CROP_QUERY)
+    
+    return {
+        "query": IMAGE_CROP_QUERY, 
+        "scores": similarity_scores
+    }
+
+    
 @app.get("/image/{prediction_path}/{filename}")
 async def get_image(prediction_path: str, filename: str):
     if prediction_path == "images":

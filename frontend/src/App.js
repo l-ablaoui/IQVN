@@ -56,6 +56,7 @@ function App() {
                     <Search_field 
                         className="row"
                         set_scores={set_scores}
+                        current_index={current_index}
                         video_ref={video_ref}
                     />
                     <Semantic_plot 

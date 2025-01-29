@@ -1,38 +1,12 @@
 import '../App.css';
-import { BACKEND_SERVER_URL } from "../utilities/constants";
-import { fetch_server_videos_list, post_video_name } from "../utilities/api_methods";
 
-import { useState, useEffect } from "react";
+import React from "react";
 
 /** Video component contains a <video> element that plays a video from the server and 
  * a <select> element that allows the user to select a video from those available in 
  * the server. */
-const Video_player = ({video_ref, video_src, set_video_src, set_current_index, set_max_index, fps, set_scores}) => {
-    const [video_names, set_video_names] = useState([]);
-
-    useEffect(() => {
-        const load_video_list = async () => {
-            const fetched_video_names = await fetch_server_videos_list();
-
-            if (fetched_video_names?.length > 0) {   
-                set_video_names(fetched_video_names);
-                set_video_src(`${BACKEND_SERVER_URL}video/${fetched_video_names[0]}`);
-                await post_video_name(fetched_video_names[0]);
-            }
-        };
-        load_video_list();
-    }, []);
-
-    /** on option change in the <select> element, updates video_src*/
-    const handle_video_selector_change = (event) => {
-        const current_video_name = event.target.value;
-        if (!current_video_name) return;
-        set_current_index(0);
-        set_scores([]);
-        set_video_src(`${BACKEND_SERVER_URL}video/${current_video_name}`);
-        post_video_name(current_video_name);
-    };
-
+const Video_player = ({video_ref, video_src, set_current_index, set_max_index, fps}) => {
+    
     /** keydown handles video speed change */
     const handle_video_keydown = (event) => {
         if (!video_ref.current) return;
@@ -69,21 +43,6 @@ const Video_player = ({video_ref, video_src, set_video_src, set_current_index, s
 
     return (
         <div className="row justify-content-center">
-            <div className="row video_selector">
-                <div className="col-2"><label>select video: </label></div>
-                <div className="col-10">
-                    <select 
-                        name="video_names"
-                        className="form-select"
-                        onChange={handle_video_selector_change}>
-                        {video_names.map((video_name) => (
-                            <option key={video_name} value={video_name}>
-                                {video_name.substring(0, video_name.lastIndexOf("."))}
-                            </option>
-                        ))}
-                    </select>
-                </div>
-            </div>
             <video 
                 className="row video_player" 
                 ref={video_ref}

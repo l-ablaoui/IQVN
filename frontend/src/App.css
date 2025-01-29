@@ -22,11 +22,12 @@
 }
 
 .search_field .video_selector {
-    height: 5vh;
     width: 100%;
+    height: 5vh;
 }
 
 .semantic_plot {
+    width: 100%;
     height: 80vh;
 }
 

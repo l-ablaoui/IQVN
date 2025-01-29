@@ -1,6 +1,12 @@
-# Image Loader
+# Incremental Querying for Video Navigation
 
-This project demonstrates a basic implementation of a backend using FastAPI and a frontend using HTML and JavaScript to load an image from the backend upon clicking a button.
+This repository demonstrates an implementation of a video content retrieval system that combines several video interaction methods:
+
+- classic interactions (timeline navigation, textual search)
+- image based interactions (image search, image crop search)
+- semantic representations (2D scatterplot of vide embeddings)
+
+The implementation is divided into a python-coded fastAPI backend server that performs video analysis (leveraging a VLM for search and semantic representation), and an html/javascript-coded frontend that presents the different video interactions
 
 ## Backend (FastAPI)
 
@@ -40,6 +46,5 @@ This command will start the server at `http://localhost:8000`.
     python -m http.server 8888
 
 ## Note
-- Make sure the backend server is running before attempting to load the image from the frontend.
-- Ensure that there is a directory named `images` in the `backend` directory, and place the image you want to load inside this directory.
+- Make sure the backend server is running before attempting to use the frontend interactions.
 

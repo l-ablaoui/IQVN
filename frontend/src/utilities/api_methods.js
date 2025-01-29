@@ -1,10 +1,8 @@
 import { BACKEND_SERVER_URL } from "./constants";
 
-/**
- * gets a list of video paths available in the server
+/** gets a list of video paths available in the server
  * @returns list of strings representing relative paths to videos
- * in the server
- */
+ * in the server */
 export const fetch_server_videos_list = async () => {
     try {
         const response = await fetch(`${BACKEND_SERVER_URL}video/`);
@@ -17,17 +15,15 @@ export const fetch_server_videos_list = async () => {
     }
 };
 
-/**
- * checks if the relative server path of video_name is a correct 
+/** checks if the relative server path of video_name is a correct 
  * path to an actual video and returns the server relative path 
  * to the video if it exists
  * @param {*} video_name expected string representing the name of
  * the video (what comes after http://server_path:server_port/video/)
- * @returns server path to the video with video_name (string)
- */
+ * @returns server path to the video with video_name (string) */
 export const fetch_video = async (video_name) => {
     try {
-        const response = await fetch(`${BACKEND_SERVER_URL}video/${video_name}`);   
+        await fetch(`${BACKEND_SERVER_URL}video/${video_name}`);   
         return `${BACKEND_SERVER_URL}video/${video_name}`;
     }
     catch (error) {
@@ -35,6 +31,9 @@ export const fetch_video = async (video_name) => {
     }
 };
 
+/** calls text similarity score endpoint in the server 
+ * @param {*} query_input expected string representing the textual query input
+ * @returns expected array of floats between 0 and 1 representing similarity scores */
 export const fetch_query_scores = async (query_input) => {
     try {
         const response = await fetch(`${BACKEND_SERVER_URL}search?query=${query_input}`);
@@ -47,6 +46,9 @@ export const fetch_query_scores = async (query_input) => {
     }
 };
 
+/** calls image similarity score endpoint in the server
+ * @param {*} image_input expected image file input
+ * @returns expected array of floats between 0 and 1 representing similarity scores */
 export const fetch_image_scores = async (image_input) => {
     try {
         const data_URL = await get_data_URL(image_input); 
@@ -62,6 +64,33 @@ export const fetch_image_scores = async (image_input) => {
     }
 };
 
+/** calls crop similarity score endpoint in the server
+ * @param {*} current_index expected integer, currently displayed video frame
+ * @param {*} crop_box expected array of four integers (x, y, w, h)
+ * @returns expected array of floats between 0 and 1 representing similarity scores */
+export const fetch_crop_scores = async (current_index, crop_box) => {
+    try {
+        const response = await fetch(`${BACKEND_SERVER_URL}crop_search/`, 
+            {method: "POST", body: JSON.stringify({ current_index: current_index, crop_box: crop_box }), 
+            headers: {"Content-Type": "application/json"}});
+        const body = await response.json();
+        if (body["query"] == "ERROR") {
+            console.error("Error retrieving crop scores for frame ", current_index, " : ", body["error"]);
+        }
+        const scores = body["scores"].map(function(value, _) { return value[1]; });
+        return scores;
+    }
+    catch (error) {
+        console.error("Error retrieving crop scores for frame ", current_index, " : ", error);
+    }
+};
+
+/** calls dimension reduction endpoint in the server
+ * @param {*} video_name expected string representing an mp4 video name
+ * @returns expected dictionnary with three fields:
+ * - tsne_reduction: array of 2D float points representing the reduced embeddings
+ * - tsne_clusters: array of integers representing the DBSCAN cluster assignment of each point
+ * - tsne_cluster_frames: array of tuples containing the frame number and the URL of the cluster centroids */
 export const fetch_video_semantic_representation = async (video_name) => {
     try {
         const name_decomposed = video_name.split("/");
@@ -98,6 +127,9 @@ export const fetch_video_semantic_representation = async (video_name) => {
     }
 };
 
+/** updates the server with the name of the selected video
+ * @todo only supports mp4 video format, add support for other formats
+ * @param {*} video_name expected string representing an mp4 video name */
 export const post_video_name = async (video_name) => {
     try {
         //update video name in server

@@ -227,12 +227,6 @@ const Semantic_plot = ({video_ref, video_src, scores, current_index, update_time
         let plot_width = semantic_plot_ref.current.offsetWidth;
         let plot_height = semantic_plot_ref.current.offsetHeight;
 
-        //if touching the offsets, ignore
-        if (mouse_x < semantic_plot_offset_x - EMPHASIS_RADIUS 
-            || mouse_x > plot_width - semantic_plot_offset_x + EMPHASIS_RADIUS) { 
-            return; 
-        }
-
         //get min/max to later normalize reduction values
         let [min_x, max_x, min_y, max_y] = get_bounding_box(points);
         
@@ -241,17 +235,17 @@ const Semantic_plot = ({video_ref, video_src, scores, current_index, update_time
             { width: plot_width, height: plot_height}, current_index);
 
         let dot_radius = EMPHASIS_RADIUS;
-        let dist = (mouse_x - x) * (mouse_x - x) + (mouse_y - y) * (mouse_y - y);
+        let dist = length2({x: mouse_x, y: mouse_y}, {x: x, y: y});
         if (dist <= dot_radius * dot_radius) {
             return;
         }
 
+        dot_radius = REGULAR_RADIUS;
         for (let i = 0;i < points.length;++i) {
             //get each point's coordinates after current zoom/pan
             let {x, y} = get_semantic_plot_coordinates({ x: min_x, y: min_y }, { x: max_x, y: max_y }, 
                 { width: plot_width, height: plot_height}, i);
 
-            dot_radius = REGULAR_RADIUS;
             let dist = length2({x: mouse_x, y: mouse_y}, {x: x, y: y});
 
             //if the user clicked inside the dot, update the frameIndex
@@ -494,7 +488,10 @@ const Semantic_plot = ({video_ref, video_src, scores, current_index, update_time
      * @param {*} centroids 2D points (expected floats) 
      * @returns input 2D points list sorted for least label overlap */
     const sort_cluster_frames = (centroids) => {
+        // sort centroids by the principal axis
         centroids.sort((c1, c2) => (frames_horizontal)? c1["x"] - c2["x"] : c1["y"] - c2["y"]);
+
+        // divide the centroids in two halves and sort each half by the secondary axis
         const middle = Math.trunc(centroids.length / 2);
         let first_half = centroids.slice(0, middle).sort((c1, c2) => 
             (frames_horizontal)? c1["y"] - c2["y"] : c1["x"] - c2["x"]
@@ -503,6 +500,7 @@ const Semantic_plot = ({video_ref, video_src, scores, current_index, update_time
             (frames_horizontal)? c1["y"] - c2["y"] : c1["x"] - c2["x"]
         );
 
+        // merge the two halves back together
         for (let i = 0;i < centroids.length;++i) {
             if (i < middle) {
                 centroids[i] = first_half[i];
@@ -511,7 +509,6 @@ const Semantic_plot = ({video_ref, video_src, scores, current_index, update_time
                 centroids[i] = second_half[i - middle];
             }
         }
-        
         return centroids;
     };
 
@@ -522,12 +519,12 @@ const Semantic_plot = ({video_ref, video_src, scores, current_index, update_time
      * @param {*} i expected integer, index of the point to be transformed
      * @returns expected 2D point with x and y float properties, transformed */
     const get_semantic_plot_coordinates = (min_point, max_point, plot_dim, i) => {
-        let x = (semantic_plot_offset_x + (points[i]['x'] - min_point.x) / 
-            (max_point.x - min_point.x) * (plot_dim.width - 2 * semantic_plot_offset_x));
+        let x = semantic_plot_offset_x + (points[i]['x'] - min_point.x) / 
+            (max_point.x - min_point.x) * (plot_dim.width - 2 * semantic_plot_offset_x);
         x = semantic_plot_translate.x + semantic_plot_scale * x;
     
-        let y = (plot_dim.height - semantic_plot_offset_y - (points[i]['y'] - min_point.y) / 
-            (max_point.y - min_point.y) * (plot_dim.height - 2 * semantic_plot_offset_y));
+        let y = plot_dim.height - semantic_plot_offset_y - (points[i]['y'] - min_point.y) / 
+            (max_point.y - min_point.y) * (plot_dim.height - 2 * semantic_plot_offset_y);
         y = semantic_plot_translate.y + semantic_plot_scale * y; 
             
         return { x, y };

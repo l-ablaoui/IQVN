@@ -1,5 +1,3 @@
-import '../App.css';
-
 import React from "react";
 
 /** Video component contains a <video> element that plays a video from the server and 
@@ -44,7 +42,7 @@ const Video_player = ({video_ref, video_src, set_current_index, set_max_index, f
     return (
         <div className="row justify-content-center">
             <video 
-                className="row video_player" 
+                className="row d-block mx-auto w-100 vh-75 object-fit-contain" 
                 ref={video_ref}
                 key={video_src}
                 tabIndex="0" // Allow video to receive keyboard

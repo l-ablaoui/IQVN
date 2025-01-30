@@ -62,7 +62,7 @@ const Video_config_bar = ({set_video_src, set_current_index, set_scores,
     
     return (
         <div className="row justify-content-center">
-            <div className="row video_selector">
+            <div className="row w-100 vh-5">
                 <div className="col-2"><label>select video: </label></div>
                 <div className="col-6">
                     <select 

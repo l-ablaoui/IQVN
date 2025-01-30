@@ -1,4 +1,3 @@
-import "../App.css";
 import Image_crop_area from "./image_crop_area"
 import { 
     fetch_query_scores, 
@@ -66,7 +65,7 @@ const Search_field = ({video_ref, current_index, set_scores}) => {
         let crop_area = crop_area_ref.current;
         crop_area.width = window.innerWidth;
         crop_area.height = window.innerHeight;
-        crop_area.className = "d-block image_crop_area";
+        crop_area.className = "d-block position-absolute top-0 start-0";
         crop_area.zIndex = 1000;
 
         // overriding the top_left bot_right corners of selection once to trigger the rendering
@@ -115,7 +114,7 @@ const Search_field = ({video_ref, current_index, set_scores}) => {
     };
 
     return (
-        <div className="row search_field">
+        <div className="row w-100 vh-5">
             <div className="col-8">
                 <input 
                     type={"text"} 

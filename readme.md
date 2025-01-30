@@ -12,6 +12,7 @@ The implementation is divided into a python-coded fastAPI backend server that pe
 
 ### Prerequisites
 - Python 3.x
+- NodeJs (npm) X
 
 ### Installation
 1. Clone this repository to your local machine.
@@ -35,18 +36,24 @@ This command will start the server at `http://localhost:8000`.
 
 
 
-## Frontend (HTML/JS)
+## Frontend (React)
 
 ### Running the Frontend
 0. Make sure the backend server is running before attempting to use the frontend interactions
-1. Navigate to the `root` directory.
-2. Run the simple python server:
+1. Navigate to the `frontend` directory.
+2. Install the necesary dependency with:
 
-.. code:
+..code:
 
-    python -m http.server 8888
+    npm install
 
-In your browser, enter the path `http://localhost:8888/frontend/` to access the frontend GUI
+3. Run with:
+
+..code:
+
+    npm start
+
+In your browser, enter the path `http://localhost:3000/` to access the frontend GUI
 
 ## Demo
 https://github.com/user-attachments/assets/0e5c17cb-556b-4534-81dd-4b6d8ca166db

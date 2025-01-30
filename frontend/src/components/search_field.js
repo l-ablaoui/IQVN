@@ -10,7 +10,7 @@ import React, { useRef, useState } from "react";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome"
 import { faImages, faCrop, faSearch } from "@fortawesome/free-solid-svg-icons";
 
-const Search_field = ({video_ref, current_index, set_scores}) => {
+const Search_field = ({video_ref, current_index, set_scores, is_dark_mode}) => {
     const text_input_ref = useRef(null);
     const image_input_ref = useRef(null);
     const image_crop_ref = useRef(null);
@@ -121,7 +121,10 @@ const Search_field = ({video_ref, current_index, set_scores}) => {
                     placeholder={"search in video"} 
                     maxLength={300}
                     ref={text_input_ref}
-                    className="form-control"
+                    className={(is_dark_mode)? 
+                        "text-light bg-transparent form-control" : 
+                        "text-dark bg-transparent form-control"
+                    }
                 />
             </div>
             <button
@@ -129,7 +132,10 @@ const Search_field = ({video_ref, current_index, set_scores}) => {
                 ref={image_input_ref}
                 className="col-1 btn"
             >
-                <FontAwesomeIcon icon={faImages} />
+                <FontAwesomeIcon 
+                    className={(is_dark_mode)? "text-light" : "text-dark"}
+                    icon={faImages} 
+                />
                 <input 
                     type="file" 
                     class="d-none" 
@@ -143,14 +149,20 @@ const Search_field = ({video_ref, current_index, set_scores}) => {
                 ref={image_crop_ref}
                 className="col-1 btn"
             >
-                <FontAwesomeIcon icon={faCrop}/>
+                <FontAwesomeIcon 
+                    className={(is_dark_mode)? "text-light" : "text-dark"}
+                    icon={faCrop}
+                />
             </button>
             <button
                 onClick={handle_search_click}
                 ref={search_button_ref}
                 className="col-2 btn"
             >
-                <FontAwesomeIcon icon={faSearch} />
+                <FontAwesomeIcon 
+                    className={(is_dark_mode)? "text-light" : "text-dark"}
+                    icon={faSearch} 
+                />
             </button>
             <Image_crop_area 
                 crop_area_ref={crop_area_ref}

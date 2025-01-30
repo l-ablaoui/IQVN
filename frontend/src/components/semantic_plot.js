@@ -33,7 +33,7 @@ import React, { useEffect, useRef, useState } from "react";
 
 /** This component represents the semantic (from a VLM standpoint) 2D representation of the video frames */
 const Semantic_plot = ({video_ref, video_src, scores, current_index, update_time, 
-    max_index, selected_points, set_selected_points}) => {
+    max_index, selected_points, set_selected_points, is_dark_mode}) => {
     const semantic_plot_ref = useRef(null);
 
     /** 2D, float, logical coordinates, vectors */
@@ -99,7 +99,7 @@ const Semantic_plot = ({video_ref, video_src, scores, current_index, update_time
             render_semantic_plot(points, current_index);
         }
     }, [current_index, points, clusters, cluster_frames, scores, semantic_plot_scale, 
-        semantic_plot_translate, selection_top_left, selection_bot_right, cmap]);
+        semantic_plot_translate, selection_top_left, selection_bot_right, cmap, is_dark_mode]);
     
     // fetch semantic representation from server effect
     useEffect(() => {
@@ -311,28 +311,28 @@ const Semantic_plot = ({video_ref, video_src, scores, current_index, update_time
     
         // rendering rectangles to hide the points when zooming 
         // render in white and then draw the color (transparency issues)
-        ctx.fillStyle = "white";
+        ctx.fillStyle = (!is_dark_mode)? "rgb(248, 249, 250)" : "rgb(33, 37, 41)";
         ctx.fillRect(
             0, 
             0, 
             (frames_horizontal)? semantic_plot_offset_x - EMPHASIS_RADIUS : plot_width, 
             (frames_horizontal)? plot_height : semantic_plot_offset_y - EMPHASIS_RADIUS
         );
-        ctx.fillStyle = "white";
+        ctx.fillStyle = (!is_dark_mode)? "rgb(248, 249, 250)" : "rgb(33, 37, 41)";
         ctx.fillRect(
             (frames_horizontal)? plot_width - semantic_plot_offset_x + EMPHASIS_RADIUS : 0, 
             (frames_horizontal)? 0 : plot_height - semantic_plot_offset_y + EMPHASIS_RADIUS, 
             (frames_horizontal)? semantic_plot_offset_x : plot_width, 
             (frames_horizontal)? plot_height : semantic_plot_offset_y - EMPHASIS_RADIUS
         );
-        ctx.fillStyle = "rgba(255, 255, 255, 0.1)";
+        ctx.fillStyle = (!is_dark_mode)? "rgba(248, 249, 250, 0.1)" : "rgba(33, 37, 41, 0.1)";
         ctx.fillRect(
             0, 
             0, 
             (frames_horizontal)? semantic_plot_offset_x - EMPHASIS_RADIUS : plot_width, 
             (frames_horizontal)? plot_height : semantic_plot_offset_y - EMPHASIS_RADIUS
         );
-        ctx.fillStyle = "rgba(255, 255, 255, 0.1)";
+        ctx.fillStyle = (!is_dark_mode)? "rgba(248, 249, 250, 0.1)" : "rgba(33, 37, 41, 0.1)";
         ctx.fillRect(
             (frames_horizontal)? plot_width - semantic_plot_offset_x + EMPHASIS_RADIUS : 0, 
             (frames_horizontal)? 0 : plot_height - semantic_plot_offset_y + EMPHASIS_RADIUS, 

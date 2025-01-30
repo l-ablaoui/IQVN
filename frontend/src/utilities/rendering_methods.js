@@ -212,7 +212,7 @@ export const plot_axes = (offset_left, offset_right, offset_y, svg) => {
  * @param {*} offset_y offset for top and bot, expected positive integer that falls 
  * in the range of the canvas' height
  * @param {*} svg expected html canvas element */
-export const draw_selector = (threshold, offset_left, offset_right, offset_y, svg) => {
+export const draw_selector = (threshold, offset_left, offset_right, offset_y, selector_color, svg) => {
     let plot_width = svg.width;
     let plot_height = svg.height;
     let ctx = svg.getContext("2d", { alpha: true });
@@ -222,7 +222,7 @@ export const draw_selector = (threshold, offset_left, offset_right, offset_y, sv
     ctx.beginPath();
     ctx.moveTo(offset_left, y);
     ctx.lineTo(plot_width - offset_right, y);
-    ctx.strokeStyle = window.EMPHASIS_COLOR;
+    ctx.strokeStyle = selector_color;
     ctx.lineWidth = 2;
     ctx.stroke();
     ctx.closePath();
@@ -233,7 +233,7 @@ export const draw_selector = (threshold, offset_left, offset_right, offset_y, sv
     ctx.lineTo(offset_left, y + 6);
     ctx.lineTo(offset_left + 6, y);
     ctx.closePath();
-    ctx.fillStyle = window.EMPHASIS_COLOR;
+    ctx.fillStyle = selector_color;
     ctx.fill();
     ctx.closePath();
 
@@ -243,7 +243,7 @@ export const draw_selector = (threshold, offset_left, offset_right, offset_y, sv
     ctx.lineTo(plot_width - offset_right, y + 6);
     ctx.lineTo(plot_width - offset_right - 6, y);
     ctx.closePath();
-    ctx.fillStyle = window.EMPHASIS_COLOR;
+    ctx.fillStyle = selector_color;
     ctx.fill();
     ctx.closePath();
 };

@@ -44,7 +44,7 @@ export const length2 = (p1, p2) => {
 
 /** generate high saturation colors
  * @param {*} nb_colors expected non null positive integer, generated colors count
- * @returns expected array of strings, generated colors in a string array*/
+ * @returns expected array of strings, generated colors in a string array */
 export const generate_HSL_colors = (nb_colors) => {
     let colors = [];
     const saturation = 70; // Saturation percentage
@@ -173,8 +173,7 @@ export const handle_zoom_pan_mousemove = (svg, is_dragging, set_translate, drag_
 };
 
 /** handles panning end on canvas element
- * @param {*} set_dragging expected setter for boolean dragging state
- */
+ * @param {*} set_dragging expected setter for boolean dragging state */
 export const handle_zoom_pan_mouseup = (set_dragging) => { set_dragging(false); };
 
 /** handles selection area init on a canvas element
@@ -284,4 +283,23 @@ export const parse_selected_frames = (selected_frames, max_index, fps) => {
     }, []).map(([start, end]) => `${format_time(start)}-${format_time(end - 1)}`).join("; ");
 
     return intervals;
+};
+
+/** get scores above a certain percentage threshold
+ * @param {*} scores expected array of floats
+ * @param {*} threshold expected float between 0 and 1
+ * @returns expected array of integers representing the indices of scores above threshold */
+export const get_scores_above_threshold = (scores, threshold) => {
+    if (scores == null) { return []; }
+    if (scores.length == 0) { return []; }
+
+    //normalize scores array
+    let min_score = Math.min(...scores);
+    let max_score = Math.max(...scores);
+    let scaled_scores = scores.map(score => (score - min_score) / (max_score - min_score));
+
+    return scaled_scores.reduce((acc, num, index) => {
+        if (num > threshold) acc.push(index);
+        return acc;
+    }, []);
 };

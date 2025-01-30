@@ -1,20 +1,33 @@
-import { SELECTION_COLOR } from "../utilities/constants";
+import { EMPHASIS_COLOR, SELECTION_COLOR } from "../utilities/constants";
 import {
     plot_timestamps, 
     plot_marker, 
     plot_marker_triangle, 
     plot_current_timer, 
     plot_axes, 
+    draw_selector
 } from "../utilities/rendering_methods";
 import { 
     generate_selected_points_color_map,
     get_integer_interval,
+    get_scores_above_threshold,
     difference,
     union 
 } from "../utilities/misc_methods";
 
 import { useState, useRef, useEffect } from "react";
 
+/** horizontal temporal representation of the video frames in a canvas element. enables the user to 
+ * temporally navigate through the video, select specific frames by drag'n'drop + CTRL or remove 
+ * selected frames by drag'n'drop + CTRL + Shift (additive to other selection methods), visualize 
+ * query scores as a curve, threshold the scores to select frames (overrides current selection). 
+ * @param {*} current_index expected integer, ID of the currently displayed video frame 
+ * @param {*} update_time expected setter for current_index and the html element video timer
+ * @param {*} max_index expected positive integer, total number of frames in the video
+ * @param {*} fps expected positive integer, frames per second chosen ratio of the video (not native FPS)
+ * @param {*} selected_points expected empty array or array of integers, IDs of selected points
+ * @param {*} set_selected_points expected setter for selected_points
+ * @param {*} scores expected empty array or array of floats between 0/1 */
 const Timeline = ({current_index, update_time, max_index, fps, selected_points, set_selected_points, scores}) => {
     const [is_timeline_dragging, set_timeline_dragging] = useState(false);
 
@@ -26,11 +39,26 @@ const Timeline = ({current_index, update_time, max_index, fps, selected_points, 
     const [is_selection_clicking, set_selection_clicking] = useState(false);
     const [is_selection_dragging, set_selection_dragging] = useState(false);
 
+    const [is_thresholding, set_thresholding] = useState(false);
+    const [threshold, set_threshold] = useState(0.8);
+
     const offset_left = 5;
     const offset_right = 5;
     const offset_y = 0;
 
     const timeline_ref = useRef(null);
+
+    // prevent right click menu on this specific component
+    useEffect(() => {
+        function handle_context_menu(e) {
+            e.preventDefault(); // prevents the default right-click menu from appearing
+        }
+        timeline_ref.current.addEventListener("contextmenu", handle_context_menu);
+
+        return () => {
+            timeline_ref.current.removeEventListener("contextmenu", handle_context_menu);
+        };
+    }, []);
 
     useEffect(() => {
         if (timeline_ref.current) {
@@ -38,24 +66,29 @@ const Timeline = ({current_index, update_time, max_index, fps, selected_points, 
             timeline_ref.current.height = timeline_ref.current.offsetHeight;
             render_timeline(selected_points, current_index);
         }
-    }, [current_index, max_index, selected_points, scores]);
+    }, [current_index, max_index, selected_points, scores, is_thresholding, threshold]);
 
     /** mousedown handles cursor mouvement/video frame update and frames selection
-     * @param {*} event expected onMouseDown event with access to clientX/Y
-    */
+     * @param {*} event expected onMouseDown event with access to clientX/Y */
     const handle_timeline_mousedown = (event) => { 
-        // mouvement of the cursor when user clicks or drags
-        set_timeline_dragging(true); 
+        if (event.nativeEvent.button == 0) {
+            // mouvement of the cursor when user clicks or drags
+            set_timeline_dragging(true); 
 
-        // handling of selection when the CTRL is pressed
-        handle_timeline_selection_mousedown(timeline_ref.current, offset_left, 
-            offset_right, offset_y, max_index, event);
-        set_selection_dragging(true);
+            // handling of selection when the CTRL is pressed
+            handle_timeline_selection_mousedown(timeline_ref.current, offset_left, 
+                offset_right, offset_y, max_index, event);
+            set_selection_dragging(true);
+        }
+        else if (event.nativeEvent.button == 2) {
+            // thresholding
+            set_thresholding(true);
+            handle_thresholding(event);
+        }
     };
 
     /** mousemove handles cursor mouvement/video frame update and frames selection
-     * @param {*} event expected onMouseMove event with access to clientX/Y
-    */
+     * @param {*} event expected onMouseMove event with access to clientX/Y */
     const handle_timeline_mousemove = (event) => { 
         // mouvement of the cursor when user clicks or drags
         is_timeline_dragging && update_time_onclick(offset_left, offset_right, offset_y, max_index, event); 
@@ -63,25 +96,33 @@ const Timeline = ({current_index, update_time, max_index, fps, selected_points, 
         // handling of selection when the CTRL is pressed
         is_selection_dragging && handle_timeline_selection_mousemove(timeline_ref.current, 
             offset_left, offset_right, offset_y, max_index, selected_points, event);
+
+        // thresholding
+        is_thresholding && handle_thresholding(event);
     };
 
     /** mouseup handles cursor mouvement/video frame update and frames selection
-     * @param {*} event expected onMouseUp event with access to clientX/Y
-    */
+     * @param {*} event expected onMouseUp event with access to clientX/Y */
     const handle_timeline_mouseup = (event) => {
-        // mouvement of the cursor when user clicks or drags
-        is_timeline_dragging && update_time_onclick(offset_left, offset_right, offset_y, max_index, event);
-        set_timeline_dragging(false);
+        if (event.nativeEvent.button == 0) {
+            // mouvement of the cursor when user clicks or drags
+            is_timeline_dragging && update_time_onclick(offset_left, offset_right, offset_y, max_index, event);
+            set_timeline_dragging(false);
 
-        // handling of selection when the CTRL is pressed
-        is_selection_dragging && handle_timeline_selection_mousemove(timeline_ref.current, 
-            offset_left, offset_right, offset_y, max_index, selected_points, event);
-        set_selection_dragging(false);
+            // handling of selection when the CTRL is pressed
+            is_selection_dragging && handle_timeline_selection_mousemove(timeline_ref.current, 
+                offset_left, offset_right, offset_y, max_index, selected_points, event);
+            set_selection_dragging(false);
+        } 
+        // thresholding
+        else if (is_thresholding) {
+            handle_thresholding(event);
+            set_thresholding(false);
+        }
     }; 
 
     /** mouseout handles cursor mouvement/video frame update and frames selection
-     * @param {*} event expected onMouseOut event with access to clientX/Y
-    */
+     * @param {*} event expected onMouseOut event with access to clientX/Y */
     const handle_timeline_mouseout = (event) => { 
         // mouvement of the cursor when user clicks or drags
         set_timeline_dragging(false); 
@@ -93,8 +134,7 @@ const Timeline = ({current_index, update_time, max_index, fps, selected_points, 
     };
 
     /** keydown handles left/right mouvement of the cursor and selection of frames
-     * @param {*} event expected onKeyDown event with access to key
-     */
+     * @param {*} event expected onKeyDown event with access to key */
     const handle_timeline_keydown = (event) => {
         // handle current_index mouvement
         if (event.key == "ArrowRight") {
@@ -110,8 +150,7 @@ const Timeline = ({current_index, update_time, max_index, fps, selected_points, 
     };
 
     /** keyup handles left/right mouvement of the cursor and selection of frames
-     * @param {*} event expected onKeyUp event with access to key
-     */
+     * @param {*} event expected onKeyUp event with access to key */
     const handle_timeline_keyup = (event) => {
         handle_timeline_selection_keychange(event);
     };
@@ -182,8 +221,7 @@ const Timeline = ({current_index, update_time, max_index, fps, selected_points, 
      * @param {*} offset_right right margin that is ignored when clicking
      * @param {*} offset_y both top and bottom margins that are ignored when clicking
      * @param {*} max_index max number of frames, used for corresponding clicked area with an actual frame number
-     * @param {*} event used to track the click area
-     */
+     * @param {*} event used to track the click area */
     const handle_timeline_selection_mousedown = (svg, offset_left, offset_right, offset_y, max_index, event) => {
         //get frame that corresponds to current mouse position
         const rect = timeline_ref.current.getBoundingClientRect();
@@ -216,8 +254,7 @@ const Timeline = ({current_index, update_time, max_index, fps, selected_points, 
      * @param {*} offset_y both top and bottom margins that are ignored when clicking
      * @param {*} max_index max number of frames, used for corresponding clicked area with an actual frame number
      * @param {*} selected_points array of integers that represent already selected frames, can be empty
-     * @param {*} event expected onClick event with access to clientX/Y
-     */
+     * @param {*} event expected onClick event with access to clientX/Y */
     const handle_timeline_selection_mousemove = (svg, offset_left, offset_right, offset_y, max_index, selected_points, event) => {
         //if CTRL is not pressed down, skip
         if (!ctrl_pressed) { return; }
@@ -255,13 +292,25 @@ const Timeline = ({current_index, update_time, max_index, fps, selected_points, 
         set_selected_points(new_selected_points);
     };
 
+    /** handles thresolding on timeline, updates the threshold value and 
+     * selected frames depending on the mouse position
+     * @param {*} event expected mousedown event with access to clientY */
+    const handle_thresholding = (event) => {
+        const rect = timeline_ref.current.getBoundingClientRect();
+        const mouse_y = event.clientY - rect.top;
+        const plot_height = timeline_ref.current.height;
+
+        const new_threshold = 1 - Math.max(0, Math.min(1, (mouse_y - offset_y) / (plot_height - 2 * offset_y)));
+        set_threshold(new_threshold);
+        set_selected_points(get_scores_above_threshold(scores, threshold));
+    };
+
     /** update current frame (and current timer on video) based on the mouse click position
      * @param {*} offset_left expected positive integer
      * @param {*} offset_right expected positive integer
      * @param {*} offset_y offset_top + offset_bot, expected positive integer
      * @param {*} max_index total number of frames, expected positive integer
-     * @param {*} event expected onClick event with access to clientX/Y
-     */
+     * @param {*} event expected onClick event with access to clientX/Y */
     const update_time_onclick = (offset_left, offset_right, offset_y, max_index, event) => {
         const rect = timeline_ref.current.getBoundingClientRect();
         const mouse_x = event.clientX - rect.left;
@@ -286,8 +335,7 @@ const Timeline = ({current_index, update_time, max_index, fps, selected_points, 
      * current frame is marked with a cursor, 
      * scores are rendered as a curve if they have been computed
      * @param {*} selected_points expected array of integers, IDs of selected points
-     * @param {*} current_index expected integer, ID of the currently displayed video frame
-     */
+     * @param {*} current_index expected integer, ID of the currently displayed video frame */
     const render_timeline = (selected_points, current_index) => {
         let ctx = timeline_ref.current.getContext("2d", { alpha: true });
 
@@ -297,31 +345,38 @@ const Timeline = ({current_index, update_time, max_index, fps, selected_points, 
         ctx.clearRect(0, 0, plot_width, plot_height);  
     
         //plot selected points highlight
-        if (selected_points != null) {
-            for (let i = 0; i < selected_points.length - 1; ++i)  {
-                let x1 = selected_points[i] / (max_index - 1) * plot_width;
-                ctx.beginPath();
-                ctx.moveTo(x1, 0);
-                ctx.rect(x1, 0, 1 / max_index - plot_width, plot_height);
-                ctx.strokeStyle = SELECTION_COLOR + "0.1)";
-                ctx.stroke();
+        if (!is_thresholding) {
+            if (selected_points != null) {
+                for (let i = 0; i < selected_points.length - 1; ++i)  {
+                    let x1 = selected_points[i] / (max_index - 1) * plot_width;
+                    ctx.beginPath();
+                    ctx.moveTo(x1, 0);
+                    ctx.rect(x1, 0, 1 / max_index - plot_width, plot_height);
+                    ctx.strokeStyle = SELECTION_COLOR + "0.1)";
+                    ctx.stroke();
+                }
             }
         }
 
+        plot_axes(offset_left, offset_right, offset_y, timeline_ref.current);
         render_score_curve(timeline_ref.current);
         plot_timestamps(max_index, fps, timeline_ref.current);
-        plot_marker_triangle(current_index, max_index, timeline_ref.current, 
-            offset_left, offset_right, offset_y, "red");
-        plot_current_timer(current_index, max_index, fps, timeline_ref.current, 
-            offset_left, offset_right);
-        plot_marker(current_index, max_index, offset_left, offset_right, offset_y, 
-            "red", 0.7, timeline_ref.current);
-        plot_axes(offset_left, offset_right, offset_y, timeline_ref.current);
+
+        if (!is_thresholding) {
+            plot_marker_triangle(current_index, max_index, timeline_ref.current, 
+                offset_left, offset_right, offset_y, "red");
+            plot_current_timer(current_index, max_index, fps, timeline_ref.current, 
+                offset_left, offset_right);
+            plot_marker(current_index, max_index, offset_left, offset_right, offset_y, 
+                "red", 0.7, timeline_ref.current);
+        }
+        else {
+            draw_selector(threshold, offset_left, offset_right, offset_y, EMPHASIS_COLOR, timeline_ref.current);
+        }
     };
 
     /** render scores as a curve on the given svg
-     * @param {*} svg expected canvas element
-     */
+     * @param {*} svg expected canvas element */
     const render_score_curve = (svg) => {
         if (!scores) { return; }
 

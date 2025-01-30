@@ -8,7 +8,7 @@ import { get_video_inline_offset } from "../utilities/misc_methods";
 
 import React, { useRef, useState } from "react";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome"
-import { faImages, faCrop, faSearch } from "@fortawesome/free-solid-svg-icons";
+import { faImages, faCrop, faSearch, faShapes } from "@fortawesome/free-solid-svg-icons";
 
 const Search_field = ({video_ref, current_index, set_scores, is_dark_mode}) => {
     const text_input_ref = useRef(null);
@@ -128,6 +128,16 @@ const Search_field = ({video_ref, current_index, set_scores, is_dark_mode}) => {
                 />
             </div>
             <button
+                onClick={handle_search_click}
+                ref={search_button_ref}
+                className="col-1 btn border-secondary border-top-0 border-start-0 border-bottom-0 rounded-0"
+            >
+                <FontAwesomeIcon 
+                    className={(is_dark_mode)? "text-light" : "text-dark"}
+                    icon={faSearch} 
+                />
+            </button>
+            <button
                 onClick={handle_image_upload_click}
                 ref={image_input_ref}
                 className="col-1 btn"
@@ -155,13 +165,13 @@ const Search_field = ({video_ref, current_index, set_scores, is_dark_mode}) => {
                 />
             </button>
             <button
-                onClick={handle_search_click}
-                ref={search_button_ref}
-                className="col-2 btn"
+                //onClick={}
+                //ref={}
+                className="col-1 btn border-secondary border-top-0 border-bottom-0 border-end-0 rounded-0"
             >
                 <FontAwesomeIcon 
                     className={(is_dark_mode)? "text-light" : "text-dark"}
-                    icon={faSearch} 
+                    icon={faShapes} 
                 />
             </button>
             <Image_crop_area 

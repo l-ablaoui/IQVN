@@ -19,6 +19,8 @@ function App () {
     
     const [scores, set_scores] = useState([]);
 
+    const [is_dark_mode, set_dark_mode] = useState(false);
+
     const update_time = (current_index) => {
         if (video_ref.current) {
             set_current_index(current_index);
@@ -29,7 +31,10 @@ function App () {
     };
 
     return (
-        <div className="container-fluid text-center vw-100 vh-100 row">
+        <div className={(is_dark_mode)? 
+            "container-fluid text-center vw-100 vh-100 row bg-dark text-white" :
+            "container-fluid text-center vw-100 vh-100 row bg-light text-dark"
+        }>
             <div className="col-7">
                 <Video_config_bar 
                     className="row" 
@@ -40,6 +45,8 @@ function App () {
                     fps={fps}
                     selected_points={selected_points}
                     set_selected_points={set_selected_points}
+                    is_dark_mode={is_dark_mode}
+                    set_dark_mode={set_dark_mode}
                 />
                 <Video_player 
                     className="row" 
@@ -68,6 +75,7 @@ function App () {
                     set_scores={set_scores}
                     current_index={current_index}
                     video_ref={video_ref}
+                    is_dark_mode={is_dark_mode}
                 />
                 <Semantic_plot 
                     className="row"
@@ -79,6 +87,7 @@ function App () {
                     video_src={video_src}
                     set_selected_points={set_selected_points}
                     selected_points={selected_points}
+                    is_dark_mode={is_dark_mode}
                 />
             </div>
         </div>

@@ -3,9 +3,11 @@ import { fetch_server_videos_list, post_video_name } from "../utilities/api_meth
 import { parse_selected_frames } from "../utilities/misc_methods";
 
 import { useState, useEffect } from "react";
+import { FontAwesomeIcon } from "@fortawesome/react-fontawesome"
+import { faSun, faMoon } from "@fortawesome/free-solid-svg-icons";
 
-const Video_config_bar = ({set_video_src, set_current_index, set_scores, 
-    selected_points, set_selected_points, max_index, fps}) => {
+const Video_config_bar = ({set_video_src, set_current_index, set_scores, selected_points, 
+    set_selected_points, max_index, fps, is_dark_mode, set_dark_mode}) => {
     const [video_names, set_video_names] = useState([]);
     
     useEffect(() => {
@@ -61,34 +63,41 @@ const Video_config_bar = ({set_video_src, set_current_index, set_scores,
     };
     
     return (
-        <div className="row justify-content-center">
-            <div className="row w-100 vh-5">
-                <div className="col-2"><label>select video: </label></div>
-                <div className="col-6">
-                    <select 
-                        name="video_names"
-                        className="form-select"
-                        onChange={handle_video_selector_change}>
-                        {video_names.map((video_name) => (
-                            <option key={video_name} value={video_name}>
-                                {video_name.substring(0, video_name.lastIndexOf("."))}
-                            </option>
-                        ))}
-                    </select>
-                </div>
-                <input 
-                    type="button" 
-                    value="clear selection" 
-                    className="col-2 btn btn-outline-secondary"
-                    onClick={handle_clear_selection}
-                />
-                <input 
-                    type="button" 
-                    value="copy selection" 
-                    className="col-2 btn btn-outline-primary"
-                    onClick={handle_copy_selection}
-                />
+        <div className="row w-100 vh-5 justify-content-center">
+            <div className="col-1">
+                <FontAwesomeIcon 
+                    className={(is_dark_mode)? "text-light" : "text-dark"} 
+                    icon={(is_dark_mode)? faSun : faMoon} 
+                    onClick={(is_dark_mode)? () => set_dark_mode(false) : () => set_dark_mode(true) } 
+                /> 
             </div>
+            <label className="col-2 form-label">select video: </label>
+            <div className="col-5">
+                <select 
+                    name="video_names"
+                    className={(is_dark_mode)? 
+                        "text-light form-select bg-transparent" :
+                        "text-dark form-select bg-transparent" }
+                    onChange={handle_video_selector_change}>
+                    {video_names.map((video_name) => (
+                        <option key={video_name} value={video_name}>
+                            {video_name.substring(0, video_name.lastIndexOf("."))}
+                        </option>
+                    ))}
+                </select>
+            </div>
+            <input 
+                type="button" 
+                value="clear selection" 
+                className="col-2 btn h-100 btn-outline-secondary"
+                onClick={handle_clear_selection}
+            />
+            <input 
+                type="button" 
+                value="copy selection" 
+                className="col-2 btn h-100 btn-outline-primary"
+                onClick={handle_copy_selection}
+            />
         </div>
     );
 };

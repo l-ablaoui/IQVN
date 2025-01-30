@@ -31,7 +31,19 @@ import { fetch_video_semantic_representation } from "../utilities/api_methods";
 
 import React, { useEffect, useRef, useState } from "react";
 
-/** This component represents the semantic (from a VLM standpoint) 2D representation of the video frames */
+/** This component represents the semantic (from a VLM standpoint) 2D representation of the video frames 
+ * It allows the user to select points (additive to other selection methods), visualize precomputed 
+ * clusters of points and their representative frames, and visualize the scores of the frames in the video
+ * through a color map and visualize the temporal position of the frames in the video through another color map
+ * @param {*} video_ref expected reference to the video element
+ * @param {*} video_src expected string, URL to the video file, must match the video_ref source
+ * @param {*} scores expected empty array or array of floats between 0 and 1, scores for each frame in the video
+ * @param {*} current_index expected positive integer between 0 and scores.length, current frame index
+ * @param {*} update_time expected setter for current_index and the html element video timer
+ * @param {*} max_index expected positive integer, maximum frame index in the video
+ * @param {*} selected_points expected empty array or array of positive integers, selected frame indices
+ * @param {*} set_selected_points expected setter for selected_points
+ * @param {*} is_dark_mode expected boolean, true if the dark mode is enabled */
 const Semantic_plot = ({video_ref, video_src, scores, current_index, update_time, 
     max_index, selected_points, set_selected_points, is_dark_mode}) => {
     const semantic_plot_ref = useRef(null);
@@ -98,7 +110,7 @@ const Semantic_plot = ({video_ref, video_src, scores, current_index, update_time
             console.log(semantic_plot_offset_x, semantic_plot_offset_y, offset_width, offset_height);
             render_semantic_plot(points, current_index);
         }
-    }, [current_index, points, clusters, cluster_frames, scores, semantic_plot_scale, 
+    }, [current_index, points, clusters, cluster_frames, scores, semantic_plot_scale, selected_points,
         semantic_plot_translate, selection_top_left, selection_bot_right, cmap, is_dark_mode]);
     
     // fetch semantic representation from server effect

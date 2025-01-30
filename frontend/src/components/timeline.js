@@ -1,4 +1,3 @@
-import "../App.css"
 import { SELECTION_COLOR } from "../utilities/constants";
 import {
     plot_timestamps, 
@@ -311,9 +310,12 @@ const Timeline = ({current_index, update_time, max_index, fps, selected_points, 
 
         render_score_curve(timeline_ref.current);
         plot_timestamps(max_index, fps, timeline_ref.current);
-        plot_marker_triangle(current_index, max_index, timeline_ref.current, offset_left, offset_right, offset_y, "black");
-        plot_current_timer(current_index, max_index, fps, timeline_ref.current, offset_left, offset_right);
-        plot_marker(current_index, max_index, offset_left, offset_right, offset_y, "black", 0.7, timeline_ref.current);
+        plot_marker_triangle(current_index, max_index, timeline_ref.current, 
+            offset_left, offset_right, offset_y, "red");
+        plot_current_timer(current_index, max_index, fps, timeline_ref.current, 
+            offset_left, offset_right);
+        plot_marker(current_index, max_index, offset_left, offset_right, offset_y, 
+            "red", 0.7, timeline_ref.current);
         plot_axes(offset_left, offset_right, offset_y, timeline_ref.current);
     };
 

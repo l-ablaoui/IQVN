@@ -1,4 +1,3 @@
-import "../App.css";
 import { DEACTIVATED_COLOR } from "../utilities/constants";
 import { draw_rectangle } from "../utilities/rendering_methods";
 import { handle_selection_area_mousedown, handle_selection_area_mousemove } from "../utilities/misc_methods";
@@ -37,7 +36,7 @@ const Image_crop_area = ({crop_area_ref, selection_top_left, selection_bot_right
 
         if (selection_top_left.x !== 0 && selection_top_left.y !== 0) {
             apply_effect();
-            crop_area_ref.current.className = "d-none image_crop_area";
+            crop_area_ref.current.className = "d-none position-absolute top-0 start-0";
         }
     };
 
@@ -70,7 +69,7 @@ const Image_crop_area = ({crop_area_ref, selection_top_left, selection_bot_right
         <div>
             <canvas
                 ref={crop_area_ref}
-                className="d-none image_crop_area"
+                className="d-none position-absolute top-0 start-0"
                 onMouseDown={handle_crop_area_mousedown}
                 onMouseMove={handle_crop_area_mousemove}
                 onMouseUp={handle_crop_area_mouseup}

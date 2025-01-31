@@ -64,14 +64,18 @@ const Video_config_bar = ({set_video_src, set_current_index, set_scores, selecte
     
     return (
         <div className="row w-100 vh-5 justify-content-center">
-            <div className="col-1">
-                <FontAwesomeIcon 
-                    className={(is_dark_mode)? "text-light" : "text-dark"} 
-                    icon={(is_dark_mode)? faSun : faMoon} 
-                    onClick={(is_dark_mode)? () => set_dark_mode(false) : () => set_dark_mode(true) } 
-                /> 
+            <div className="col-3">
+                <button 
+                    className="col-5 btn"
+                    onClick={(is_dark_mode)? () => set_dark_mode(false) : () => set_dark_mode(true)} 
+                >
+                    <FontAwesomeIcon 
+                        className={(is_dark_mode)? "text-light" : "text-dark"} 
+                        icon={(is_dark_mode)? faSun : faMoon} 
+                    /> 
+                </button>
+                <label className="col-7 form-label">select video: </label>
             </div>
-            <label className="col-2 form-label">select video: </label>
             <div className="col-5">
                 <select 
                     name="video_names"

@@ -6,7 +6,7 @@ This repository demonstrates an implementation of a video content retrieval syst
 - image based interactions (image search, image crop search)
 - semantic representations (2D scatterplot of video embeddings)
 
-The implementation is divided into a python-coded fastAPI backend server that performs video analysis (leveraging a VLM for search and semantic representation), and an html/javascript-coded frontend that presents the different video interactions
+The implementation is divided into a python-coded fastAPI backend server that performs video analysis (leveraging a VLM for search and semantic representation), and a react-coded frontend that presents the different video interactions
 
 ## Backend (FastAPI)
 
@@ -41,7 +41,7 @@ This command will start the server at `http://localhost:8000`.
 ### Running the Frontend
 0. Make sure the backend server is running before attempting to use the frontend interactions
 1. Navigate to the `frontend` directory.
-2. Install the necesary dependency with:
+2. Install the necesary dependencies with:
 
 ..code:
 

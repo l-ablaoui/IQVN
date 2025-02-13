@@ -1,3 +1,4 @@
+import Color_map_bar from "./color_map_bar";
 import { 
     EMPHASIS_RADIUS, 
     REGULAR_RADIUS, 
@@ -8,10 +9,7 @@ import {
     LOW_SCORE_COLOR, 
     HIGH_SCORE_COLOR
 } from "../utilities/constants";
-import {
-    fill_circle, 
-    draw_rectangle, 
-} from "../utilities/rendering_methods";
+import { fetch_video_semantic_representation } from "../utilities/api_methods";
 import { 
     length2,
     generate_HSL_colors, 
@@ -26,8 +24,10 @@ import {
     union,
     difference
 } from "../utilities/misc_methods";
-import Color_map_bar from "./color_map_bar";
-import { fetch_video_semantic_representation } from "../utilities/api_methods";
+import {
+    fill_circle, 
+    draw_rectangle, 
+} from "../utilities/rendering_methods";
 
 import React, { useEffect, useRef, useState } from "react";
 
@@ -235,14 +235,14 @@ const Semantic_plot = ({video_ref, video_src, scores, current_index, update_time
         const mouse_x = event.clientX - rect.left;
         const mouse_y = event.clientY - rect.top;
 
-        //reduction_plot width/length
+        // reduction_plot width/length
         let plot_width = semantic_plot_ref.current.offsetWidth;
         let plot_height = semantic_plot_ref.current.offsetHeight;
 
-        //get min/max to later normalize reduction values
+        // get min/max to later normalize reduction values
         let [min_x, max_x, min_y, max_y] = get_bounding_box(points);
         
-        //if clicking on the current frame index (big red dot), do nothing
+        // if clicking on the current frame index (big red dot), do nothing
         let {x, y} = get_semantic_plot_coordinates({ x: min_x, y: min_y }, { x: max_x, y: max_y }, 
             { width: plot_width, height: plot_height}, current_index);
 
@@ -254,13 +254,13 @@ const Semantic_plot = ({video_ref, video_src, scores, current_index, update_time
 
         dot_radius = REGULAR_RADIUS;
         for (let i = 0;i < points.length;++i) {
-            //get each point's coordinates after current zoom/pan
+            // get each point's coordinates after current zoom/pan
             let {x, y} = get_semantic_plot_coordinates({ x: min_x, y: min_y }, { x: max_x, y: max_y }, 
                 { width: plot_width, height: plot_height}, i);
 
             let dist = length2({x: mouse_x, y: mouse_y}, {x: x, y: y});
 
-            //if the user clicked inside the dot, update the frameIndex
+            // if the user clicked inside the dot, update the frameIndex
             if (dist <= dot_radius * dot_radius) {
                 update_time(i);
                 return;
@@ -292,7 +292,7 @@ const Semantic_plot = ({video_ref, video_src, scores, current_index, update_time
     
         // render the points (square shaped for now)
         for (let i = 0;i < points.length;++i) {
-            //draw current frame marker last to stand out
+            // draw current frame marker last to stand out
             if (i == current_index) { continue; }
     
             let {x, y} = get_semantic_plot_coordinates({ x: min_x, y: min_y }, { x: max_x, y: max_y }, 
@@ -300,7 +300,7 @@ const Semantic_plot = ({video_ref, video_src, scores, current_index, update_time
             ctx.fillStyle = color_map[i];
             dot_radius = radius_map[i];
 
-            // Apply zoom/pan transformations to coordinates only and not to point radius (for visibility purposes)
+            // apply zoom/pan transformations to coordinates only and not to point radius (for visibility purposes)
             fill_circle(ctx, {x: x, y: y}, dot_radius);
         }
     
@@ -567,14 +567,13 @@ const Semantic_plot = ({video_ref, video_src, scores, current_index, update_time
                         ${TIME_START_COLOR.blue * factor1 + TIME_END_COLOR.blue * factor2}, 0.7)` 
                         : EMPHASIS_COLOR); 
                 }
-                //draw_color_scale(0, max_index / fps, TIME_START_COLOR, TIME_END_COLOR);
                 break;
             }
             case "scores": {
-                //make sure scores exist and match the reduction 
+                // make sure scores exist and match the reduction 
                 if (scores?.length != points?.length) { generate_color_map(points, current_index, ""); }
 
-                /*get min/max to normalize scores*/
+                // get min/max to normalize scores
                 let min_score = scores[0];
                 let max_score = scores[0];
 
@@ -583,6 +582,7 @@ const Semantic_plot = ({video_ref, video_src, scores, current_index, update_time
                     max_score = (max_score < scores[i])? scores[i] : max_score;
                 }
 
+                // apply colors to scores (red for low, green for high)
                 for (let i = 0; i < points.length; ++i) { 
                     let factor = (scores[i] - min_score) / (max_score - min_score);
                     color_map.push(`rgba(${Math.trunc(LOW_SCORE_COLOR.red * (1 - factor) + HIGH_SCORE_COLOR.red * factor)}, 
@@ -595,7 +595,7 @@ const Semantic_plot = ({video_ref, video_src, scores, current_index, update_time
                 break;
             }
             case "clusters": {
-                //get the number of clusters 
+                // get the number of clusters 
                 let max_label = clusters[0];
                 for (let i = 1;i < clusters.length;++i) {
                     if (max_label < clusters[i]) {
@@ -606,7 +606,7 @@ const Semantic_plot = ({video_ref, video_src, scores, current_index, update_time
 
                 let colors = generate_HSL_colors(nb_clusters);
 
-                //applying colors to clusters (-1/no cluster will be gray and current index red)
+                // applying colors to clusters (-1/no cluster will be gray and current index red)
                 for (let i = 0; i < points.length; ++i) { 
                     if (i == current_index) {
                         color_map.push(EMPHASIS_COLOR);
@@ -657,7 +657,7 @@ const Semantic_plot = ({video_ref, video_src, scores, current_index, update_time
             <canvas 
                 className="semantic_plot row" 
                 ref={semantic_plot_ref}
-                tabIndex={0}
+                tabIndex={0}  // to allow the canvas to be focused and receive keyboard events
                 onWheel={handle_onwheel}
                 onMouseDown={handle_mousedown}
                 onMouseMove={handle_mousemove}

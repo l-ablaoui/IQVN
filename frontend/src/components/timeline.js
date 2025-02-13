@@ -1,4 +1,11 @@
 import { EMPHASIS_COLOR, SELECTION_COLOR } from "../utilities/constants";
+import { 
+    generate_selected_points_color_map,
+    get_integer_interval,
+    get_scores_above_threshold,
+    difference,
+    union 
+} from "../utilities/misc_methods";
 import {
     plot_timestamps, 
     plot_marker, 
@@ -7,13 +14,6 @@ import {
     plot_axes, 
     draw_selector
 } from "../utilities/rendering_methods";
-import { 
-    generate_selected_points_color_map,
-    get_integer_interval,
-    get_scores_above_threshold,
-    difference,
-    union 
-} from "../utilities/misc_methods";
 
 import { useState, useRef, useEffect } from "react";
 
@@ -60,6 +60,7 @@ const Timeline = ({current_index, update_time, max_index, fps, selected_points, 
         };
     }, []);
 
+    // re-rendering effect
     useEffect(() => {
         if (timeline_ref.current) {
             timeline_ref.current.width = timeline_ref.current.offsetWidth;

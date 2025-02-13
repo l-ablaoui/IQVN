@@ -83,6 +83,9 @@ export const generate_selected_points_color_map = (nb_points, selected_points) =
 /** onclick method to enable focus on html elements (namely canvas) */
 export const focus_onclick = (dom_element) => { dom_element.focus(); };
 
+/** format time in seconds to HH:MM:SS
+ * @param {*} seconds_count expected positive integer
+ * @returns expected string representing time in HH:MM:SS */
 export const format_time = (seconds_count) => {
     const hours = Math.floor(seconds_count / 3600)
     const minutes = Math.floor((seconds_count - hours * 3600) / 60);
@@ -287,7 +290,7 @@ export const parse_selected_frames = (selected_frames, max_index, fps) => {
 
 /** get scores above a certain percentage threshold
  * @param {*} scores expected array of floats
- * @param {*} threshold expected float between 0 and 1
+ * @param {*} threshold expected float between 0 and 1, represents a percentage
  * @returns expected array of integers representing the indices of scores above threshold */
 export const get_scores_above_threshold = (scores, threshold) => {
     if (scores == null) { return []; }

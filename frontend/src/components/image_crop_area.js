@@ -1,6 +1,9 @@
 import { DEACTIVATED_COLOR } from "../utilities/constants";
 import { draw_rectangle } from "../utilities/rendering_methods";
-import { handle_selection_area_mousedown, handle_selection_area_mousemove } from "../utilities/misc_methods";
+import {
+    handle_selection_area_mousedown, 
+    handle_selection_area_mousemove 
+} from "../utilities/misc_methods";
 
 import React, { useEffect } from 'react';
 
@@ -10,6 +13,7 @@ const Image_crop_area = ({crop_area_ref, selection_top_left, selection_bot_right
     set_selection_top_left, set_selection_bot_right, apply_effect, video_top_left,
     video_bot_right}) => {
         
+    // re-rendering effect
     useEffect(() => {
         render_crop_area();
     }, [selection_top_left, selection_bot_right]);

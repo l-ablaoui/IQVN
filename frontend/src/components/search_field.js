@@ -10,6 +10,14 @@ import React, { useRef, useState } from "react";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome"
 import { faImages, faCrop, faSearch, faShapes } from "@fortawesome/free-solid-svg-icons";
 
+/** This component enables textual and image based search in the video. Image search supports 
+ * external images or cropping the video frame. Cropping depends on Image_crop_area component.
+ * @todo implement object detection and display
+ * @param {*} video_ref expected reference to an html video element with access to "current"
+ * @param {*} current_index expected positive integer, current frame index in the video
+ * @param {*} set_scores expected setter of the scores state
+ * @param {*} is_dark_mode expected boolean, true if dark mode is enabled
+ */
 const Search_field = ({video_ref, current_index, set_scores, is_dark_mode}) => {
     const text_input_ref = useRef(null);
     const image_input_ref = useRef(null);
@@ -122,8 +130,8 @@ const Search_field = ({video_ref, current_index, set_scores, is_dark_mode}) => {
                     maxLength={300}
                     ref={text_input_ref}
                     className={(is_dark_mode)? 
-                        "text-light bg-transparent form-control" : 
-                        "text-dark bg-transparent form-control"
+                        "bg-transparent form-control text-light form-control-light" : 
+                        "bg-transparent form-control text-dark form-control-dark"
                     }
                 />
             </div>

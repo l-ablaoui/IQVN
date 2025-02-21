@@ -174,33 +174,33 @@ const Color_map_bar = ({cmap, set_cmap, clusters, scores, max_index}) => {
     };
 
     return (
-        <div className="row">
+        <div className="row h-10 w-100">
             <input 
                 type="button" 
                 value="default" 
-                className="col-2 btn btn-primary"
+                className="col-2 h-100 btn btn-primary"
                 onClick={handle_cmap_buttons_on_click}
             />
             <input 
                 type="button" 
                 value="clusters" 
-                className="col-2 btn btn-secondary"
+                className="col-2 h-100 btn btn-secondary"
                 onClick={handle_cmap_buttons_on_click}
             />
             <input 
                 type="button" 
                 value="timestamps" 
-                className="col-2 btn btn-secondary"
+                className="col-2 h-100 btn btn-secondary"
                 onClick={handle_cmap_buttons_on_click}
             />
             <input 
                 type="button" 
                 value="scores" 
-                className="col-2 btn btn-secondary"
+                className="col-2 h-100 btn btn-secondary"
                 onClick={handle_cmap_buttons_on_click}
             />
             <canvas 
-                className="col-4 d-block rounded"
+                className="col-4 h-100 d-block rounded"
                 ref={color_map_bar_ref}>
             </canvas>
         </div>

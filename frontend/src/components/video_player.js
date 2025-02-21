@@ -46,23 +46,21 @@ const Video_player = ({video_ref, video_src, set_current_index, set_max_index, f
     };
 
     return (
-        <div className="row justify-content-center">
-            <video 
-                className="row d-block mx-auto w-100 vh-75 object-fit-contain" 
-                ref={video_ref}
-                key={video_src}
-                tabIndex={0} // to allow video to receive keyboard
-                onKeyDown={handle_video_keydown}
-                onLoadedMetadata={handle_video_loaded_metadata}
-                onTimeUpdate={handle_video_time_update}
-                controls>
-                <source 
-                    src={video_src}
-                    type="video/mp4"
-                    key={video_src} // force reload when video_src changes
-                />
-            </video>
-        </div>
+        <video 
+            className="d-block mx-auto w-100 mh-70 object-fit-contain" 
+            ref={video_ref}
+            key={video_src}
+            tabIndex={0} // to allow video to receive keyboard
+            onKeyDown={handle_video_keydown}
+            onLoadedMetadata={handle_video_loaded_metadata}
+            onTimeUpdate={handle_video_time_update}
+            controls>
+            <source 
+                src={video_src}
+                type="video/mp4"
+                key={video_src} // force reload when video_src changes
+            />
+        </video>
     );
 }
   

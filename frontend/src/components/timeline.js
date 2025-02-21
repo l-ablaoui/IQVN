@@ -420,7 +420,7 @@ const Timeline = ({current_index, update_time, max_index, fps, selected_points, 
         <canvas
             ref={timeline_ref}
             key={scores}
-            className="timeline"
+            className="w-100 h-25 border border-secondary "
             tabIndex={0}
             onMouseDown={handle_timeline_mousedown}
             onMouseMove={handle_timeline_mousemove}

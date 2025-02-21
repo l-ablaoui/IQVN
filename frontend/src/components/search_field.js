@@ -122,36 +122,36 @@ const Search_field = ({video_ref, current_index, set_scores, is_dark_mode}) => {
     };
 
     return (
-        <div className="row w-100 vh-5">
-            <div className="col-8">
+        <div className="row w-100 h-5">
+            <div className="col-8 h-100">
                 <input 
                     type={"text"} 
                     placeholder={"search in video"} 
                     maxLength={300}
                     ref={text_input_ref}
                     className={(is_dark_mode)? 
-                        "bg-transparent form-control text-light form-control-light" : 
-                        "bg-transparent form-control text-dark form-control-dark"
+                        "bg-transparent h-100 form-control text-light form-control-light" : 
+                        "bg-transparent h-100 form-control text-dark form-control-dark"
                     }
                 />
             </div>
             <button
                 onClick={handle_search_click}
                 ref={search_button_ref}
-                className="col-1 btn border-secondary border-top-0 border-start-0 border-bottom-0 rounded-0"
+                className="col-1 h-100 btn border-secondary border-top-0 border-start-0 border-bottom-0 rounded-0"
             >
                 <FontAwesomeIcon 
-                    className={(is_dark_mode)? "text-light" : "text-dark"}
+                    className={(is_dark_mode)? "h-100 text-light" : "h-100 text-dark"}
                     icon={faSearch} 
                 />
             </button>
             <button
                 onClick={handle_image_upload_click}
                 ref={image_input_ref}
-                className="col-1 btn"
+                className="col-1 h-100 btn"
             >
                 <FontAwesomeIcon 
-                    className={(is_dark_mode)? "text-light" : "text-dark"}
+                    className={(is_dark_mode)? "h-100 text-light" : "h-100 text-dark"}
                     icon={faImages} 
                 />
                 <input 
@@ -165,20 +165,20 @@ const Search_field = ({video_ref, current_index, set_scores, is_dark_mode}) => {
             <button
                 onClick={handle_image_crop_click}
                 ref={image_crop_ref}
-                className="col-1 btn"
+                className="col-1 h-100 btn"
             >
                 <FontAwesomeIcon 
-                    className={(is_dark_mode)? "text-light" : "text-dark"}
+                    className={(is_dark_mode)? "h-100 text-light" : "h-100 text-dark"}
                     icon={faCrop}
                 />
             </button>
             <button
                 //onClick={}
                 //ref={}
-                className="col-1 btn border-secondary border-top-0 border-bottom-0 border-end-0 rounded-0"
+                className="col-1 h-100 btn border-secondary border-top-0 border-bottom-0 border-end-0 rounded-0"
             >
                 <FontAwesomeIcon 
-                    className={(is_dark_mode)? "text-light" : "text-dark"}
+                    className={(is_dark_mode)? "h-100 text-light" : "h-100 text-dark"}
                     icon={faShapes} 
                 />
             </button>

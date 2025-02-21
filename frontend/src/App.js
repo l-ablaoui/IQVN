@@ -35,7 +35,7 @@ function App () {
             "container-fluid text-center vw-100 vh-100 row bg-dark text-white" :
             "container-fluid text-center vw-100 vh-100 row bg-light text-dark"
         }>
-            <div className="col-7">
+            <div className="col-7 h-100">
                 <Video_config_bar 
                     className="row" 
                     set_video_src={set_video_src}
@@ -69,9 +69,9 @@ function App () {
                     scores={scores}
                 />
             </div>
-            <div className="col-5">
+            <div className="col-5 h-100">
                 <Search_field 
-                    className="row"
+                    className="row h-5"
                     set_scores={set_scores}
                     current_index={current_index}
                     video_ref={video_ref}

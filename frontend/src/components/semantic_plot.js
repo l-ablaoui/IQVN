@@ -116,6 +116,9 @@ const Semantic_plot = ({video_ref, video_src, scores, current_index, update_time
     // fetch semantic representation from server effect
     useEffect(() => {
         if (video_src != "") {
+            set_points([]);
+            set_clusters([]);
+            set_cluster_frames([]);
             fetch_video_semantic_representation(video_src).then((results) => {
                 set_points(results["tsne_reduction"]);
                 set_clusters(results["tsne_clusters"]);
@@ -653,9 +656,9 @@ const Semantic_plot = ({video_ref, video_src, scores, current_index, update_time
     };
 
     return (
-        <div className="row justify-content-center">
+        <div className="row h-95 w-100 justify-content-center">
             <canvas 
-                className="semantic_plot row" 
+                className="row w-100 h-90" 
                 ref={semantic_plot_ref}
                 tabIndex={0}  // to allow the canvas to be focused and receive keyboard events
                 onWheel={handle_onwheel}
@@ -668,7 +671,7 @@ const Semantic_plot = ({video_ref, video_src, scores, current_index, update_time
             >    
             </canvas>
             <Color_map_bar 
-                className="row" 
+                className="row justify-content-center" 
                 cmap={cmap}
                 set_cmap={set_cmap}
                 clusters={clusters}

@@ -5,6 +5,7 @@ import numpy as np
 from transformers import AutoModel, AutoProcessor
 
 from tqdm import tqdm
+import os
 import time
 
 class VisionTransformer:
@@ -21,8 +22,10 @@ class VisionTransformer:
         self.reduction = None
 
         #model loading
-        self.processor = AutoProcessor.from_pretrained(checkpoint)
-        self.model = AutoModel.from_pretrained(checkpoint)
+        start = time.time()
+        self.model, self.processor = self.load_model(checkpoint, "models/processor.pth", "models/clip-vit-b16.pth")
+        print("loading in ", time.time() - start )
+
         self.device = 'cuda' if torch.cuda.is_available() else 'cpu'
         print("Using device: ", self.device)
         self.model.to(self.device)
@@ -37,6 +40,20 @@ class VisionTransformer:
             self.fps = int(vid.get(cv2.CAP_PROP_FPS))
         return vid
     
+    def load_model(self, checkpoint, preprocessor_path, model_path):
+        if not os.path.exists(preprocessor_path):
+            processor = AutoProcessor.from_pretrained(checkpoint)
+            torch.save(processor, preprocessor_path)
+        else:
+            processor = torch.load(preprocessor_path, weights_only=False)
+
+        if not os.path.exists(model_path):
+            model = AutoModel.from_pretrained(checkpoint)
+            torch.save(model, model_path)
+        else:
+            model = torch.load(model_path, weights_only=False)
+        return model, processor
+
     def get_image_features(self, images):
         with torch.no_grad():
             img_input = self.processor(images=images, text=None, padding=True, return_tensors="pt").to(self.device)

@@ -81,7 +81,7 @@ const Timeline = ({current_index, update_time, max_index, fps, selected_points, 
                 offset_right, offset_y, max_index, event);
             set_selection_dragging(true);
         }
-        else if (event.nativeEvent.button == 2) {
+        else if (event.nativeEvent.button == 2 && scores?.length > 0) {
             // thresholding
             set_thresholding(true);
             handle_thresholding(event);

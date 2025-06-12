@@ -72,7 +72,7 @@ const Video_config_bar = ({set_video_src, set_current_index, set_scores, selecte
                     onClick={(is_dark_mode)? () => set_dark_mode(false) : () => set_dark_mode(true)} 
                 >
                     <FontAwesomeIcon 
-                        className={(is_dark_mode)? "h-100 text-light" : "h-100 text-dark"} 
+                        className={`h-100 ${(is_dark_mode)? "text-light" : "text-dark"}`} 
                         icon={(is_dark_mode)? faSun : faMoon} 
                     /> 
                 </button>
@@ -81,9 +81,9 @@ const Video_config_bar = ({set_video_src, set_current_index, set_scores, selecte
             <div className="col-5 h-100">
                 <select 
                     name="video_names"
-                    className={(is_dark_mode)? 
-                        "h-100 text-light form-select bg-transparent" :
-                        "h-100 text-dark form-select bg-transparent" }
+                    className={`h-100 bg-transparent ${(is_dark_mode)? 
+                        "text-light form-select" : "text-dark form-select"}` 
+                    }
                     onChange={handle_video_selector_change}>
                     {video_names.map((video_name) => (
                         <option key={video_name} value={video_name}>

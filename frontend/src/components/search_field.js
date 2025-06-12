@@ -129,9 +129,8 @@ const Search_field = ({video_ref, current_index, set_scores, is_dark_mode}) => {
                     placeholder={"search in video"} 
                     maxLength={300}
                     ref={text_input_ref}
-                    className={(is_dark_mode)? 
-                        "bg-transparent h-100 form-control text-light form-control-light" : 
-                        "bg-transparent h-100 form-control text-dark form-control-dark"
+                    className={`bg-transparent h-100 form-control ${(is_dark_mode)? 
+                        "text-light form-control-light" : "text-dark form-control-dark"}`
                     }
                 />
             </div>

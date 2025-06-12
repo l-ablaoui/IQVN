@@ -31,9 +31,9 @@ function App () {
     };
 
     return (
-        <div className={(is_dark_mode)? 
-            "container-fluid text-center vw-100 vh-100 row bg-dark text-white" :
-            "container-fluid text-center vw-100 vh-100 row bg-light text-dark"
+        <div className={
+            `container-fluid text-center vw-100 vh-100 row 
+            ${(is_dark_mode)? "bg-dark text-white" : "bg-light text-dark"}`
         }>
             <div className="col-7 h-100">
                 <Video_config_bar 

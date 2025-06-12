@@ -9,7 +9,6 @@ import React from "react";
  * @param {*} set_max_index expected setter of the integer maximum frame index
  * @param {*} fps expected positive integer, frames per second ratio in the video */
 const Video_player = ({video_ref, video_src, set_current_index, set_max_index, fps}) => {
-    
     /** keydown handles video speed change 
      * @param {*} event expected keydown event with access to key */
     const handle_video_keydown = (event) => {

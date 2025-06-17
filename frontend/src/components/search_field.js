@@ -10,6 +10,14 @@ import React, { useRef, useState } from "react";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome"
 import { faImages, faCrop, faSearch, faShapes } from "@fortawesome/free-solid-svg-icons";
 
+/** This component enables textual and image based search in the video. Image search supports 
+ * external images or cropping the video frame. Cropping depends on Image_crop_area component.
+ * @todo implement object detection and display
+ * @param {*} video_ref expected reference to an html video element with access to "current"
+ * @param {*} current_index expected positive integer, current frame index in the video
+ * @param {*} set_scores expected setter of the scores state
+ * @param {*} is_dark_mode expected boolean, true if dark mode is enabled
+ */
 const Search_field = ({video_ref, current_index, set_scores, is_dark_mode}) => {
     const text_input_ref = useRef(null);
     const image_input_ref = useRef(null);
@@ -114,36 +122,35 @@ const Search_field = ({video_ref, current_index, set_scores, is_dark_mode}) => {
     };
 
     return (
-        <div className="row w-100 vh-5">
-            <div className="col-8">
+        <div className="row w-100 h-5">
+            <div className="col-8 h-100">
                 <input 
                     type={"text"} 
                     placeholder={"search in video"} 
                     maxLength={300}
                     ref={text_input_ref}
-                    className={(is_dark_mode)? 
-                        "text-light bg-transparent form-control" : 
-                        "text-dark bg-transparent form-control"
+                    className={`bg-transparent h-100 form-control ${(is_dark_mode)? 
+                        "text-light form-control-light" : "text-dark form-control-dark"}`
                     }
                 />
             </div>
             <button
                 onClick={handle_search_click}
                 ref={search_button_ref}
-                className="col-1 btn border-secondary border-top-0 border-start-0 border-bottom-0 rounded-0"
+                className="col-1 h-100 btn border-secondary border-top-0 border-start-0 border-bottom-0 rounded-0"
             >
                 <FontAwesomeIcon 
-                    className={(is_dark_mode)? "text-light" : "text-dark"}
+                    className={(is_dark_mode)? "h-100 text-light" : "h-100 text-dark"}
                     icon={faSearch} 
                 />
             </button>
             <button
                 onClick={handle_image_upload_click}
                 ref={image_input_ref}
-                className="col-1 btn"
+                className="col-1 h-100 btn"
             >
                 <FontAwesomeIcon 
-                    className={(is_dark_mode)? "text-light" : "text-dark"}
+                    className={(is_dark_mode)? "h-100 text-light" : "h-100 text-dark"}
                     icon={faImages} 
                 />
                 <input 
@@ -157,20 +164,20 @@ const Search_field = ({video_ref, current_index, set_scores, is_dark_mode}) => {
             <button
                 onClick={handle_image_crop_click}
                 ref={image_crop_ref}
-                className="col-1 btn"
+                className="col-1 h-100 btn"
             >
                 <FontAwesomeIcon 
-                    className={(is_dark_mode)? "text-light" : "text-dark"}
+                    className={(is_dark_mode)? "h-100 text-light" : "h-100 text-dark"}
                     icon={faCrop}
                 />
             </button>
             <button
                 //onClick={}
                 //ref={}
-                className="col-1 btn border-secondary border-top-0 border-bottom-0 border-end-0 rounded-0"
+                className="col-1 h-100 btn border-secondary border-top-0 border-bottom-0 border-end-0 rounded-0"
             >
                 <FontAwesomeIcon 
-                    className={(is_dark_mode)? "text-light" : "text-dark"}
+                    className={(is_dark_mode)? "h-100 text-light" : "h-100 text-dark"}
                     icon={faShapes} 
                 />
             </button>

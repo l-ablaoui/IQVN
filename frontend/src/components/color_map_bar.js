@@ -1,4 +1,3 @@
-import "../App.css";
 import { 
     EMPHASIS_COLOR, 
     HIGH_SCORE_COLOR, 
@@ -11,11 +10,19 @@ import {
 import { generate_HSL_colors } from '../utilities/misc_methods';
 import { get_border_radius } from "../utilities/rendering_methods";
 
-import React, { useEffect, useRef, useState } from 'react';
+import React, { useEffect, useRef } from 'react';
 
+/** This component renders the color map that is applied to the semantic plot and handles the color map selection.
+ * @param {*} cmap expected string with values "default", "clusters", "timestamps" 
+ * and "scores", currently selected color map
+ * @param {*} set_cmap expected setter of the string color map
+ * @param {*} clusters expected array of integers representing cluster labels
+ * @param {*} scores expected array of floats representing similarity scores
+ * @param {*} max_index expected non-zero positive integer, maximum frame index in the video */
 const Color_map_bar = ({cmap, set_cmap, clusters, scores, max_index}) => {
     const color_map_bar_ref = useRef(null);
 
+    // re-rendering effect
     useEffect(() => {
         if (color_map_bar_ref.current) {
             color_map_bar_ref.current.width = color_map_bar_ref.current.offsetWidth;
@@ -24,6 +31,9 @@ const Color_map_bar = ({cmap, set_cmap, clusters, scores, max_index}) => {
         }
     }, [cmap, clusters, scores, max_index]);
 
+    /** onclick listener for all 4 color map buttons, update the selected color map depending 
+     * on the clicked button value, color the clicked button blue and the rest gray
+     * @param {*} event expected onclick event with access to target and parent elements */
     const handle_cmap_buttons_on_click = (event) => {
         let button = event.target;
         let parent = event.target?.parentElement;
@@ -43,6 +53,10 @@ const Color_map_bar = ({cmap, set_cmap, clusters, scores, max_index}) => {
         set_cmap(value);
     };
 
+    /** render color map bar based on the selected color map (blocks colors for default and clusters 
+     * and gradient colors for timestamps and scores)
+     * @param {*} cmap expected string with values "default", "clusters", "timestamps" and "scores", 
+     * currently selected color map */
     const render_color_map_bar = (cmap) => {
         if (cmap === "default") {
             render_color_map_bar_blocks([REGULAR_COLOR, SELECTION_COLOR + "1)", EMPHASIS_COLOR]);
@@ -81,6 +95,8 @@ const Color_map_bar = ({cmap, set_cmap, clusters, scores, max_index}) => {
         }
     }
 
+    /** divide color map bar into blocks of colors
+     * @param {*} colors expected array of string-coded colors */
     const render_color_map_bar_blocks = (colors) => {
         const color_map_bar = color_map_bar_ref.current;
         const ctx = color_map_bar.getContext("2d", {alpha: true});
@@ -112,6 +128,11 @@ const Color_map_bar = ({cmap, set_cmap, clusters, scores, max_index}) => {
         }
     };
 
+    /** render color map bar as a gradient between two colors 
+     * @param {*} min_value expected float, value to display at the left of the gradient
+     * @param {*} max_value expected float, value to display at the right of the gradient
+     * @param {*} min_color expected object with red, green and blue fields, color at the left of the gradient
+     * @param {*} max_color expected object with red, green and blue fields, color at the right of the gradient */
     const render_color_map_bar_gradient = (min_value, max_value, min_color, max_color) => {
         const color_map_bar = color_map_bar_ref.current;
         const ctx = color_map_bar.getContext("2d", {alpha: true});
@@ -138,7 +159,6 @@ const Color_map_bar = ({cmap, set_cmap, clusters, scores, max_index}) => {
         ctx.closePath();
         ctx.clip();
 
-
         const gradient = ctx.createLinearGradient(0, 0, width, 0);
         gradient.addColorStop(0, `rgb(${min_color.red}, ${min_color.green}, ${min_color.blue})`);  
         gradient.addColorStop(1, `rgb(${max_color.red}, ${max_color.green}, ${max_color.blue})`);  
@@ -150,38 +170,37 @@ const Color_map_bar = ({cmap, set_cmap, clusters, scores, max_index}) => {
         ctx.font = '18px Arial';
         ctx.textAlign = 'center';
         ctx.fillText(min_value, 18, height / 2 + 5); // Min value at the left
-        //ctx.fillStyle = 'white';
         ctx.fillText(max_value, width - 18, height / 2 + 5); // Max value at the right
     };
 
     return (
-        <div className="row">
+        <div className="row h-10 w-100">
             <input 
                 type="button" 
                 value="default" 
-                className="col-2 btn btn-primary"
+                className="col-2 h-100 btn btn-primary"
                 onClick={handle_cmap_buttons_on_click}
             />
             <input 
                 type="button" 
                 value="clusters" 
-                className="col-2 btn btn-secondary"
+                className="col-2 h-100 btn btn-secondary"
                 onClick={handle_cmap_buttons_on_click}
             />
             <input 
                 type="button" 
                 value="timestamps" 
-                className="col-2 btn btn-secondary"
+                className="col-2 h-100 btn btn-secondary"
                 onClick={handle_cmap_buttons_on_click}
             />
             <input 
                 type="button" 
                 value="scores" 
-                className="col-2 btn btn-secondary"
+                className="col-2 h-100 btn btn-secondary"
                 onClick={handle_cmap_buttons_on_click}
             />
             <canvas 
-                className="col-4 d-block rounded"
+                className="col-4 h-100 d-block rounded"
                 ref={color_map_bar_ref}>
             </canvas>
         </div>

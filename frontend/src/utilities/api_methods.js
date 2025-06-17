@@ -128,7 +128,7 @@ export const fetch_video_semantic_representation = async (video_name) => {
 };
 
 /** updates the server with the name of the selected video
- * @todo only supports mp4 video format, add support for other formats
+ * @todo add support for other formats this only supports (was only tested with) mp4 video format
  * @param {*} video_name expected string representing an mp4 video name */
 export const post_video_name = async (video_name) => {
     try {
@@ -146,6 +146,8 @@ export const post_video_name = async (video_name) => {
     }
 };
 
+/** convert file input into server-compatible URL
+ * @param {*} file expected file input */
 const get_data_URL = async (file) => {
     return new Promise((resolve, reject) => {
         const reader = new FileReader();

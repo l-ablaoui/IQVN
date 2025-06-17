@@ -1,3 +1,6 @@
+import warnings
+warnings.filterwarnings("ignore", category=UserWarning, message="TypedStorage is deprecated")
+
 import uvicorn
 from fastapi import FastAPI, File, UploadFile
 from fastapi.exceptions import HTTPException

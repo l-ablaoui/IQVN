@@ -6,31 +6,36 @@ This repository demonstrates an implementation of a video content retrieval syst
 - image based interactions (image search, image crop search)
 - semantic representations (2D scatterplot of video embeddings)
 
-The implementation is divided into a python-coded fastAPI backend server that performs video analysis (leveraging a VLM for search and semantic representation), and a react-coded frontend that presents the different video interactions
+The implementation is divided into a python-coded fastAPI backend server that performs video analysis (leveraging a VLM for search and semantic representation), and a react-coded frontend that presents the different video interactions.
 
 ## Backend (FastAPI)
 
 ### Prerequisites
-- Python 3.x
-- NodeJs (npm) X
+- Python 3.8+
 
 ### Installation
-1. Clone this repository to your local machine.
+1. Clone this repository to your local machine:
+```
+    git clone git@github.com:Marina2468/IQVN.git
+```
 2. Navigate to the `backend` directory.
+```
+    cd backend
+```
 3. Install the required Python packages using pip:
-
-.. code:
-
+```
     pip install -r requirements.txt
-
-
+```
 ### Running the Backend
 1. Navigate to the `backend` directory.
 2. Run the FastAPI server:
-
-.. code:
-
+```
     uvicorn main:app --reload
+```
+or
+```
+    python main.py
+```
 
 This command will start the server at `http://localhost:8000`.
 
@@ -38,21 +43,23 @@ This command will start the server at `http://localhost:8000`.
 
 ## Frontend (React)
 
+### Prerequisites
+- NodeJs (npm) X
+
 ### Running the Frontend
-0. Make sure the backend server is running before attempting to use the frontend interactions
-1. Navigate to the `frontend` directory.
+0. Make sure the backend server is running before attempting to use the frontend interactions.
+1. Navigate to the `frontend` directory:
+```
+    cd frontend
+```
 2. Install the necesary dependencies with:
-
-..code:
-
+```
     npm install
-
+```
 3. Run with:
-
-..code:
-
+```
     npm start
-
+```
 In your browser, enter the path `http://localhost:3000/` to access the frontend GUI
 
 ## Demo

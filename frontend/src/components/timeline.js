@@ -1,4 +1,11 @@
 import { EMPHASIS_COLOR, SELECTION_COLOR } from "../utilities/constants";
+import { 
+    generate_selected_points_color_map,
+    get_integer_interval,
+    get_scores_above_threshold,
+    difference,
+    union 
+} from "../utilities/misc_methods";
 import {
     plot_timestamps, 
     plot_marker, 
@@ -7,13 +14,6 @@ import {
     plot_axes, 
     draw_selector
 } from "../utilities/rendering_methods";
-import { 
-    generate_selected_points_color_map,
-    get_integer_interval,
-    get_scores_above_threshold,
-    difference,
-    union 
-} from "../utilities/misc_methods";
 
 import { useState, useRef, useEffect } from "react";
 
@@ -60,6 +60,7 @@ const Timeline = ({current_index, update_time, max_index, fps, selected_points, 
         };
     }, []);
 
+    // re-rendering effect
     useEffect(() => {
         if (timeline_ref.current) {
             timeline_ref.current.width = timeline_ref.current.offsetWidth;
@@ -80,7 +81,7 @@ const Timeline = ({current_index, update_time, max_index, fps, selected_points, 
                 offset_right, offset_y, max_index, event);
             set_selection_dragging(true);
         }
-        else if (event.nativeEvent.button == 2) {
+        else if (event.nativeEvent.button == 2 && scores?.length > 0) {
             // thresholding
             set_thresholding(true);
             handle_thresholding(event);
@@ -419,7 +420,7 @@ const Timeline = ({current_index, update_time, max_index, fps, selected_points, 
         <canvas
             ref={timeline_ref}
             key={scores}
-            className="timeline"
+            className="w-100 h-25 border border-secondary "
             tabIndex={0}
             onMouseDown={handle_timeline_mousedown}
             onMouseMove={handle_timeline_mousemove}

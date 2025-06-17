@@ -1,15 +1,21 @@
 import { DEACTIVATED_COLOR } from "../utilities/constants";
 import { draw_rectangle } from "../utilities/rendering_methods";
-import { handle_selection_area_mousedown, handle_selection_area_mousemove } from "../utilities/misc_methods";
+import {
+    handle_selection_area_mousedown, 
+    handle_selection_area_mousemove 
+} from "../utilities/misc_methods";
 
-import React, { useEffect } from 'react';
+import React, { useState, useEffect } from "react";
 
-/** This component handles a canvas that is used as an overlay to the video when cropping a part of it
- * for searching.*/
+/** This component handles a canvas that is used as an overlay to the video when 
+ * cropping a part of it for searching.*/
 const Image_crop_area = ({crop_area_ref, selection_top_left, selection_bot_right, 
     set_selection_top_left, set_selection_bot_right, apply_effect, video_top_left,
     video_bot_right}) => {
-        
+    
+    const [is_cropping, set_is_cropping] = useState(false);
+    
+    // re-rendering effect
     useEffect(() => {
         render_crop_area();
     }, [selection_top_left, selection_bot_right]);
@@ -17,6 +23,7 @@ const Image_crop_area = ({crop_area_ref, selection_top_left, selection_bot_right
     /** mousedown handles the start of the selection area 
      * @param {*} event expected mousedown event with access to clientX/Y */
     const handle_crop_area_mousedown = (event) => {
+        set_is_cropping(true);
         handle_selection_area_mousedown(crop_area_ref.current, video_top_left,
             video_bot_right, set_selection_top_left, set_selection_bot_right, event);
     };
@@ -38,6 +45,7 @@ const Image_crop_area = ({crop_area_ref, selection_top_left, selection_bot_right
             apply_effect();
             crop_area_ref.current.className = "d-none position-absolute top-0 start-0";
         }
+        set_is_cropping(false);
     };
 
     /** renders the crop area to fit the whole screen (black) aside from the selected area. 
@@ -48,12 +56,20 @@ const Image_crop_area = ({crop_area_ref, selection_top_left, selection_bot_right
         
         const ctx = crop_area_ref.current.getContext("2d", { alpha: true });
         ctx.clearRect(0, 0, plot_width, plot_height);
+
+        // if cropping is not active, do not render anything
+        if (!is_cropping) {
+            ctx.fillStyle = DEACTIVATED_COLOR;
+            ctx.fillRect(0, 0, plot_width, plot_height);
+            return;
+        }
+
+        //draw the crop area by leaving everything outside the selection area with a dark overlay 
         const min_point = {x: Math.min(selection_top_left.x, selection_bot_right.x), 
             y: Math.min(selection_top_left.y, selection_bot_right.y)};
         const max_point = {x: Math.max(selection_top_left.x, selection_bot_right.x), 
             y: Math.max(selection_top_left.y, selection_bot_right.y)};
 
-        //draw the crop area by leaving everything outside the selection area with a dark overlay 
         ctx.fillStyle = DEACTIVATED_COLOR;
         ctx.fillRect(0, 0, plot_width, min_point.y);
         ctx.fillRect(0, min_point.y, min_point.x, plot_height - min_point.y);

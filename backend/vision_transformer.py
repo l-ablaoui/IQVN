@@ -23,6 +23,8 @@ class VisionTransformer:
 
         #model loading
         start = time.time()
+        if not os.path.exists("models"):
+            os.mkdir("models")
         self.model, self.processor = self.load_model(checkpoint, "models/processor.pth", "models/clip-vit-b16.pth")
         print("loading in ", time.time() - start )
 

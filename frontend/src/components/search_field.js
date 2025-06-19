@@ -7,8 +7,7 @@ import {
 import { get_video_inline_offset } from "../utilities/misc_methods";
 
 import React, { useRef, useState } from "react";
-import { FontAwesomeIcon } from "@fortawesome/react-fontawesome"
-import { faImages, faCrop, faSearch, faShapes } from "@fortawesome/free-solid-svg-icons";
+import { Images, Crop, Search, Shapes } from "lucide-react";
 
 /** This component enables textual and image based search in the video. Image search supports 
  * external images or cropping the video frame. Cropping depends on Image_crop_area component.
@@ -139,20 +138,14 @@ const Search_field = ({video_ref, current_index, set_scores, is_dark_mode}) => {
                 ref={search_button_ref}
                 className="col-1 h-100 btn border-secondary border-top-0 border-start-0 border-bottom-0 rounded-0"
             >
-                <FontAwesomeIcon 
-                    className={(is_dark_mode)? "h-100 text-light" : "h-100 text-dark"}
-                    icon={faSearch} 
-                />
+                <Search className={(is_dark_mode)? "h-100 text-light" : "h-100 text-dark"} />
             </button>
             <button
                 onClick={handle_image_upload_click}
                 ref={image_input_ref}
                 className="col-1 h-100 btn"
             >
-                <FontAwesomeIcon 
-                    className={(is_dark_mode)? "h-100 text-light" : "h-100 text-dark"}
-                    icon={faImages} 
-                />
+                <Images className={(is_dark_mode)? "h-100 text-light" : "h-100 text-dark"} />
                 <input 
                     type="file" 
                     class="d-none" 
@@ -166,20 +159,14 @@ const Search_field = ({video_ref, current_index, set_scores, is_dark_mode}) => {
                 ref={image_crop_ref}
                 className="col-1 h-100 btn"
             >
-                <FontAwesomeIcon 
-                    className={(is_dark_mode)? "h-100 text-light" : "h-100 text-dark"}
-                    icon={faCrop}
-                />
+                <Crop className={(is_dark_mode)? "h-100 text-light" : "h-100 text-dark"} />
             </button>
             <button
                 //onClick={}
                 //ref={}
                 className="col-1 h-100 btn border-secondary border-top-0 border-bottom-0 border-end-0 rounded-0"
             >
-                <FontAwesomeIcon 
-                    className={(is_dark_mode)? "h-100 text-light" : "h-100 text-dark"}
-                    icon={faShapes} 
-                />
+                <Shapes className={(is_dark_mode)? "h-100 text-light" : "h-100 text-dark"} />
             </button>
             <Image_crop_area 
                 crop_area_ref={crop_area_ref}

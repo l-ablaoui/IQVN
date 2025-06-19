@@ -6,8 +6,7 @@ import {
 import { parse_selected_frames } from "../utilities/misc_methods";
 
 import { useState, useEffect } from "react";
-import { FontAwesomeIcon } from "@fortawesome/react-fontawesome"
-import { faSun, faMoon } from "@fortawesome/free-solid-svg-icons";
+import { Sun, Moon } from "lucide-react";
 
 /** this component handles selecting a video from the server, clearing/copying the selected frames 
  * in string format and toggling dark mode
@@ -71,10 +70,9 @@ const Video_config_bar = ({set_video_src, set_current_index, set_scores, selecte
                     className="col-5 h-100 btn"
                     onClick={(is_dark_mode)? () => set_dark_mode(false) : () => set_dark_mode(true)} 
                 >
-                    <FontAwesomeIcon 
-                        className={`h-100 ${(is_dark_mode)? "text-light" : "text-dark"}`} 
-                        icon={(is_dark_mode)? faSun : faMoon} 
-                    /> 
+                    {(is_dark_mode)?
+                    <Sun className={`h-100 ${(is_dark_mode)? "text-light" : "text-dark"}`} /> :
+                    <Moon className={`h-100 ${(is_dark_mode)? "text-light" : "text-dark"}`}/>}
                 </button>
                 <label className="col-7 form-label">select video: </label>
             </div>

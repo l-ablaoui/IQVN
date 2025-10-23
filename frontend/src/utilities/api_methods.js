@@ -34,7 +34,7 @@ export const fetch_video = async (video_name) => {
 /** calls text similarity score endpoint in the server 
  * @param {*} query_input expected string representing the textual query input
  * @returns expected array of floats between 0 and 1 representing similarity scores */
-export const fetch_query_scores = async (query_input) => {
+export const fetch_text_query_scores = async (query_input) => {
     try {
         const response = await fetch(`${BACKEND_SERVER_URL}search?query=${query_input}`);
         const body = await response.json();
@@ -143,6 +143,19 @@ export const post_video_name = async (video_name) => {
     }
     catch (error) {
         console.error("Error posting video name \"", video_name, "\" : ",error);
+    }
+};
+
+export const fetch_compound_query_scores = async (compound_query) => {
+    try {
+        const response = await fetch(`${BACKEND_SERVER_URL}compound_search/`, 
+            {method: "POST", body: JSON.stringify({ compound_query }), 
+            headers: {"Content-Type": "application/json"}});
+        const body = await response.json();
+        console.log("fetch compound query scores result: ", body);
+    }
+    catch (error) {
+        console.error("Error retrieving compound query scores for query", compound_query, " : ", error);
     }
 };
 

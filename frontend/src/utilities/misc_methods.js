@@ -10,7 +10,7 @@ import {
  * @param {*} array_b expected array of integers
  * @returns expected (new reference) array of integers */
 export const union = (array_a, array_b) => {
-    let set = new Set([...array_a, ...array_b]); // Use a Set to automatically handle duplicates
+    let set = new Set([...array_a, ...array_b]); //use a Set to automatically handle duplicates
     return Array.from(set);
 };
 
@@ -47,11 +47,11 @@ export const length2 = (p1, p2) => {
  * @returns expected array of strings, generated colors in a string array */
 export const generate_HSL_colors = (nb_colors) => {
     let colors = [];
-    const saturation = 70; // Saturation percentage
-    const lightness = 50;  // Lightness percentage
+    const saturation = 70; //saturation percentage
+    const lightness = 50;  //lightness percentage
 
     for (let i = 0; i < nb_colors; i++) {
-        const hue = Math.floor((360 / nb_colors) * i);
+        const hue = Math.floor((360 /nb_colors) * i);
         colors.push(`hsla(${hue}, ${saturation}%, ${lightness}%, 0.7)`);
     }
 
@@ -87,8 +87,8 @@ export const focus_onclick = (dom_element) => { dom_element.focus(); };
  * @param {*} seconds_count expected positive integer
  * @returns expected string representing time in HH:MM:SS */
 export const format_time = (seconds_count) => {
-    const hours = Math.floor(seconds_count / 3600)
-    const minutes = Math.floor((seconds_count - hours * 3600) / 60);
+    const hours = Math.floor(seconds_count /3600)
+    const minutes = Math.floor((seconds_count - hours * 3600) /60);
     const seconds = seconds_count % 60;
     
     return `${String(hours).padStart(2, '0')}:` + `${String(minutes).padStart(2, '0')}:`
@@ -131,16 +131,16 @@ export const handle_zoom_pan_wheel = (svg, zoom_speed, scale, set_scale, transla
     const wheel = event.deltaY < 0 ? 1 : -1;
     const zoom_factor = 1 + wheel * zoom_speed;
     
-    // Calculate new scale but constrain it within a range
+    //calculate new scale but constrain it within a range
     const new_scale = Math.max(Math.min(scale * zoom_factor, MAX_SCALE), MIN_SCALE);
     
-    // Adjust translation to keep the zoom centered on the cursor
+    //adjust translation to keep the zoom centered on the cursor
     set_translate({
-        x: mouse_x - ((mouse_x - translate.x) / scale) * new_scale,
-        y: mouse_y - ((mouse_y - translate.y) / scale) * new_scale
+        x: mouse_x - ((mouse_x - translate.x) /scale) * new_scale,
+        y: mouse_y - ((mouse_y - translate.y) /scale) * new_scale
     });
 
-    // Apply the new scale
+    //apply the new scale
     set_scale(new_scale);
 };
 
@@ -243,20 +243,20 @@ export const get_bounding_box = (points) => {
 export const get_video_inline_offset = (video) => {
     const { videoWidth, videoHeight, offsetWidth, offsetHeight } = video;
 
-    const inline_ratio = videoWidth / videoHeight;
-    const element_ratio = offsetWidth / offsetHeight;
+    const inline_ratio = videoWidth /videoHeight;
+    const element_ratio = offsetWidth /offsetHeight;
 
     let x_offset = 0;
     let y_offset = 0;
 
     if (element_ratio > inline_ratio) {
-        // Video is letterboxed horizontally (black bars on left & right)
-        const scaled_height = offsetWidth / inline_ratio;
-        y_offset = (offsetHeight - scaled_height) / 2;
+        //video is letterboxed horizontally (black bars on left & right)
+        const scaled_height = offsetWidth /inline_ratio;
+        y_offset = (offsetHeight - scaled_height) /2;
     } else {
-        // Video is letterboxed vertically (black bars on top & bottom)
+        //video is letterboxed vertically (black bars on top & bottom)
         const scaled_width = offsetHeight * inline_ratio;
-        x_offset = (offsetWidth - scaled_width) / 2;
+        x_offset = (offsetWidth - scaled_width) /2;
     }
 
     return { x_offset, y_offset };
@@ -279,9 +279,9 @@ export const parse_selected_frames = (selected_frames, max_index, fps) => {
 
     //parse time intervals into string
     const intervals = bool_timestamps.reduce((acc, cur, i, arr) => {
-        if (cur && (i === 0 || !arr[i - 1])) acc.push([i]);  // Start of a new interval
-        if (!cur && arr[i - 1]) acc[acc.length - 1].push(i); // End of an interval
-        if (cur && i === arr.length - 1) acc[acc.length - 1].push(i + 1); // End interval if last element is 1
+        if (cur && (i === 0 || !arr[i - 1])) acc.push([i]);  //start of a new interval
+        if (!cur && arr[i - 1]) acc[acc.length - 1].push(i); //end of an interval
+        if (cur && i === arr.length - 1) acc[acc.length - 1].push(i + 1); //end interval if last element is 1
         return acc;
     }, []).map(([start, end]) => `${format_time(start)}-${format_time(end - 1)}`).join("; ");
 
@@ -299,10 +299,72 @@ export const get_scores_above_threshold = (scores, threshold) => {
     //normalize scores array
     let min_score = Math.min(...scores);
     let max_score = Math.max(...scores);
-    let scaled_scores = scores.map(score => (score - min_score) / (max_score - min_score));
+    let scaled_scores = scores.map(score => (score - min_score) /(max_score - min_score));
 
     return scaled_scores.reduce((acc, num, index) => {
         if (num > threshold) acc.push(index);
         return acc;
     }, []);
+};
+
+//save cursor position relative to the contentEditable element
+export const save_cursor_position = (element_ref) => {
+    const element = element_ref.current;
+    if (!element) return null;
+    
+    const selection = window.getSelection();
+    if (selection.rangeCount === 0) return null;
+    
+    const range = selection.getRangeAt(0);
+    
+    //check if the selection is actually inside our element
+    if (!element.contains(range.commonAncestorContainer)) return null;
+    
+    const pre_caret_range = range.cloneRange();
+    pre_caret_range.selectNodeContents(element);
+    pre_caret_range.setEnd(range.endContainer, range.endOffset);
+    
+    return pre_caret_range.toString().length;
+};
+
+//restore cursor position within the specific element
+export const restore_cursor_position = (element_ref, position) => {
+    const element = element_ref.current;
+    if (position === null || !element) return;
+    
+    const create_range = (root_nood, chars) => {
+        const range = document.createRange();
+        range.setStart(root_nood, 0);
+        range.collapse(true);
+        
+        let node_stack = [root_nood];
+        let found_start = false;
+        let char_count = 0;
+        
+        while (!found_start && node_stack.length > 0) {
+            const current_node = node_stack.pop();
+            
+            if (current_node.nodeType === Node.TEXT_NODE) {
+                const next_char_count = char_count + current_node.length;
+                if (chars <= next_char_count) {
+                    range.setStart(current_node, chars - char_count);
+                    found_start = true;
+                } else {
+                    char_count = next_char_count;
+                }
+            } else {
+                let i = current_node.childNodes.length;
+                while (i--) {
+                    node_stack.push(current_node.childNodes[i]);
+                }
+            }
+        }
+        
+        return range;
+    };
+    
+    const range = create_range(element, position);
+    const selection = window.getSelection();
+    selection.removeAllRanges();
+    selection.addRange(range);
 };

@@ -27,3 +27,16 @@
     color: #212529 !important;
     opacity: 0.7 !important;
 }
+
+[contenteditable="true"] {
+    caret-color: red;
+}
+
+.overflow-x {
+    overflow-x: auto;
+    overflow-y: hidden;
+}
+
+.nowrap { 
+    white-space: nowrap;
+}

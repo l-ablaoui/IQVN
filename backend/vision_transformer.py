@@ -32,7 +32,7 @@ class VisionTransformer:
         print("Using device: ", self.device)
         self.model.to(self.device)
 
-        # batch size for processing frames
+        #batch size for processing frames
         self.batch_size = batch_size
 
     def load_video(self):
@@ -100,7 +100,7 @@ class VisionTransformer:
                 
                 pbar.update(1)
 
-            # Process any remaining frames
+            #process any remaining frames
             if frames:
                 batch_embeddings = self.get_image_features(frames)
                 embeddings.append(batch_embeddings)
@@ -115,21 +115,23 @@ class VisionTransformer:
         self.video_embeddings =  np.vstack(embeddings)
 
     def cosine_similarity(self, embeds1, embeds2):
-        # Reshape 1D arrays to 2D if necessary
+        #reshape 1D arrays to 2D if necessary
         if embeds1.ndim == 1:
             embeds1 = embeds1.reshape(1, -1)
         if embeds2.ndim == 1:
             embeds2 = embeds2.reshape(1, -1)
 
-        # Compute the dot product between the embeddings
+        #compute the dot product between the embeddings
         dot_product = np.dot(embeds1, embeds2.T)
 
-        # Compute the L2 norms of the embeddings
+        #compute the L2 norms of the embeddings
         norm_x = np.linalg.norm(embeds1, axis=1, keepdims=True)
         norm_y = np.linalg.norm(embeds2, axis=1, keepdims=True)
 
-        # Compute the cosine similarity
+        #compute the cosine similarity
         cosine_similarity = dot_product / (norm_x * norm_y.T)
+        #rescale to [0, 1]
+        cosine_similarity = (cosine_similarity + 1) / 2
 
         return cosine_similarity
 

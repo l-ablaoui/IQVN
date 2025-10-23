@@ -1,3 +1,4 @@
+from typing import Any, Dict, List
 import warnings
 warnings.filterwarnings("ignore", category=UserWarning, message="TypedStorage is deprecated")
 
@@ -140,9 +141,6 @@ async def compute_cosine_similarity(video_path, query_text):
     if not os.path.exists(output_path):
         os.mkdir(output_path)
 
-    '''if not os.path.exists(f"{output_path}/0.png"):
-        await video2images(video_path, FPS)'''
-
     classifier = VisionTransformer(FPS, video_path, MODEL_NAME)
 
     print("output_path:", output_path)
@@ -188,6 +186,28 @@ async def compute_cosine_similarity(video_path, query_text):
     del classifier, 
     return similarity_scores
 
+def compute_interquery_cosine_similarity(queries, classifier):
+    query_embeddings = []
+    for query in queries:
+        if query == IMAGE_CROP_QUERY:
+            print("reading image and computing features")
+            query_img = cv2.imread(OUTPUT_CROP_IMAGE)
+            query_embedding = classifier.get_image_features(query_img)
+        else:
+            query_embedding = classifier.get_text_features(query)
+        query_embeddings.append(query_embedding)
+    
+    similarity_scores = np.zeros((len(queries), len(queries)))
+    for i in range(len(queries)):
+        for j in range(len(queries)):
+            if i != j:
+                similarity = classifier.cosine_similarity(query_embeddings[i], query_embeddings[j])
+                similarity_scores[i, j] = similarity.item()
+            else:
+                similarity_scores[i, j] = 1.0
+
+    return similarity_scores
+
 async def perform_object_detection(video_path, output_path):
     detector = ObjectDetector(video_path=video_path, output_results=output_path+"-output.csv", model_name="yolov5s.pt", fps=FPS)
     return detector()
@@ -202,6 +222,19 @@ async def compute_depth_map(video_path, output_path):
 @app.get("/search")
 async def search(query: str):
     global current_video_path
+
+    similarity_scores = await compute_cosine_similarity(current_video_path, query)
+
+    return {
+        "query": query, 
+        "scores": similarity_scores
+    }
+
+@app.get("/compound_search")
+async def search(queries: List[Dict[str, Any]]):
+    global current_video_path
+
+    print("queries:", queries)
 
     similarity_scores = await compute_cosine_similarity(current_video_path, query)
 

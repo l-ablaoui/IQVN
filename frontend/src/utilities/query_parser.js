@@ -142,14 +142,3 @@ export const parse_query = (input, regrouper_pairs, separators) => {
     return result;
 };
 
-export const extract_queries = (parsed_query, text_regrouper_pairs) => {
-    const queries = []; 
-    const text_openers = text_regrouper_pairs.map(pair => pair[0]);
-    const text_closers = text_regrouper_pairs.map(pair => pair[1]);
-    parsed_query.forEach(token => {
-        if (text_openers.includes(token[0]) && text_closers.includes(token[token.length - 1])) {
-            queries.push(token.slice(1, -1).trim());
-        }
-    });
-    return queries;
-};

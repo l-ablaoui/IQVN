@@ -10,7 +10,7 @@ import {
     save_cursor_position,
     restore_cursor_position
 } from "../utilities/misc_methods";
-import { parse_query, extract_queries } from "../utilities/query_parser";
+import { parse_query } from "../utilities/query_parser";
 
 import { useEffect, useRef, useState } from "react";
 import { Images, Crop, Search, Shapes } from "lucide-react";
@@ -148,9 +148,10 @@ const Search_field = ({video_ref, current_index, set_scores, is_dark_mode}) => {
     /** triggers score acquisition for query from server end */
     const handle_search_click = () => {
         const query_input = query_value.trim();
+        
         if (query_input.length > 0) {
             const parsed_query = parse_query(query_input, regrouper_pairs, separators);
-
+            
             //if only one query is present, trigger direct search
             if (parsed_query.length == 1 && parsed_query[0].length > 0) {
                 switch (parsed_query[0][0]) {
@@ -187,12 +188,12 @@ const Search_field = ({video_ref, current_index, set_scores, is_dark_mode}) => {
                 }
             }
             //compound query search
-            const text_queries = extract_queries(parsed_query, ['"', '"']);
             let multimodal_query = [];
-            for (const query of text_queries) {
+            for (const query of parsed_query) {
+                console.log("query: ",  query, " / ", query[0], " VS ",  regrouper_pairs[0][0]);
                 switch (query[0]) {
                     case regrouper_pairs[0][0]: { //double quotes
-                        multimodal_query.push({ "text_query": query });
+                        multimodal_query.push({ "text_query": query.slice(1, -1) });
                         break;
                     }
                     case regrouper_pairs[1][0]: { //single quotes
@@ -228,6 +229,7 @@ const Search_field = ({video_ref, current_index, set_scores, is_dark_mode}) => {
                     }
                 }
             }
+            console.log(multimodal_query);
             fetch_compound_query_scores(multimodal_query).then((scores) => {
                 if (scores?.length > 0) {
                     set_scores(scores);

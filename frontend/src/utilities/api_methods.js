@@ -148,11 +148,13 @@ export const post_video_name = async (video_name) => {
 
 export const fetch_compound_query_scores = async (compound_query) => {
     try {
-        const response = await fetch(`${BACKEND_SERVER_URL}compound_search/`, 
-            {method: "POST", body: JSON.stringify({ compound_query }), 
+        const response = await fetch(`${BACKEND_SERVER_URL}compound_search`, 
+            {method: "POST", body: JSON.stringify(compound_query), 
             headers: {"Content-Type": "application/json"}});
         const body = await response.json();
         console.log("fetch compound query scores result: ", body);
+        const scores = body["scores"];
+        return scores;
     }
     catch (error) {
         console.error("Error retrieving compound query scores for query", compound_query, " : ", error);

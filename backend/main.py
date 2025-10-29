@@ -21,6 +21,7 @@ from vision_transformer import VisionTransformer
 from depthmap import DepthMapEstimation
 
 from utilities import *
+from compound_query_processor import CompoundQueryProcessor, QueryUnit
 
 app = FastAPI()
 
@@ -42,6 +43,8 @@ FPS = 10
 
 CONFIG_FILE = "config.json"
 
+current_video_path = "/videos/video_0.mp4"
+
 def read_config ():
     with open(CONFIG_FILE, "r") as json_file:
         config = json.load(json_file)
@@ -51,8 +54,6 @@ def write_config (config):
     with open(CONFIG_FILE, "w") as json_file:
         json.dump(config, json_file)
         json_file.flush()
-
-current_video_path = "/videos/video_0.mp4"
 
 async def compute_embeddings_dim_reduction(video_path):  
     output_path = video_path.replace(".mp4", "")
@@ -186,28 +187,6 @@ async def compute_cosine_similarity(video_path, query_text):
     del classifier, 
     return similarity_scores
 
-def compute_interquery_cosine_similarity(queries, classifier):
-    query_embeddings = []
-    for query in queries:
-        if query == IMAGE_CROP_QUERY:
-            print("reading image and computing features")
-            query_img = cv2.imread(OUTPUT_CROP_IMAGE)
-            query_embedding = classifier.get_image_features(query_img)
-        else:
-            query_embedding = classifier.get_text_features(query)
-        query_embeddings.append(query_embedding)
-    
-    similarity_scores = np.zeros((len(queries), len(queries)))
-    for i in range(len(queries)):
-        for j in range(len(queries)):
-            if i != j:
-                similarity = classifier.cosine_similarity(query_embeddings[i], query_embeddings[j])
-                similarity_scores[i, j] = similarity.item()
-            else:
-                similarity_scores[i, j] = 1.0
-
-    return similarity_scores
-
 async def perform_object_detection(video_path, output_path):
     detector = ObjectDetector(video_path=video_path, output_results=output_path+"-output.csv", model_name="yolov5s.pt", fps=FPS)
     return detector()
@@ -230,16 +209,35 @@ async def search(query: str):
         "scores": similarity_scores
     }
 
-@app.get("/compound_search")
-async def search(queries: List[Dict[str, Any]]):
+@app.post("/compound_search")
+async def search(queries: List[QueryUnit]):
     global current_video_path
+    output_path = current_video_path.replace(".mp4", "")
 
     print("queries:", queries)
 
-    similarity_scores = await compute_cosine_similarity(current_video_path, query)
+    vision_transformer = VisionTransformer(FPS, current_video_path, MODEL_NAME)
 
+    if not os.path.exists(f"{output_path}/embedding_0.npy"):
+        print("computing embeddings...")
+        vision_transformer()
+        embeddings = vision_transformer.video_embeddings
+
+        with tqdm(total=embeddings.shape[0], desc="saving embeddings: ") as pbar:
+            for i in range(embeddings.shape[0]):
+                np.save(output_path+f"/embedding_{i}.npy", embeddings[i])
+                pbar.update(1)
+    else:
+        vid = cv2.VideoCapture(current_video_path)
+        frameCount = int(int(vid.get(cv2.CAP_PROP_FRAME_COUNT)) * FPS / int(vid.get(cv2.CAP_PROP_FPS)))
+        vision_transformer.load_video_features(output_path, frameCount)
+        vid.release()
+
+    processor = CompoundQueryProcessor(vision_transformer)
+    similarity_scores = processor(queries)
+    
     return {
-        "query": query, 
+        "query": queries, 
         "scores": similarity_scores
     }
 
@@ -275,7 +273,6 @@ async def crop_search(crop_data: dict):
         "query": IMAGE_CROP_QUERY, 
         "scores": similarity_scores
     }
-
     
 @app.get("/image/{prediction_path}/{filename}")
 async def get_image(prediction_path: str, filename: str):

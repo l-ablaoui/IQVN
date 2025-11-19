@@ -74,12 +74,12 @@ const Video_config_bar = ({set_video_src, set_current_index, set_scores, selecte
                     <Sun className={`h-100 ${(is_dark_mode)? "text-light" : "text-dark"}`} /> :
                     <Moon className={`h-100 ${(is_dark_mode)? "text-light" : "text-dark"}`}/>}
                 </button>
-                <label className="col-7 form-label">select video: </label>
+                <label className="col-7 form-label responsive-text">select video: </label>
             </div>
             <div className="col-5 h-100">
                 <select 
                     name="video_names"
-                    className={`h-100 bg-transparent ${(is_dark_mode)? 
+                    className={`h-100 bg-transparent responsive-text ${(is_dark_mode)? 
                         "text-light form-select" : "text-dark form-select"}` 
                     }
                     onChange={handle_video_selector_change}>
@@ -93,13 +93,13 @@ const Video_config_bar = ({set_video_src, set_current_index, set_scores, selecte
             <input 
                 type="button" 
                 value="clear selection" 
-                className="col-2 btn h-100 btn-outline-secondary"
+                className="col-2 btn h-100 btn-outline-secondary responsive-text"
                 onClick={handle_clear_selection}
             />
             <input 
                 type="button" 
                 value="copy selection" 
-                className="col-2 btn h-100 btn-outline-primary"
+                className="col-2 btn h-100 btn-outline-primary responsive-text"
                 onClick={handle_copy_selection}
             />
         </div>

@@ -190,7 +190,6 @@ const Search_field = ({video_ref, current_index, set_scores, is_dark_mode}) => {
             //compound query search
             let multimodal_query = [];
             for (const query of parsed_query) {
-                console.log("query: ",  query, " / ", query[0], " VS ",  regrouper_pairs[0][0]);
                 switch (query[0]) {
                     case regrouper_pairs[0][0]: { //double quotes
                         multimodal_query.push({ "text_query": query.slice(1, -1) });
@@ -282,7 +281,7 @@ const Search_field = ({video_ref, current_index, set_scores, is_dark_mode}) => {
             <div className="col-8 h-100 position-relative">
                 <div 
                     contentEditable={true}
-                    className={`form-control text-start h-100 nowrap overflow-x ${is_dark_mode ? 
+                    className={`form-control text-start h-100 nowrap overflow-x responsive-text ${is_dark_mode ? 
                         "text-light bg-transparent" : "text-dark bg-transparent"
                     }`}
                     dangerouslySetInnerHTML={{ __html: highlight(query_value) }}

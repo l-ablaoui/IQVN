@@ -31,6 +31,34 @@ export const fetch_video = async (video_name) => {
     }
 };
 
+export const fetch_compound_query_scores = async (compound_query) => {
+    try {
+        //loop over each node in the compound array
+        for (let i = 0; i < compound_query.length; i++) {
+            const node = compound_query[i];
+
+            if (node.image_query) {
+                const matched_file = node.image_query;
+                const data_URL = await get_data_URL(matched_file); //convert File → base64 via get_data_URL
+                compound_query[i] = { "image_query": //overwrite the entry with the backend-friendly structure
+                    { "image_data": data_URL } 
+                };
+            }
+        }
+        
+        const response = await fetch(`${BACKEND_SERVER_URL}compound_search`, 
+            {method: "POST", body: JSON.stringify(compound_query), 
+            headers: {"Content-Type": "application/json"}});
+        const body = await response.json();
+        console.log("fetch compound query scores result: ", body);
+        const scores = body["scores"];
+        return scores;
+    }
+    catch (error) {
+        console.error("Error retrieving compound query scores for query", compound_query, " : ", error);
+    }
+};
+
 /** calls text similarity score endpoint in the server 
  * @param {*} query_input expected string representing the textual query input
  * @returns expected array of floats between 0 and 1 representing similarity scores */
@@ -143,21 +171,6 @@ export const post_video_name = async (video_name) => {
     }
     catch (error) {
         console.error("Error posting video name \"", video_name, "\" : ",error);
-    }
-};
-
-export const fetch_compound_query_scores = async (compound_query) => {
-    try {
-        const response = await fetch(`${BACKEND_SERVER_URL}compound_search`, 
-            {method: "POST", body: JSON.stringify(compound_query), 
-            headers: {"Content-Type": "application/json"}});
-        const body = await response.json();
-        console.log("fetch compound query scores result: ", body);
-        const scores = body["scores"];
-        return scores;
-    }
-    catch (error) {
-        console.error("Error retrieving compound query scores for query", compound_query, " : ", error);
     }
 };
 

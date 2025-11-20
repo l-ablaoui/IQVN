@@ -27,7 +27,7 @@ app = FastAPI()
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],  # allow requests from all origins to be simple
+    allow_origins=["*"],  #allow requests from all origins to be simple
     allow_credentials=True,
     allow_methods=["GET", "POST"],
     allow_headers=["*"],
@@ -39,7 +39,7 @@ IMAGE_CROP_QUERY = "<image-loaded>"
 OUTPUT_CROP_IMAGE = "images/search-image.png"
 MAX_NB_CLUSTERS = 20
 EMBEDDINGS_LENGTH = 512
-FPS = 10
+FPS=10
 
 CONFIG_FILE = "config.json"
 
@@ -63,7 +63,7 @@ async def compute_embeddings_dim_reduction(video_path):
     '''if not os.path.exists(f"{output_path}/0.png"):
         await video2images(video_path, FPS)'''
 
-    #Getting video embeddings 
+    #getting video embeddings 
     classifier = VisionTransformer(FPS, video_path, MODEL_NAME)
 
     print("output_path:", output_path)
@@ -117,7 +117,7 @@ async def compute_embeddings_dim_reduction(video_path):
     sorted_clusters, _, closest_vectors = get_centroids(tsne_clusters, tsne, MAX_NB_CLUSTERS)
     for cls, _ in sorted_clusters:
         tsne_cluster_frames.append({"cluster": int(cls), "centroid": int(closest_vectors[cls])})
-        # save cluster frames for later use in the frontend
+        #save cluster frames for later use in the frontend
         save_frame_from_video(video_path, output_path+f"/{int(closest_vectors[cls])}.png",\
             int(closest_vectors[cls]), FPS)
     
@@ -233,7 +233,7 @@ async def search(queries: List[QueryUnit]):
         vision_transformer.load_video_features(output_path, frameCount)
         vid.release()
 
-    processor = CompoundQueryProcessor(vision_transformer)
+    processor = CompoundQueryProcessor(vision_transformer, current_video_path, FPS)
     similarity_scores = processor(queries)
     
     return {
@@ -248,19 +248,14 @@ async def crop_search(crop_data: dict):
     print(crop_data)
     current_index = crop_data.get("current_index", 0)
     crop_box = crop_data.get("crop_box", (0, 0, 0, 0))
+    crop_img = get_cropped_image(current_video_path, crop_box, current_index, FPS)
 
-    vid = cv2.VideoCapture(current_video_path)
-    original_fps = int(vid.get(cv2.CAP_PROP_FPS))
-    vid.set(cv2.CAP_PROP_POS_FRAMES, current_index * original_fps / FPS)
-    okay, frame = vid.read()
-    if (not okay):
+    if crop_img is None: 
         return { 
             "query": "ERROR",
             "scores": []
         }
-    
-    x, y, w, h = crop_box
-    crop_img = frame[y:y+h, x:x+w]
+
     if not os.path.exists("images/"):
         os.mkdir("images")
 
@@ -388,11 +383,7 @@ async def upload_png(image_data: dict):
     global current_video_path
 
     data_url = image_data.get('image_data', '')
-    
-    image_data_str = data_url.split(",")[1]
-    image_bytes = base64.b64decode(image_data_str)
-    image_array = np.frombuffer(image_bytes, dtype=np.uint8)
-    img = cv2.imdecode(image_array, cv2.IMREAD_COLOR)
+    img = decode_data_url(data_url)
 
     if not os.path.exists("images/"):
         os.mkdir("images")

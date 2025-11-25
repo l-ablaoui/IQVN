@@ -81,8 +81,7 @@ class CompoundQueryProcessor:
         return float(sim.squeeze())
 
     #--- composition primitives ------------------------------------------
-    @staticmethod
-    def and_score(sA: np.ndarray, sB: np.ndarray, rho: float) -> np.ndarray:
+    def and_score(self, sA: np.ndarray, sB: np.ndarray, rho: float) -> np.ndarray:
         """
         correlation-aware AND:
         s_and = (sA * sB) * (1 - alpha * rho)
@@ -91,8 +90,7 @@ class CompoundQueryProcessor:
         """
         return sA * sB * (1.0 - self.overlap_corrector * rho )
 
-    @staticmethod
-    def or_score(sA: np.ndarray, sB: np.ndarray, inter_ab: np.ndarray) -> np.ndarray:
+    def or_score(self, sA: np.ndarray, sB: np.ndarray, inter_ab: np.ndarray) -> np.ndarray:
         """
         Inclusion-exclusion with intersection already computed as inter_ab:
         s_or = sA + sB - inter_ab
@@ -100,8 +98,7 @@ class CompoundQueryProcessor:
         """
         return sA + sB - inter_ab
 
-    @staticmethod
-    def wo_score(sA: np.ndarray, sB: np.ndarray, rho: float) -> np.ndarray:
+    def wo_score(self, sA: np.ndarray, sB: np.ndarray, rho: float) -> np.ndarray:
         """
         W/O (A without B) correlation-aware:
         s_A_minus_B = sA * (1 - sB * rho)

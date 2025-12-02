@@ -9,6 +9,7 @@ import { useRef, useState } from "react";
 
 function App () {
     const [video_src, set_video_src] = useState("");
+    const [video_name, set_video_name] = useState("");
     const video_ref = useRef(null);
     const fps = 10;
 
@@ -38,6 +39,7 @@ function App () {
             <div className="col-7 h-100">
                 <Video_config_bar 
                     className="row" 
+                    set_video_name={set_video_name}
                     set_video_src={set_video_src}
                     set_current_index={set_current_index}
                     set_scores={set_scores}
@@ -74,6 +76,7 @@ function App () {
                     className="row h-5"
                     set_scores={set_scores}
                     current_index={current_index}
+                    video_name={video_name}
                     video_ref={video_ref}
                     is_dark_mode={is_dark_mode}
                 />

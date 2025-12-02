@@ -1,8 +1,5 @@
 import { BACKEND_SERVER_URL } from "../utilities/constants";
-import { 
-    fetch_server_videos_list, 
-    post_video_name 
-} from "../utilities/api_methods";
+import { fetch_server_videos_list } from "../utilities/api_methods";
 import { parse_selected_frames } from "../utilities/misc_methods";
 
 import { useState, useEffect } from "react";
@@ -10,6 +7,7 @@ import { Sun, Moon } from "lucide-react";
 
 /** this component handles selecting a video from the server, clearing/copying the selected frames 
  * in string format and toggling dark mode
+ * @param {*} set_video_name expected setter of the string video name
  * @param {*} set_video_src expected setter of the string video source
  * @param {*} set_current_index expected setter of the integer current frame index
  * @param {*} set_scores expected setter of the array of floats representing similarity scores
@@ -19,19 +17,19 @@ import { Sun, Moon } from "lucide-react";
  * @param {*} fps expected positive integer, frames per second ratio in the video
  * @param {*} is_dark_mode expected boolean, true if dark mode is enabled
  * @param {*} set_dark_mode expected setter of the boolean dark mode */
-const Video_config_bar = ({set_video_src, set_current_index, set_scores, selected_points, 
+const Video_config_bar = ({set_video_name, set_video_src, set_current_index, set_scores, selected_points, 
     set_selected_points, max_index, fps, is_dark_mode, set_dark_mode}) => {
     const [video_names, set_video_names] = useState([]);
     
-    // fetch available video list from server on component mount
+    //fetch available video list from server on component mount
     useEffect(() => {
         const load_video_list = async () => {
             const fetched_video_names = await fetch_server_videos_list();
 
             if (fetched_video_names?.length > 0) {   
                 set_video_names(fetched_video_names);
-                set_video_src(`${BACKEND_SERVER_URL}video/${fetched_video_names[0]}`);
-                await post_video_name(fetched_video_names[0]);
+                set_video_name(fetched_video_names[0]);
+                set_video_src(`${BACKEND_SERVER_URL}videos/${fetched_video_names[0]}`);
             }
         };
         load_video_list();
@@ -43,8 +41,8 @@ const Video_config_bar = ({set_video_src, set_current_index, set_scores, selecte
         if (!current_video_name) return;
         set_current_index(0);
         set_scores([]);
-        set_video_src(`${BACKEND_SERVER_URL}video/${current_video_name}`);
-        post_video_name(current_video_name);
+        set_video_name(current_video_name);
+        set_video_src(`${BACKEND_SERVER_URL}videos/${current_video_name}`);
     };
 
     /** wipe out current selection of frames */

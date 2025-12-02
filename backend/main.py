@@ -43,8 +43,6 @@ FPS=10
 
 CONFIG_FILE = "config.json"
 
-current_video_path = "/videos/video_0.mp4"
-
 def read_config ():
     with open(CONFIG_FILE, "r") as json_file:
         config = json.load(json_file)
@@ -136,15 +134,12 @@ async def compute_embeddings_dim_reduction(video_path):
     return tsne, pca, umap, tsne_clusters, pca_clusters, umap_clusters, tsne_cluster_frames,\
          pca_cluster_frames, umap_cluster_frames
 
-
 async def compute_cosine_similarity(video_path, query_text):    
     output_path = video_path.replace(".mp4", "")
     if not os.path.exists(output_path):
         os.mkdir(output_path)
 
     classifier = VisionTransformer(FPS, video_path, MODEL_NAME)
-
-    print("output_path:", output_path)
     tic = time.time()
 
     #save embeddings in file if not there already
@@ -198,10 +193,10 @@ async def compute_depth_map(video_path, output_path):
     depth_estimator = DepthMapEstimation(FPS, video_path=video_path)
     depth_estimator(save_path=output_path)
 
-@app.get("/search")
-async def search(query: str):
-    global current_video_path
-
+@app.get("/videos/{filename}/search/")
+async def search(filename: str, query: str):
+    current_video_path = read_config()["videos_dir"] + "/" + filename
+    print("current_video_path:", current_video_path, " query:", query)
     similarity_scores = await compute_cosine_similarity(current_video_path, query)
 
     return {
@@ -209,12 +204,10 @@ async def search(query: str):
         "scores": similarity_scores
     }
 
-@app.post("/compound_search")
-async def search(queries: List[QueryUnit]):
-    global current_video_path
+@app.post("/videos/{filename}/search/compound/")
+async def search(filename: str, queries: List[QueryUnit]):
+    current_video_path = read_config()["videos_dir"] + "/" + filename
     output_path = current_video_path.replace(".mp4", "")
-
-    print("queries:", queries)
 
     vision_transformer = VisionTransformer(FPS, current_video_path, MODEL_NAME)
 
@@ -241,11 +234,10 @@ async def search(queries: List[QueryUnit]):
         "scores": similarity_scores
     }
 
-@app.post("/crop_search/")
-async def crop_search(crop_data: dict):
-    global current_video_path
+@app.post("/videos/{filename}/search/crop/")
+async def crop_search(filename: str, crop_data: dict):
+    current_video_path = read_config()["videos_dir"] + "/" + filename
 
-    print(crop_data)
     current_index = crop_data.get("current_index", 0)
     crop_box = crop_data.get("crop_box", (0, 0, 0, 0))
     crop_img = get_cropped_image(current_video_path, crop_box, current_index, FPS)
@@ -269,46 +261,35 @@ async def crop_search(crop_data: dict):
         "scores": similarity_scores
     }
     
-@app.get("/image/{prediction_path}/{filename}")
-async def get_image(prediction_path: str, filename: str):
-    if prediction_path == "images":
-        img_path = f"images/{filename}"
-    else:
-        img_path = os.path.join(read_config()["videos_dir"], f"{prediction_path}").replace("\\","/")+f"/{filename}"
+@app.get("/videos/{filename}/images/{imagename}/")
+async def get_image(filename: str, imagename: str):
+    img_path = os.path.join(read_config()["videos_dir"], f"{filename}").replace("\\","/")+f"/{imagename}"
     return FileResponse(img_path)
 
-@app.get("/video/")
+@app.get("/videos/")
 async def get_video_names():
-    video_names = find_mp4_files("./videos")
+    video_names = find_mp4_files("./videos/")
     if not video_names:
         raise HTTPException(status_code=404, detail="No videos found")
     video_names.sort()
-    print(video_names)
     return video_names
 
-@app.get("/video/{video_name}")
+@app.get("/videos/{video_name}/")
 async def get_video(video_name: str):
     video_path = os.path.join("./videos", video_name)
     if not os.path.exists(video_path) or not video_path.endswith('.mp4'):
         raise HTTPException(status_code=404, detail="Video not found")
-    print(video_path)
     return FileResponse(video_path, media_type="video/mp4")
 
-@app.post("/select_video/")
-async def select_video(name_data: dict):
-    global current_video_path
-
-    video_name = name_data.get("video_name", "")
-    current_video_path = read_config()["videos_dir"] + "/" + video_name
+@app.get("/videos/{filename}/metadata/")
+async def get_video_metadata(filename: str):
+    current_video_path = read_config()["videos_dir"] + "/" + filename
 
     vid = cv2.VideoCapture(current_video_path)
     if vid.isOpened:
         output_path = current_video_path.replace(".mp4", "")
         if not os.path.exists(output_path):
             os.mkdir(output_path)
-
-        '''if not os.path.exists(f"{output_path}/0.png"):
-            await video2images(current_video_path, FPS)'''
 
         frameCount = int(vid.get(cv2.CAP_PROP_FRAME_COUNT))
         originalFps = int(vid.get(cv2.CAP_PROP_FPS))
@@ -319,7 +300,7 @@ async def select_video(name_data: dict):
             "fps": FPS #int(vid.get(cv2.CAP_PROP_FPS))
         }
 
-@app.get("/video/objects/{filename}")
+@app.get("/videos/{filename}/objects/")
 async def get_objects_in_video(filename: str):
     video_path = os.path.join(read_config()["videos_dir"], filename).replace("\\","/")
     name = filename.split(".")[0]
@@ -337,7 +318,7 @@ async def get_objects_in_video(filename: str):
         "result": result.to_dict(orient="records")
     }
 
-@app.get("/video/depth/{filename}")
+@app.get("/videos/{filename}/depth-map/")
 async def get_depth_video(filename: str):
     video_path = os.path.join(read_config()["videos_dir"], filename).replace("\\","/")
     name = filename.split(".")[0]
@@ -349,11 +330,9 @@ async def get_depth_video(filename: str):
     paths = glob.glob(output_path+"/depth_frame_*.png")
     return { "frames": len(paths) }
 
-@app.get("/video/embeddings/{filename}")
+@app.get("/videos/{filename}/embeddings/")
 async def get_video_embeddings(filename: str):
-    print(filename)
     video_path = os.path.join(read_config()["videos_dir"], filename).replace("\\","/")
-    print(video_path)
     tsne, pca, umap, tsne_clusters, pca_clusters, umap_clusters, tsne_cluster_frames, \
         pca_cluster_frames, umap_cluster_frames = await compute_embeddings_dim_reduction(video_path)
     
@@ -368,19 +347,10 @@ async def get_video_embeddings(filename: str):
         "pca_cluster_frames": pca_cluster_frames,
         "umap_cluster_frames": umap_cluster_frames
     }
-
-@app.get("/video/{filename}/fps")
-async def get_video_fps(filename: str):
-    video_path = os.path.join(read_config()["videos_dir"], filename).replace("\\","/")
-    vid = cv2.VideoCapture(video_path)
-    if (not vid.isOpened):
-        return { "fps": -1 }
-    else:
-        return { "fps": FPS } #int(vid.get(cv2.CAP_PROP_FPS)) }
     
-@app.post("/upload_png/")
-async def upload_png(image_data: dict):
-    global current_video_path
+@app.post("/videos/{filename}/search/image/")
+async def upload_png(filename: str, image_data: dict):
+    current_video_path = read_config()["videos_dir"] + "/" + filename
 
     data_url = image_data.get('image_data', '')
     img = decode_data_url(data_url)
@@ -422,7 +392,6 @@ if __name__ == "__main__":
         "port" : args.port
     }
     write_config(config)
-    print(read_config()["log_interaction"])
 
     uvicorn.run("main:app", port=config["port"], reload=True, log_level="info")
     os.remove(CONFIG_FILE)

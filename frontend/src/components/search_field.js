@@ -18,11 +18,12 @@ import { Images, Crop, Search, Shapes } from "lucide-react";
 /** This component enables textual and image based search in the video. Image search supports 
  * external images or cropping the video frame. Cropping depends on Image_crop_area component.
  * @todo implement object detection and display
+ * @param {*} video_name expected string, name of the currently loaded video
  * @param {*} video_ref expected reference to an html video element with access to "current"
  * @param {*} current_index expected positive integer, current frame index in the video
  * @param {*} set_scores expected setter of the scores state
  * @param {*} is_dark_mode expected boolean, true if dark mode is enabled */
-const Search_field = ({video_ref, current_index, set_scores, is_dark_mode}) => {
+const Search_field = ({video_name, video_ref, current_index, set_scores, is_dark_mode}) => {
     const text_input_ref = useRef(null);
     const image_input_ref = useRef(null);
     const image_crop_ref = useRef(null);
@@ -77,7 +78,7 @@ const Search_field = ({video_ref, current_index, set_scores, is_dark_mode}) => {
         if (files.length > 0) {
             set_query_value(query_value + ` '${files[0].name}'`);
             set_input_files([...input_files, files[0]]);
-            fetch_image_scores(files[0]).then((scores) => {
+            fetch_image_scores(video_name, files[0]).then((scores) => {
                 if (scores?.length > 0) {
                     set_scores(scores);
                 }
@@ -138,7 +139,7 @@ const Search_field = ({video_ref, current_index, set_scores, is_dark_mode}) => {
         const y_min = Math.trunc((selection_top_left.y - video_top - y_offset) * video_height / offset_height);
 
         set_query_value(query_value + ` [${x_min}, ${y_min}, ${crop_width}, ${crop_height}, ${current_index}]`);
-        fetch_crop_scores(current_index, [x_min, y_min, crop_width, crop_height]).then((scores) => {
+        fetch_crop_scores(video_name, current_index, [x_min, y_min, crop_width, crop_height]).then((scores) => {
             if (scores?.length > 0) {
                 set_scores(scores);
             }
@@ -156,7 +157,7 @@ const Search_field = ({video_ref, current_index, set_scores, is_dark_mode}) => {
             if (parsed_query.length == 1 && parsed_query[0].length > 0) {
                 switch (parsed_query[0][0]) {
                     case regrouper_pairs[0][0]: { //double quotes
-                        fetch_text_query_scores(parsed_query[0]).then((scores) => {
+                        fetch_text_query_scores(video_name, parsed_query[0]).then((scores) => {
                             if (scores?.length > 0) { 
                                 set_scores(scores); 
                             } 
@@ -167,7 +168,7 @@ const Search_field = ({video_ref, current_index, set_scores, is_dark_mode}) => {
                         const file_name = parsed_query[0].slice(1, -1).trim();
                         const matched_file = input_files.find(file => file.name === file_name);
                         if (matched_file) {
-                            fetch_image_scores(matched_file).then((scores) => {
+                            fetch_image_scores(video_name, matched_file).then((scores) => {
                                 if (scores?.length > 0) { 
                                     set_scores(scores); 
                                 }
@@ -178,11 +179,13 @@ const Search_field = ({video_ref, current_index, set_scores, is_dark_mode}) => {
                     case regrouper_pairs[2][0]: { //braces
                         const bounding_box = JSON.parse(parsed_query[0]).map(Number);
                         const [x_min, y_min, crop_width, crop_height, current_index] = bounding_box;
-                        fetch_crop_scores(current_index, [x_min, y_min, crop_width, crop_height]).then((scores) => {
-                            if (scores?.length > 0) {
-                                set_scores(scores);
+                        fetch_crop_scores(video_name, current_index, [x_min, y_min, crop_width, crop_height]).then(
+                            (scores) => {
+                                if (scores?.length > 0) {
+                                    set_scores(scores);
+                                }
                             }
-                        });
+                        );
                         return;
                     }
                 }
@@ -229,7 +232,7 @@ const Search_field = ({video_ref, current_index, set_scores, is_dark_mode}) => {
                 }
             }
             console.log(multimodal_query);
-            fetch_compound_query_scores(multimodal_query).then((scores) => {
+            fetch_compound_query_scores(video_name, multimodal_query).then((scores) => {
                 if (scores?.length > 0) {
                     set_scores(scores);
                 }

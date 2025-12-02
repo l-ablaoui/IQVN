@@ -57,6 +57,9 @@ def save_frame_from_video(video_path, output_path, frame_number, fps):
     vid = cv2.VideoCapture(video_path)
     original_fps = int(vid.get(cv2.CAP_PROP_FPS))
     frame_number = int(frame_number * original_fps / fps)
+    if (frame_number >= int(vid.get(cv2.CAP_PROP_FRAME_COUNT))):
+        raise Exception(f"Frame number {frame_number} exceeds total frames in video \
+                        {int(vid.get(cv2.CAP_PROP_FRAME_COUNT))}")
     vid.set(cv2.CAP_PROP_POS_FRAMES, frame_number)
     okay, frame = vid.read()
     if not okay:

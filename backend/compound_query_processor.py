@@ -88,7 +88,7 @@ class CompoundQueryProcessor:
         sA and sB are arrays shape (n_frames, 1)
         alpha and rho scalars in [0,1]
         """
-        return sA * sB * (1.0 - self.overlap_corrector * rho )
+        return sA * sB * (1.0 - self.overlap_corrector * rho)
 
     def or_score(self, sA: np.ndarray, sB: np.ndarray, inter_ab: np.ndarray) -> np.ndarray:
         """

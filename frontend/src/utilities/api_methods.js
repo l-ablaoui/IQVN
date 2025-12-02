@@ -5,7 +5,7 @@ import { BACKEND_SERVER_URL } from "./constants";
  * in the server */
 export const fetch_server_videos_list = async () => {
     try {
-        const response = await fetch(`${BACKEND_SERVER_URL}video/`);
+        const response = await fetch(`${BACKEND_SERVER_URL}videos/`);
         const video_names = await response.json();
         console.log("fetch video list results: ", video_names);
         return video_names;
@@ -23,15 +23,15 @@ export const fetch_server_videos_list = async () => {
  * @returns server path to the video with video_name (string) */
 export const fetch_video = async (video_name) => {
     try {
-        await fetch(`${BACKEND_SERVER_URL}video/${video_name}`);   
-        return `${BACKEND_SERVER_URL}video/${video_name}`;
+        await fetch(`${BACKEND_SERVER_URL}videos/${video_name}/`);   
+        return `${BACKEND_SERVER_URL}videos/${video_name}/`;
     }
     catch (error) {
         console.error("Error retrieving video ", video_name, " : ", error);
     }
 };
 
-export const fetch_compound_query_scores = async (compound_query) => {
+export const fetch_compound_query_scores = async (video_name, compound_query) => {
     try {
         //loop over each node in the compound array
         for (let i = 0; i < compound_query.length; i++) {
@@ -46,7 +46,7 @@ export const fetch_compound_query_scores = async (compound_query) => {
             }
         }
         
-        const response = await fetch(`${BACKEND_SERVER_URL}compound_search`, 
+        const response = await fetch(`${BACKEND_SERVER_URL}videos/${video_name}/search/compound/`, 
             {method: "POST", body: JSON.stringify(compound_query), 
             headers: {"Content-Type": "application/json"}});
         const body = await response.json();
@@ -62,9 +62,10 @@ export const fetch_compound_query_scores = async (compound_query) => {
 /** calls text similarity score endpoint in the server 
  * @param {*} query_input expected string representing the textual query input
  * @returns expected array of floats between 0 and 1 representing similarity scores */
-export const fetch_text_query_scores = async (query_input) => {
+export const fetch_text_query_scores = async (video_name, query_input) => {
     try {
-        const response = await fetch(`${BACKEND_SERVER_URL}search?query=${query_input}`);
+        console.log("video_name:", video_name, " query_input:", query_input);
+        const response = await fetch(`${BACKEND_SERVER_URL}videos/${video_name}/search/?query=${query_input}`);
         const body = await response.json();
         console.log("fetch query scores result: ", body);
         return body['scores'].map(function(value, _) { return value[1]; });
@@ -76,12 +77,13 @@ export const fetch_text_query_scores = async (query_input) => {
 
 /** calls image similarity score endpoint in the server
  * @param {*} image_input expected image file input
+ * @param {*} video_name expected string representing an mp4 video name
  * @returns expected array of floats between 0 and 1 representing similarity scores */
-export const fetch_image_scores = async (image_input) => {
+export const fetch_image_scores = async (video_name, image_input) => {
     try {
         const data_URL = await get_data_URL(image_input); 
-        const response = await fetch(`${BACKEND_SERVER_URL}upload_png/`, 
-            {method: "POST", body: JSON.stringify({ image_data: data_URL }), 
+        const response = await fetch(`${BACKEND_SERVER_URL}videos/${video_name}/search/image/`, 
+            {method: "POST", body: JSON.stringify({image_data: data_URL}), 
             headers: {"Content-Type": "application/json"}});
         const body = await response.json();
         const scores = body["scores"].map(function(value, _) { return value[1]; });
@@ -96,9 +98,9 @@ export const fetch_image_scores = async (image_input) => {
  * @param {*} current_index expected integer, currently displayed video frame
  * @param {*} crop_box expected array of four integers (x, y, w, h)
  * @returns expected array of floats between 0 and 1 representing similarity scores */
-export const fetch_crop_scores = async (current_index, crop_box) => {
+export const fetch_crop_scores = async (video_name, current_index, crop_box) => {
     try {
-        const response = await fetch(`${BACKEND_SERVER_URL}crop_search/`, 
+        const response = await fetch(`${BACKEND_SERVER_URL}videos/${video_name}/search/crop/`, 
             {method: "POST", body: JSON.stringify({ current_index: current_index, crop_box: crop_box }), 
             headers: {"Content-Type": "application/json"}});
         const body = await response.json();
@@ -123,7 +125,7 @@ export const fetch_video_semantic_representation = async (video_name) => {
     try {
         const name_decomposed = video_name.split("/");
         const name_processed = name_decomposed[name_decomposed.length - 1];//.split(".")[0]; 
-        const embeds_response = await fetch(`${BACKEND_SERVER_URL}video/embeddings/${name_processed}`);
+        const embeds_response = await fetch(`${BACKEND_SERVER_URL}videos/${name_processed}/embeddings/`);
         const body = await embeds_response.json();
         console.log("fetch semantic representation result: ", body);
 
@@ -136,7 +138,7 @@ export const fetch_video_semantic_representation = async (video_name) => {
         let cluster_frames = body['tsne_cluster_frames'];
         for (let i = 0;i < cluster_frames.length;++i) {
             const cf_response = await fetch(
-                `${BACKEND_SERVER_URL}image/${name_processed_no_ext}/${cluster_frames[i]["centroid"]}.png`
+                `${BACKEND_SERVER_URL}videos/${name_processed_no_ext}/images/${cluster_frames[i]["centroid"]}.png/`
             );
             const cf_blob = await cf_response.blob();
             const cf_url = URL.createObjectURL(cf_blob);
@@ -152,25 +154,6 @@ export const fetch_video_semantic_representation = async (video_name) => {
     }
     catch(error) {
         console.error("Error fetching 2D reduced embeddings: ", error);
-    }
-};
-
-/** updates the server with the name of the selected video
- * @todo add support for other formats this only supports (was only tested with) mp4 video format
- * @param {*} video_name expected string representing an mp4 video name */
-export const post_video_name = async (video_name) => {
-    try {
-        //update video name in server
-        const response = await fetch(`${BACKEND_SERVER_URL}select_video/`, {
-            method: "POST", 
-            body: JSON.stringify({ video_name: video_name }), 
-            headers: {"Content-Type": "application/json"}
-        });
-        const body = await response.json();
-        console.log("post video name success: ", body);
-    }
-    catch (error) {
-        console.error("Error posting video name \"", video_name, "\" : ",error);
     }
 };
 

@@ -10,7 +10,7 @@ import {
  * @param {*} array_b expected array of integers
  * @returns expected (new reference) array of integers */
 export const union = (array_a, array_b) => {
-    let set = new Set([...array_a, ...array_b]); //use a Set to automatically handle duplicates
+    let set = new Set([...array_a, ...array_b]); //use a set to automatically handle duplicates
     return Array.from(set);
 };
 
@@ -34,7 +34,7 @@ export const difference = (array_a, array_b) => {
     return difference;
 };
 
-/**
+/** euclidian distance power 2
  * @param {*} p1 expected 2D float point coordinates 
  * @param {*} p2 expected 2D float point coordinates  
  * @returns expected float representing euclidian distance (power 2) */
@@ -45,7 +45,7 @@ export const length2 = (p1, p2) => {
 /** generate high saturation colors
  * @param {*} nb_colors expected non null positive integer, generated colors count
  * @returns expected array of strings, generated colors in a string array */
-export const generate_HSL_colors = (nb_colors) => {
+export const generate_HSL_colors = (nb_colors, seed=0) => {
     let colors = [];
     const saturation = 70; //saturation percentage
     const lightness = 50;  //lightness percentage
@@ -55,7 +55,7 @@ export const generate_HSL_colors = (nb_colors) => {
         colors.push(`hsla(${hue}, ${saturation}%, ${lightness}%, 0.7)`);
     }
 
-    return colors;
+    return fisher_yates_shuffle(colors, seed);
 };
 
 /** generates a color map (string array) with nb_points points where the selected
@@ -368,3 +368,49 @@ export const restore_cursor_position = (element_ref, position) => {
     selection.removeAllRanges();
     selection.addRange(range);
 };
+/** get interpolation factors for a given index in a range
+ * @param {*} i expected integer, index of the current point in the interpolation
+ * @param {*} max_index expected integer, maximum index of the points
+ * @param {*} number_of_peaks expected integer, number of peaks in the interpolation
+ * @returns expected array of floats, interpolation factors for each peak */
+export const get_interpolation_factors = (i, max_index, number_of_peaks) => {
+    const t = i / (max_index - 1); //normalize index to [0, 1]
+    const factors = [];
+
+    for (let k = 0; k < number_of_peaks; k++) {
+        const pk = k / (number_of_peaks - 1); //peak position for each color
+        const value = Math.max(1 - Math.abs(t - pk) * (number_of_peaks - 1), 0);
+        factors.push(value);
+    }
+
+    return factors;
+}
+
+export const interpolate_color = (color1, color2, t) => {
+    return {
+        red:   Math.round(color1.red   * (1 - t) + color2.red   * t),
+        green: Math.round(color1.green * (1 - t) + color2.green * t),
+        blue:  Math.round(color1.blue  * (1 - t) + color2.blue  * t)
+    };
+}
+
+export const mulberry32 = (seed) => {
+    return function() {
+        let t = seed += 0x6D2B79F5;
+        t = Math.imul(t ^ (t >>> 15), t | 1);
+        t ^= t + Math.imul(t ^ (t >>> 7), t | 61);
+        return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+    };
+}
+
+export const fisher_yates_shuffle = (array, seed) => {
+    const random = mulberry32(seed);
+    const arr = array.slice(); //comment this line to mutate original
+
+    for (let i = arr.length - 1; i > 0; i--) {
+        const j = Math.floor(random() * (i + 1));
+        [arr[i], arr[j]] = [arr[j], arr[i]];
+    }
+
+    return arr;
+}

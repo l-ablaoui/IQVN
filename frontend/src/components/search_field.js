@@ -3,7 +3,8 @@ import {
     fetch_text_query_scores, 
     fetch_image_scores, 
     fetch_crop_scores,
-    fetch_compound_query_scores
+    fetch_compound_query_scores,
+    post_audio_recording
 } from "../utilities/api_methods";
 import { 
     get_video_inline_offset, 
@@ -13,7 +14,7 @@ import {
 import { parse_query } from "../utilities/query_parser";
 
 import { useEffect, useRef, useState } from "react";
-import { Images, Crop, Search, Shapes } from "lucide-react";
+import { Images, Crop, Search, Shapes, Mic, Volume2 } from "lucide-react";
 
 /** This component enables textual and image based search in the video. Image search supports 
  * external images or cropping the video frame. Cropping depends on Image_crop_area component.
@@ -22,17 +23,30 @@ import { Images, Crop, Search, Shapes } from "lucide-react";
  * @param {*} video_ref expected reference to an html video element with access to "current"
  * @param {*} current_index expected positive integer, current frame index in the video
  * @param {*} set_scores expected setter of the scores state
+ * @param {*} set_image_scores expected setter of the array of floats representing visual similarity scores
+ * @param {*} image_score_ratio expected float representing the weight of image scores in the final score
+ * @param {*} set_image_ratio expected setter of the float image score ratio
+ * @param {*} set_audio_scores expected setter of the array of floats representing audio similarity scores
+ * @param {*} audio_score_ratio expected float representing the weight of audio scores in the final score
+ * @param {*} set_audio_ratio expected setter of the float audio score ratio
  * @param {*} is_dark_mode expected boolean, true if dark mode is enabled */
-const Search_field = ({video_name, video_ref, current_index, set_scores, is_dark_mode}) => {
+const Search_field = ({video_name, video_ref, current_index, set_scores, set_image_scores, image_score_ratio, 
+    set_image_ratio, set_audio_scores, audio_score_ratio, set_audio_ratio, is_dark_mode}) => {
     const text_input_ref = useRef(null);
     const image_input_ref = useRef(null);
     const image_crop_ref = useRef(null);
     const search_button_ref = useRef(null);
     const image_file_input_ref = useRef(null);
+    const sound_input_ref = useRef(null);
+    const audio_record_ref = useRef(null);
     const crop_area_ref = useRef(null);
 
     /** reference to the cursor position in the editable div text input */
     const cursor_position_ref = useRef(null);
+    const media_recorder_ref = useRef(null);
+    const media_stream_ref = useRef(null);
+    const recorded_chunks = useState([]);
+    const [is_recording, set_recording] = useState(false);
 
     const [selection_top_left, set_selection_top_left] = useState({x: 0, y: 0});
     const [selection_bot_right, set_selection_bot_right] = useState({x: 0, y: 0});
@@ -66,6 +80,56 @@ const Search_field = ({video_name, video_ref, current_index, set_scores, is_dark
         set_input_files([]);
     }, [video_ref]);
 
+    const handle_audio_recording_click = () => {
+        if (is_recording) { 
+            set_recording(false);
+            media_recorder_ref.current.stop();
+            media_stream_ref.current.getTracks().forEach(track => track.stop());
+        }
+        else {
+            try {
+                set_recording(true);
+                navigator.mediaDevices.getUserMedia({ audio: true }).then((stream) => {
+                    media_stream_ref.current = stream;
+                    const media_recorder = new MediaRecorder(stream);
+                    recorded_chunks.current = [];
+
+                    media_recorder.ondataavailable = (event) => {
+                        if (event.data.size > 0) {
+                            recorded_chunks.current.push(event.data);
+                        }
+                    };
+
+                    media_recorder.onstop = () => {
+                        const audio_blob = new Blob(recorded_chunks.current, { type: 'audio/webm' });
+                        //TODO send or process the audio_blob here
+                        post_audio_recording(audio_blob).then((results) => {
+                            const images_s = results[0];
+                            const audio_s = results[1];
+                            set_image_scores(images_s);
+                            set_audio_scores(audio_s);
+                            if (audio_s?.length == images_s.length) {
+                                set_scores(images_s.map((image_s, i) => image_score_ratio 
+                                    * image_s + audio_score_ratio * audio_s[i]));
+                            }
+                            else {
+                                set_scores(images_s);
+                            }
+                        });
+                    };
+
+                    media_recorder_ref.current = media_recorder;
+                    media_recorder.start();
+                });
+            }
+            catch (error) {
+                set_recording(false);
+                console.log("error recording audio: ", error);
+                media_recorder_ref.current.stop();
+            }
+        }
+    };
+ 
     /** highjack click to the file input when clicking on the icon */
     const handle_image_upload_click = () => {
         image_file_input_ref.current.click();
@@ -79,8 +143,18 @@ const Search_field = ({video_name, video_ref, current_index, set_scores, is_dark
             set_query_value(query_value + ` '${files[0].name}'`);
             set_input_files([...input_files, files[0]]);
             fetch_image_scores(video_name, files[0]).then((scores) => {
-                if (scores?.length > 0) {
-                    set_scores(scores);
+                console.log(scores);
+                const [image_scores, audio_scores] = scores;
+                set_image_scores(image_scores);
+                set_audio_scores(audio_scores);
+                if (audio_scores?.length == image_scores?.length) {
+                    set_scores(image_scores.map((image_s, i) => image_score_ratio 
+                        * image_s + audio_score_ratio * audio_scores[i]));
+                }
+                else {
+                    set_scores(image_scores);
+                    set_image_ratio(1);
+                    set_audio_ratio(0);
                 }
             });
         }
@@ -140,8 +214,17 @@ const Search_field = ({video_name, video_ref, current_index, set_scores, is_dark
 
         set_query_value(query_value + ` [${x_min}, ${y_min}, ${crop_width}, ${crop_height}, ${current_index}]`);
         fetch_crop_scores(video_name, current_index, [x_min, y_min, crop_width, crop_height]).then((scores) => {
-            if (scores?.length > 0) {
-                set_scores(scores);
+            const [image_scores, audio_scores] = scores;
+            set_image_scores(image_scores);
+            set_audio_scores(audio_scores);
+            if (audio_scores?.length == image_scores?.length) {
+                set_scores(image_scores.map((image_s, i) => image_score_ratio 
+                    * image_s + audio_score_ratio * audio_scores[i]));
+            }
+            else {
+                set_scores(image_scores);
+                set_image_ratio(1);
+                set_audio_ratio(0);
             }
         });
     };
@@ -158,9 +241,21 @@ const Search_field = ({video_name, video_ref, current_index, set_scores, is_dark
                 switch (parsed_query[0][0]) {
                     case regrouper_pairs[0][0]: { //double quotes
                         fetch_text_query_scores(video_name, parsed_query[0]).then((scores) => {
-                            if (scores?.length > 0) { 
-                                set_scores(scores); 
-                            } 
+                            if (scores?.length > 0) {
+                                console.log(scores);
+                                const [image_scores, audio_scores] = scores;
+                                set_image_scores(image_scores);
+                                set_audio_scores(audio_scores);
+                                if (audio_scores?.length == image_scores?.length) {
+                                    set_scores(image_scores.map((image_s, i) => image_score_ratio 
+                                        * image_s + audio_score_ratio * audio_scores[i]));
+                                }
+                                else {
+                                    set_scores(image_scores);
+                                    set_image_ratio(1);
+                                    set_audio_ratio(0);
+                                }
+                            }
                         });
                         return;
                     }
@@ -170,7 +265,18 @@ const Search_field = ({video_name, video_ref, current_index, set_scores, is_dark
                         if (matched_file) {
                             fetch_image_scores(video_name, matched_file).then((scores) => {
                                 if (scores?.length > 0) { 
-                                    set_scores(scores); 
+                                    const [image_scores, audio_scores] = scores;
+                                    set_image_scores(image_scores);
+                                    set_audio_scores(audio_scores);
+                                    if (audio_scores?.length == image_scores?.length) {
+                                        set_scores(image_scores.map((image_s, i) => image_score_ratio 
+                                            * image_s + audio_score_ratio * audio_scores[i]));
+                                    }
+                                    else {
+                                        set_scores(image_scores);
+                                        set_image_ratio(1);
+                                        set_audio_ratio(0);
+                                    } 
                                 }
                             });
                         }
@@ -182,7 +288,19 @@ const Search_field = ({video_name, video_ref, current_index, set_scores, is_dark
                         fetch_crop_scores(video_name, current_index, [x_min, y_min, crop_width, crop_height]).then(
                             (scores) => {
                                 if (scores?.length > 0) {
-                                    set_scores(scores);
+                                    console.log(scores);
+                                    const [image_scores, audio_scores] = scores;
+                                    set_image_scores(image_scores);
+                                    set_audio_scores(audio_scores);
+                                    if (audio_scores?.length == image_scores?.length) {
+                                        set_scores(image_scores.map((image_s, i) => image_score_ratio 
+                                            * image_s + audio_score_ratio * audio_scores[i]));
+                                    }
+                                    else {
+                                        set_scores(image_scores);
+                                        set_image_ratio(1);
+                                        set_audio_ratio(0);
+                                    }
                                 }
                             }
                         );
@@ -234,7 +352,19 @@ const Search_field = ({video_name, video_ref, current_index, set_scores, is_dark
             console.log(multimodal_query);
             fetch_compound_query_scores(video_name, multimodal_query).then((scores) => {
                 if (scores?.length > 0) {
-                    set_scores(scores);
+                    console.log(scores);
+                    const [image_scores, audio_scores] = scores;
+                    set_image_scores(image_scores);
+                    set_audio_scores(audio_scores);
+                    if (audio_scores?.length == image_scores?.length) {
+                        set_scores(image_scores.map((image_s, i) => image_score_ratio 
+                            * image_s + audio_score_ratio * audio_scores[i]));
+                    }
+                    else {
+                        set_scores(image_scores);
+                        set_image_ratio(1);
+                        set_audio_ratio(0);
+                    }
                 }
             });
         }
@@ -281,7 +411,7 @@ const Search_field = ({video_name, video_ref, current_index, set_scores, is_dark
 
     return (
         <div className="row w-100 h-5">
-            <div className="col-8 h-100 position-relative">
+            <div className="col h-100 position-relative">
                 <div 
                     contentEditable={true}
                     className={`form-control text-start h-100 nowrap overflow-x responsive-text ${is_dark_mode ? 
@@ -299,6 +429,7 @@ const Search_field = ({video_name, video_ref, current_index, set_scores, is_dark
                 onClick={handle_search_click}
                 ref={search_button_ref}
                 className="col-1 h-100 btn border-secondary border-top-0 border-start-0 border-bottom-0 rounded-0"
+                title="text search"
             >
                 <Search className={(is_dark_mode)? "h-100 text-light" : "h-100 text-dark"} />
             </button>
@@ -306,6 +437,7 @@ const Search_field = ({video_name, video_ref, current_index, set_scores, is_dark
                 onClick={handle_image_upload_click}
                 ref={image_input_ref}
                 className="col-1 h-100 btn"
+                title="image upload search"
             >
                 <Images className={(is_dark_mode)? "h-100 text-light" : "h-100 text-dark"} />
                 <input 
@@ -319,14 +451,34 @@ const Search_field = ({video_name, video_ref, current_index, set_scores, is_dark
             <button
                 onClick={handle_image_crop_click}
                 ref={image_crop_ref}
-                className="col-1 h-100 btn"
+                className="col-1 h-100 btn border-secondary border-top-0 border-start-0 border-bottom-0 rounded-0"
+                title="video crop search"
             >
                 <Crop className={(is_dark_mode)? "h-100 text-light" : "h-100 text-dark"} />
+            </button>
+            <button
+                onClick={handle_audio_recording_click}
+                ref={sound_input_ref}
+                className="col-1 h-100 btn"
+                title="audio upload search"
+            >
+                <Volume2 className={(is_dark_mode)? "h-100 text-light" : "h-100 text-dark"} />
+            </button>
+            <button
+                onClick={handle_audio_recording_click}
+                ref={audio_record_ref}
+                className="col-1 h-100 btn"
+                title={(is_recording)? "stop recording" : "audio recording search"}
+            >
+                <Mic className={`
+                    ${(is_recording)? "pulse-mic" : (is_dark_mode)? "h-100 text-light" : "h-100 text-dark"} 
+                `} />
             </button>
             <button
                 //onClick={}
                 //ref={}
                 className="col-1 h-100 btn border-secondary border-top-0 border-bottom-0 border-end-0 rounded-0"
+                title="object detection"
             >
                 <Shapes className={(is_dark_mode)? "h-100 text-light" : "h-100 text-dark"} />
             </button>

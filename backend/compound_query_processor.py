@@ -31,7 +31,7 @@ class CompoundQueryProcessor:
     video_path: str
     FPS: int
     overlap_corrector: float
-    video_embeddings: NDArray[np.float32]
+    video_embeddings: NDArray[np.float32|np.float16]
 
     def __init__(self, vit_model: any, video_path: str = "", FPS: int = 10) -> None:
         self.model = vit_model

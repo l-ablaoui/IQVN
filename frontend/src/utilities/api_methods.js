@@ -67,8 +67,11 @@ export const fetch_text_query_scores = async (video_name, query_input) => {
         console.log("video_name:", video_name, " query_input:", query_input);
         const response = await fetch(`${BACKEND_SERVER_URL}videos/${video_name}/search/?query=${query_input}`);
         const body = await response.json();
-        console.log("fetch query scores result: ", body);
-        return body['scores'].map(function(value, _) { return value[1]; });
+        console.log("fetch textual query scores result: ", body);
+        return [
+            body['image_scores'].map(function(value, _) { return value[1]; }),
+            body['audio_scores']?.map(function(value, _) { return value[1]; })
+        ];
     }
     catch (error) {
         console.error("Error retrieving query scores for query", query_input, " : ", error);
@@ -86,8 +89,11 @@ export const fetch_image_scores = async (video_name, image_input) => {
             {method: "POST", body: JSON.stringify({image_data: data_URL}), 
             headers: {"Content-Type": "application/json"}});
         const body = await response.json();
-        const scores = body["scores"].map(function(value, _) { return value[1]; });
-        return scores;
+        console.log("fetch image query scores result: ", body);
+        return [
+            body['image_scores'].map(function(value, _) { return value[1]; }),
+            body['audio_scores']?.map(function(value, _) { return value[1]; })
+        ];
     }
     catch (error) {
         console.error("Error retrieving image scores : ", error);
@@ -107,8 +113,10 @@ export const fetch_crop_scores = async (video_name, current_index, crop_box) => 
         if (body["query"] == "ERROR") {
             console.error("Error retrieving crop scores for frame ", current_index, " : ", body["error"]);
         }
-        const scores = body["scores"].map(function(value, _) { return value[1]; });
-        return scores;
+        return [
+            body['image_scores'].map(function(value, _) { return value[1]; }),
+            body['audio_scores']?.map(function(value, _) { return value[1]; })
+        ];
     }
     catch (error) {
         console.error("Error retrieving crop scores for frame ", current_index, " : ", error);
@@ -154,6 +162,26 @@ export const fetch_video_semantic_representation = async (video_name) => {
     }
     catch(error) {
         console.error("Error fetching 2D reduced embeddings: ", error);
+    }
+};
+
+export const post_audio_recording = async (video_name, audio_blob) => {
+    try {
+        const form_data = new FormData();
+        form_data.append("audio_record_data", audio_blob, "recording.wav");
+
+        const response = await fetch(`${BACKEND_SERVER_URL}/videos/${video_name}/search/audio/record/`, {
+            method: "POST",
+            body: form_data,
+        });
+        const body = await response.json();
+        return [
+            body['image_scores'].map(function(value, _) { return value[1]; }),
+            body['audio_scores']?.map(function(value, _) { return value[1]; })
+        ];
+    }
+    catch (error) {
+        console.error("Error getting audio recording score: ", error);
     }
 };
 

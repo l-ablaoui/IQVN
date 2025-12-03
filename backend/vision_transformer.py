@@ -2,201 +2,274 @@ import cv2
 import torch
 import numpy as np
 
+from typing import List, Optional, Tuple, Union
 from transformers import AutoModel, AutoProcessor
-
 from tqdm import tqdm
 import os
 import time
 
 class VisionTransformer:
-    def __init__ (self, fps, video_path = "", checkpoint = "openai/clip-vit-base-patch16", batch_size=256):
-        #input video path
+    video_path: str
+    fps: Optional[int]
+    video_embeddings: Optional[np.ndarray]
+    image_embeddings: Optional[np.ndarray]
+    text_embeddings: Optional[np.ndarray]
+    scores: Optional[np.ndarray]
+    reduction: Optional[np.ndarray]
+    model: AutoModel
+    processor: AutoProcessor
+    device: str
+    batch_size: int
+
+    def __init__(
+        self,
+        fps: Optional[int],
+        video_path: str = "",
+        checkpoint: str = "openai/clip-vit-base-patch16",
+        batch_size: int = 256,
+    ) -> None:
+
+        # input video path
         self.video_path = video_path
         self.fps = fps
 
-        #outputs
+        # outputs
         self.video_embeddings = None
-        self.image_embeddings = None 
-        self.text_embeddings = None 
+        self.image_embeddings = None
+        self.text_embeddings = None
         self.scores = None
         self.reduction = None
 
-        #model loading
+        # model loading
         start = time.time()
         if not os.path.exists("models"):
             os.mkdir("models")
-        self.model, self.processor = self.load_model(checkpoint, "models/processor.pth", "models/clip-vit-b16.pth")
-        print("loading in ", time.time() - start )
 
-        self.device = 'cuda' if torch.cuda.is_available() else 'cpu'
+        self.model, self.processor = self.load_model(
+            checkpoint,
+            "models/processor.pth",
+            "models/clip-vit-b16.pth",
+        )
+        print("loading in ", time.time() - start)
+
+        self.device = "cuda" if torch.cuda.is_available() else "cpu"
         print("Using device: ", self.device)
         self.model.to(self.device)
-
-        #batch size for processing frames
         self.batch_size = batch_size
 
-    def load_video(self):
+    def load_video(self) -> cv2.VideoCapture:
         vid = cv2.VideoCapture(self.video_path)
         assert vid.isOpened
         if self.fps is None:
             self.fps = int(vid.get(cv2.CAP_PROP_FPS))
         return vid
-    
-    def load_model(self, checkpoint, preprocessor_path, model_path):
+
+    def load_model(
+        self,
+        checkpoint: str,
+        preprocessor_path: str,
+        model_path: str
+    ) -> Tuple[AutoModel, AutoProcessor]:
+
         if not os.path.exists(preprocessor_path):
-            processor = AutoProcessor.from_pretrained(checkpoint)
+            processor: AutoProcessor = AutoProcessor.from_pretrained(checkpoint)
             torch.save(processor, preprocessor_path)
         else:
             processor = torch.load(preprocessor_path, weights_only=False)
 
         if not os.path.exists(model_path):
-            model = AutoModel.from_pretrained(checkpoint)
+            model: AutoModel = AutoModel.from_pretrained(checkpoint)
             torch.save(model, model_path)
         else:
             model = torch.load(model_path, weights_only=False)
+
         return model, processor
 
-    def get_image_features(self, images):
+    def get_image_features(
+        self,
+        images: List[np.ndarray]
+    ) -> np.ndarray:
+
         with torch.no_grad():
-            img_input = self.processor(images=images, text=None, padding=True, return_tensors="pt").to(self.device)
-            outputs = self.model.get_image_features(**img_input)
+            img_input: dict = self.processor(
+                images=images,
+                text=None,
+                padding=True,
+                return_tensors="pt"
+            ).to(self.device)
+
+            outputs: torch.Tensor = self.model.get_image_features(**img_input)
             return outputs.detach().cpu().numpy()
 
-    def get_text_features(self, texts):
+    def get_text_features(self, texts: List[str]) -> np.ndarray:
         with torch.no_grad():
-            inputs = self.processor(images=None, text=texts, padding=True, return_tensors="pt").to(self.device)
-            outputs = self.model.get_text_features(**inputs)
-            return outputs.detach().cpu().numpy()
-    
-    def get_video_features(self):
-        vid = self.load_video()
-        frame_count = int(vid.get(cv2.CAP_PROP_FRAME_COUNT))
-        original_fps = int(vid.get(cv2.CAP_PROP_FPS))
+            inputs: dict = self.processor(
+                images=None,
+                text=texts,
+                padding=True,
+                return_tensors="pt"
+            ).to(self.device)
 
-        skip_ahead = 0
-        print(type(self.fps), type(original_fps))
-        if original_fps > self.fps:
-            skip_ahead =  int(original_fps / self.fps) 
+            outputs: torch.Tensor = self.model.get_text_features(**inputs)
+            return outputs.detach().cpu().numpy()
+
+    def get_video_features(self) -> np.ndarray:
+        vid: cv2.VideoCapture = self.load_video()
+        frame_count: int = int(vid.get(cv2.CAP_PROP_FRAME_COUNT))
+        original_fps: int = int(vid.get(cv2.CAP_PROP_FPS))
+
+        skip_ahead: int = 0
+
+        if original_fps > (self.fps or original_fps):
+            skip_ahead = int(original_fps / self.fps)
             frame_count = int(frame_count * self.fps / original_fps)
 
-        embeddings = []
-        frames = []
+        embeddings: List[np.ndarray] = []
+        frames: List[np.ndarray] = []
+
         with tqdm(total=frame_count, desc="computing video embeddings: ") as pbar:
             while vid.isOpened:
                 for _ in range(skip_ahead - 1):
-                    okay, frame = vid.read()
-                    if not okay:
+                    ok, _ = vid.read()
+                    if not ok:
                         break
-                    
-                okay, frame = vid.read()
-                if not okay:
+
+                ok, frame = vid.read()
+                if not ok:
                     break
 
                 frames.append(frame)
+
                 if len(frames) == self.batch_size:
                     batch_embeddings = self.get_image_features(frames)
                     embeddings.append(batch_embeddings)
                     frames = []
-                
+
                 pbar.update(1)
 
-            #process any remaining frames
             if frames:
                 batch_embeddings = self.get_image_features(frames)
                 embeddings.append(batch_embeddings)
 
         vid.release()
         return np.vstack(embeddings)
-    
-    def load_video_features(self, output_path, frame_count):
-        embeddings = []
-        for i in range(frame_count):
-            embeddings.append(np.load(output_path+f"/embedding_{i}.npy"))
-        self.video_embeddings =  np.vstack(embeddings)
 
-    def cosine_similarity(self, embeds1, embeds2):
-        #reshape 1D arrays to 2D if necessary
+    def load_video_features(self, output_path: str, frame_count: int) -> None:
+        embeddings: List[np.ndarray] = [
+            np.load(f"{output_path}/embedding_{i}.npy")
+            for i in range(frame_count)
+        ]
+        self.video_embeddings = np.vstack(embeddings)
+
+    def cosine_similarity(
+        self,
+        embeds1: np.ndarray,
+        embeds2: np.ndarray
+    ) -> np.ndarray:
+
         if embeds1.ndim == 1:
             embeds1 = embeds1.reshape(1, -1)
+
         if embeds2.ndim == 1:
             embeds2 = embeds2.reshape(1, -1)
 
-        #compute the dot product between the embeddings
-        dot_product = np.dot(embeds1, embeds2.T)
+        dot_product: np.ndarray = np.dot(embeds1, embeds2.T)
+        norm_x: np.ndarray = np.linalg.norm(embeds1, axis=1, keepdims=True)
+        norm_y: np.ndarray = np.linalg.norm(embeds2, axis=1, keepdims=True)
 
-        #compute the L2 norms of the embeddings
-        norm_x = np.linalg.norm(embeds1, axis=1, keepdims=True)
-        norm_y = np.linalg.norm(embeds2, axis=1, keepdims=True)
-
-        #compute the cosine similarity
-        cosine_similarity = dot_product / (norm_x * norm_y.T)
-        #rescale to [0, 1]
+        cosine_similarity: np.ndarray = dot_product / (norm_x * norm_y.T)
         cosine_similarity = (cosine_similarity + 1) / 2
 
         return cosine_similarity
 
-    def tsne_reduction(self, embeddings, normalize=True, random_state=0, n_iter=1000, metric="cosine"):
-        from sklearn.manifold import TSNE
+    def tsne_reduction(
+        self,
+        embeddings: np.ndarray,
+        normalize: bool = True,
+        random_state: int = 0,
+        n_iter: int = 1000,
+        metric: str = "cosine",
+    ) -> np.ndarray:
 
-        print("applying T-SNE on embeddings...")
-        start_time = time.time()
-        tsne = TSNE(random_state = random_state, n_iter = n_iter, metric = metric)
+        from sklearn.manifold import TSNE
+        from sklearn.preprocessing import StandardScaler
+
+        tsne = TSNE(
+            random_state=random_state,
+            n_iter=n_iter,
+            metric=metric
+        )
 
         if normalize:
-            from sklearn.preprocessing import StandardScaler
-            normalizer = StandardScaler()
-            embeddings2d = tsne.fit_transform(normalizer.fit_transform(embeddings)) 
-        else:
-            embeddings2d = tsne.fit_transform(embeddings)
-        print("done in ", time.time() - start_time, " seconds")
+            embeddings = StandardScaler().fit_transform(embeddings)
 
+        embeddings2d: np.ndarray = tsne.fit_transform(embeddings)
         return embeddings2d
 
-    def pca_reduction(self, embeddings):
+    def pca_reduction(
+        self,
+        embeddings: np.ndarray
+    ) -> np.ndarray:
+
         from sklearn.decomposition import PCA
         from sklearn.preprocessing import StandardScaler
 
-        print("applying PCA on embeddings...")
-        start_time = time.time()
         normalizer = StandardScaler()
         pca = PCA(n_components=2)
-        embeddings2d = pca.fit_transform(normalizer.fit_transform(embeddings))
-        print("done in ", time.time() - start_time, " seconds")
 
+        embeddings2d: np.ndarray = pca.fit_transform(
+            normalizer.fit_transform(embeddings)
+        )
         return embeddings2d
-    
-    def umap_reduction(self, embeddings, normalize=True, random_state=0):
+
+    def umap_reduction(
+        self,
+        embeddings: np.ndarray,
+        normalize: bool = True,
+        random_state: int = 0
+    ) -> np.ndarray:
+
         from sklearn.preprocessing import StandardScaler
         import umap
 
-        print("applying uMap on embeddings...")
-        start_time = time.time()
-        normalizer = StandardScaler()
         u_map = umap.UMAP(n_components=2, random_state=random_state)
 
         if normalize:
-            embeddings2d = u_map.fit_transform(normalizer.fit_transform(embeddings)) 
-        else:
-            embeddings2d = u_map.fit_transform(embeddings)
-        print("done in ", time.time() - start_time, " seconds")
-            
+            embeddings = StandardScaler().fit_transform(embeddings)
+
+        embeddings2d: np.ndarray = u_map.fit_transform(embeddings)
         return embeddings2d
 
-    def __call__(self, images=None, texts=None):
+    def __call__(
+        self,
+        images: Optional[List[np.ndarray]] = None,
+        texts: Optional[List[str]] = None
+    ) -> None:
+
         self.video_embeddings = self.get_video_features()
 
-        image_cosine = None
-        text_cosine = None
+        image_cosine: Optional[np.ndarray] = None
+        text_cosine: Optional[np.ndarray] = None
 
         if images is not None:
             self.image_embeddings = self.get_image_features(images)
-            image_cosine = self.cosine_similarity(self.video_embeddings, self.image_embeddings)
+            image_cosine = self.cosine_similarity(
+                self.video_embeddings,
+                self.image_embeddings
+            )
             self.scores = image_cosine
-        
+
         if texts is not None:
             self.text_embeddings = self.get_text_features(texts)
-            text_cosine = self.cosine_similarity(self.video_embeddings, self.text_embeddings)
+            text_cosine = self.cosine_similarity(
+                self.video_embeddings,
+                self.text_embeddings
+            )
+
             if images is None:
-                self.scores = text_cosine 
+                self.scores = text_cosine
             else:
-                self.scores = np.concatenate((self.scores, text_cosine), axis = 0)
+                self.scores = np.concatenate(
+                    (self.scores, text_cosine),
+                    axis=0
+                )

@@ -2,135 +2,180 @@ import cv2
 import torch
 import numpy as np
 
+from typing import Optional, Tuple
 from tqdm import tqdm
-
-from transformers import GLPNImageProcessor, GLPNForDepthEstimation
+from transformers import (
+    GLPNImageProcessor,
+    GLPNForDepthEstimation,
+)
 
 class DepthMapEstimation:
-    def __init__(self, fps, video_path="", checkpoint="vinvino02/glpn-nyu"):
-        #input video
-        self.video_path = video_path
+    def __init__(
+        self,
+        fps: Optional[int],
+        video_path: str = "",
+        checkpoint: str = "vinvino02/glpn-nyu",
+    ) -> None:
 
-        #output depth video
-        self.depth_video = None
-        self.fps = fps
+        self.video_path: str = video_path
+        self.depth_video: Optional[np.ndarray] = None
+        self.fps: Optional[float] = fps
 
-        #load model
-        self.preprocessor = GLPNImageProcessor.from_pretrained(checkpoint)
-        self.depth_model = GLPNForDepthEstimation.from_pretrained(checkpoint)
-        self.device = 'cuda' if torch.cuda.is_available() else 'cpu'
+        # model
+        self.preprocessor: GLPNImageProcessor = GLPNImageProcessor.from_pretrained(checkpoint)
+        self.depth_model: GLPNForDepthEstimation = GLPNForDepthEstimation.from_pretrained(checkpoint)
+
+        self.device: str = "cuda" if torch.cuda.is_available() else "cpu"
         self.depth_model.to(self.device)
+
         print("Using device: ", self.device)
-    
-    def load_video(self):
+
+    def load_video(self) -> cv2.VideoCapture:
         vid = cv2.VideoCapture(self.video_path)
         assert vid.isOpened
         if self.fps is None:
             self.fps = int(vid.get(cv2.CAP_PROP_FPS))
         return vid
-        
-    def get_image_depth(self, image):
-        inputs = self.preprocessor(images=image, return_tensors="pt").to(self.device) #preprocessing the image
+
+    def get_image_depth(self, image: np.ndarray) -> np.ndarray:
+        inputs = self.preprocessor(images=image, return_tensors="pt").to(self.device)
+
         with torch.no_grad():
-            outputs = self.depth_model(**inputs) #depth map inference
-        initial_depth = torch.nn.functional.interpolate( #rescaling to original size
-            outputs.predicted_depth.unsqueeze(1),
-            size=(image.shape[0], image.shape[1]),
-            mode="bicubic",
-            align_corners=False,
-        ).detach().squeeze().cpu().numpy() 
-        depth_map = ((initial_depth - initial_depth.min()) / (initial_depth.max() - initial_depth.min()) * 255).astype("uint8") #normalization between 0 and 255
-        depth_map = 255 - depth_map #inversing the depth
-        
+            outputs = self.depth_model(**inputs)
+
+        initial_depth: np.ndarray = (
+            torch.nn.functional.interpolate(
+                outputs.predicted_depth.unsqueeze(1),
+                size=(image.shape[0], image.shape[1]),
+                mode="bicubic",
+                align_corners=False,
+            )
+            .detach()
+            .squeeze()
+            .cpu()
+            .numpy()
+        )
+
+        depth_map: np.ndarray = (
+            (initial_depth - initial_depth.min())
+            / (initial_depth.max() - initial_depth.min())
+            * 255
+        ).astype("uint8")
+
+        depth_map = 255 - depth_map
         return depth_map
-    
-    def get_depth_video(self):
-        vid = self.load_video() #load video
-            
-        self.fps = vid.get(cv2.CAP_PROP_FPS) #keeping fps for output saving purposes
-        frameCount = int(vid.get(cv2.CAP_PROP_FRAME_COUNT))
-        frameWidth = int(vid.get(cv2.CAP_PROP_FRAME_WIDTH))
-        frameHeight = int(vid.get(cv2.CAP_PROP_FRAME_HEIGHT))
-        originalFps = int(vid.get(cv2.CAP_PROP_FPS))
-        
-        skipAhead = 0
+
+    def get_depth_video(self) -> None:
+        vid: cv2.VideoCapture = self.load_video()
+
+        self.fps = vid.get(cv2.CAP_PROP_FPS)
+        frameCount: int = int(vid.get(cv2.CAP_PROP_FRAME_COUNT))
+        frameWidth: int = int(vid.get(cv2.CAP_PROP_FRAME_WIDTH))
+        frameHeight: int = int(vid.get(cv2.CAP_PROP_FRAME_HEIGHT))
+        originalFps: int = int(vid.get(cv2.CAP_PROP_FPS))
+
+        skipAhead: int = 0
         if originalFps > self.fps:
             skipAhead = int(originalFps / self.fps)
             frameCount = int(frameCount * self.fps / originalFps)
 
-        self.depth_video = np.zeros((frameCount, frameHeight, frameWidth), dtype="uint8") #init output
+        self.depth_video = np.zeros((frameCount, frameHeight, frameWidth), dtype="uint8")
 
         with tqdm(total=frameCount, desc="Processing video depth map: ") as pbar:
             for i in range(frameCount):
                 for _ in range(skipAhead - 1):
-                    okay, frame = vid.read()
+                    okay, _ = vid.read()
                     if not okay:
                         break
+
                 okay, frame = vid.read()
                 if not okay:
                     break
-                self.depth_video[i, :, :] = self.get_image_depth(cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)) #inference on RGB frames
+
+                depth_frame: np.ndarray = self.get_image_depth(
+                    cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
+                )
+
+                self.depth_video[i, :, :] = depth_frame
                 pbar.update(1)
+
         print("Done")
 
-    def save_depth_video(self, save_path, save_video=False):
+    def save_depth_video(self, save_path: str, save_video: bool = False) -> None:
         if self.depth_video is None:
             return
+
         frameCount, frameHeight, frameWidth = self.depth_video.shape
 
         if save_video:
             depth_video = cv2.VideoWriter(
-                f"{save_path}.mp4", 
-                cv2.VideoWriter_fourcc(*"mp4v"), 
-                self.fps, 
-                (frameWidth, frameHeight), 
-                isColor=False  #isColor sets to false to have one channel
-                )
-        
+                f"{save_path}.mp4",
+                cv2.VideoWriter_fourcc(*"mp4v"),
+                self.fps,
+                (frameWidth, frameHeight),
+                isColor=False,
+            )
+
         with tqdm(total=frameCount, desc="Saving video depth map: ") as pbar:
             for i in range(frameCount):
                 if save_video:
                     depth_video.write(self.depth_video[i, :, :])
-                    depth_video.release()
                 else:
-                    cv2.imwrite(save_path+f"/depth_frame_{i}.png", self.depth_video[i, :, :])
+                    cv2.imwrite(f"{save_path}/depth_frame_{i}.png", self.depth_video[i, :, :])
                 pbar.update(1)
+
+        if save_video:
+            depth_video.release()
+
         print("Done")
 
-    def __call__(self, save_path, save_video=False):
-        vid = self.load_video() #load video
-        
-        self.fps = vid.get(cv2.CAP_PROP_FPS) #keeping fps for output saving purposes
-        frameCount = int(vid.get(cv2.CAP_PROP_FRAME_COUNT))
-        frameWidth = int(vid.get(cv2.CAP_PROP_FRAME_WIDTH))
-        frameHeight = int(vid.get(cv2.CAP_PROP_FRAME_HEIGHT))
-        originalFps = int(vid.get(cv2.CAP_PROP_FPS))
+    def __call__(self, save_path: str, save_video: bool = False) -> None:
+        vid: cv2.VideoCapture = self.load_video()
 
-        skipAhead = 0
+        self.fps = vid.get(cv2.CAP_PROP_FPS)
+        frameCount: int = int(vid.get(cv2.CAP_PROP_FRAME_COUNT))
+        frameWidth: int = int(vid.get(cv2.CAP_PROP_FRAME_WIDTH))
+        frameHeight: int = int(vid.get(cv2.CAP_PROP_FRAME_HEIGHT))
+        originalFps: int = int(vid.get(cv2.CAP_PROP_FPS))
+
+        skipAhead: int = 0
         if originalFps > self.fps:
             skipAhead = int(originalFps / self.fps)
             frameCount = int(frameCount * self.fps / originalFps)
 
-        fourcc = cv2.VideoWriter_fourcc(*'mp4v')
-        if save_video:
-            out = cv2.VideoWriter(f"{save_path}.mp4", fourcc, self.fps, (frameWidth, frameHeight), isColor=False)
+        fourcc = cv2.VideoWriter_fourcc(*"mp4v")
+        out: Optional[cv2.VideoWriter] = None
 
-        #TODO Declare output video in the save_path, same fps, height and width but grayscaled    
+        if save_video:
+            out = cv2.VideoWriter(
+                f"{save_path}.mp4",
+                fourcc,
+                self.fps,
+                (frameWidth, frameHeight),
+                isColor=False,
+            )
 
         with tqdm(total=frameCount, desc="Processing video depth map: ") as pbar:
             for i in range(frameCount):
                 for _ in range(skipAhead - 1):
-                    okay, frame = vid.read()
+                    okay, _ = vid.read()
                     if not okay:
                         break
+
                 okay, frame = vid.read()
                 if not okay:
                     break
-                depth_frame = self.get_image_depth(cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)) #inference on RGB frames
-                if save_video:
-                    out.write(cv2.cvtColor(depth_frame, cv2.COLOR_RGB2GRAY))
-                else:
-                    cv2.imwrite(save_path+f"/depth_frame_{i}.png", depth_frame)
 
-                #TODO save frame by frame in the depth video
+                depth_frame: np.ndarray = self.get_image_depth(
+                    cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
+                )
+
+                if save_video and out is not None:
+                    out.write(depth_frame)
+                else:
+                    cv2.imwrite(f"{save_path}/depth_frame_{i}.png", depth_frame)
+
                 pbar.update(1)
+
+        if save_video and out is not None:
+            out.release()

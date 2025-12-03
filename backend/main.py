@@ -1,4 +1,4 @@
-from typing import Any, Dict, List
+from typing import Any, Dict, List, Tuple
 import warnings
 warnings.filterwarnings("ignore", category=UserWarning, message="TypedStorage is deprecated")
 
@@ -43,23 +43,22 @@ FPS=10
 
 CONFIG_FILE = "config.json"
 
-def read_config ():
+def read_config () -> Dict[str, Any]:
     with open(CONFIG_FILE, "r") as json_file:
         config = json.load(json_file)
     return config
 
-def write_config (config):
+def write_config (config) -> None:
     with open(CONFIG_FILE, "w") as json_file:
         json.dump(config, json_file)
         json_file.flush()
 
-async def compute_embeddings_dim_reduction(video_path):  
+async def compute_embeddings_dim_reduction(video_path: str) -> \
+    Tuple[np.ndarray, np.ndarray, np.ndarray, np.ndarray, np.ndarray, np.ndarray,\
+    List[Dict[str, int]],List[Dict[str, int]], List[Dict[str, int]]]:  
     output_path = video_path.replace(".mp4", "")
     if not os.path.exists(output_path):
         os.mkdir(output_path)
-
-    '''if not os.path.exists(f"{output_path}/0.png"):
-        await video2images(video_path, FPS)'''
 
     #getting video embeddings 
     classifier = VisionTransformer(FPS, video_path, MODEL_NAME)
@@ -134,7 +133,7 @@ async def compute_embeddings_dim_reduction(video_path):
     return tsne, pca, umap, tsne_clusters, pca_clusters, umap_clusters, tsne_cluster_frames,\
          pca_cluster_frames, umap_cluster_frames
 
-async def compute_cosine_similarity(video_path, query_text):    
+async def compute_cosine_similarity(video_path, query_text) -> List[List[Any]]:    
     output_path = video_path.replace(".mp4", "")
     if not os.path.exists(output_path):
         os.mkdir(output_path)
@@ -182,11 +181,11 @@ async def compute_cosine_similarity(video_path, query_text):
     del classifier, 
     return similarity_scores
 
-async def perform_object_detection(video_path, output_path):
+async def perform_object_detection(video_path, output_path) -> ObjectDetector:
     detector = ObjectDetector(video_path=video_path, output_results=output_path+"-output.csv", model_name="yolov5s.pt", fps=FPS)
     return detector()
 
-async def compute_depth_map(video_path, output_path):
+async def compute_depth_map(video_path, output_path) -> None:
     if not os.path.exists(output_path):
         os.mkdir(output_path)
 
@@ -194,7 +193,7 @@ async def compute_depth_map(video_path, output_path):
     depth_estimator(save_path=output_path)
 
 @app.get("/videos/{filename}/search/")
-async def search(filename: str, query: str):
+async def search(filename: str, query: str) -> Dict[str, Any]:
     current_video_path = read_config()["videos_dir"] + "/" + filename
     print("current_video_path:", current_video_path, " query:", query)
     similarity_scores = await compute_cosine_similarity(current_video_path, query)
@@ -205,7 +204,7 @@ async def search(filename: str, query: str):
     }
 
 @app.post("/videos/{filename}/search/compound/")
-async def search(filename: str, queries: List[QueryUnit]):
+async def search(filename: str, queries: List[QueryUnit]) -> Dict[str, Any]:
     current_video_path = read_config()["videos_dir"] + "/" + filename
     output_path = current_video_path.replace(".mp4", "")
 
@@ -235,7 +234,7 @@ async def search(filename: str, queries: List[QueryUnit]):
     }
 
 @app.post("/videos/{filename}/search/crop/")
-async def crop_search(filename: str, crop_data: dict):
+async def crop_search(filename: str, crop_data: dict) -> Dict[str, Any]:
     current_video_path = read_config()["videos_dir"] + "/" + filename
 
     current_index = crop_data.get("current_index", 0)
@@ -262,12 +261,12 @@ async def crop_search(filename: str, crop_data: dict):
     }
     
 @app.get("/videos/{filename}/images/{imagename}/")
-async def get_image(filename: str, imagename: str):
+async def get_image(filename: str, imagename: str) -> FileResponse:
     img_path = os.path.join(read_config()["videos_dir"], f"{filename}").replace("\\","/")+f"/{imagename}"
     return FileResponse(img_path)
 
 @app.get("/videos/")
-async def get_video_names():
+async def get_video_names() -> List[str]:
     video_names = find_mp4_files("./videos/")
     if not video_names:
         raise HTTPException(status_code=404, detail="No videos found")
@@ -275,14 +274,14 @@ async def get_video_names():
     return video_names
 
 @app.get("/videos/{video_name}/")
-async def get_video(video_name: str):
+async def get_video(video_name: str) -> FileResponse:
     video_path = os.path.join("./videos", video_name)
     if not os.path.exists(video_path) or not video_path.endswith('.mp4'):
         raise HTTPException(status_code=404, detail="Video not found")
     return FileResponse(video_path, media_type="video/mp4")
 
 @app.get("/videos/{filename}/metadata/")
-async def get_video_metadata(filename: str):
+async def get_video_metadata(filename: str) -> Dict[str, Any]:
     current_video_path = read_config()["videos_dir"] + "/" + filename
 
     vid = cv2.VideoCapture(current_video_path)
@@ -301,7 +300,7 @@ async def get_video_metadata(filename: str):
         }
 
 @app.get("/videos/{filename}/objects/")
-async def get_objects_in_video(filename: str):
+async def get_objects_in_video(filename: str) -> Dict[str, Any]:
     video_path = os.path.join(read_config()["videos_dir"], filename).replace("\\","/")
     name = filename.split(".")[0]
     output_path = os.path.join(read_config()["videos_dir"], f"{name}").replace("\\","/")
@@ -319,7 +318,7 @@ async def get_objects_in_video(filename: str):
     }
 
 @app.get("/videos/{filename}/depth-map/")
-async def get_depth_video(filename: str):
+async def get_depth_video(filename: str) -> Dict[str, Any]:
     video_path = os.path.join(read_config()["videos_dir"], filename).replace("\\","/")
     name = filename.split(".")[0]
     output_path = os.path.join(read_config()["videos_dir"], f"depth-{name}").replace("\\","/")
@@ -331,7 +330,7 @@ async def get_depth_video(filename: str):
     return { "frames": len(paths) }
 
 @app.get("/videos/{filename}/embeddings/")
-async def get_video_embeddings(filename: str):
+async def get_video_embeddings(filename: str) -> Dict[str, Any]:
     video_path = os.path.join(read_config()["videos_dir"], filename).replace("\\","/")
     tsne, pca, umap, tsne_clusters, pca_clusters, umap_clusters, tsne_cluster_frames, \
         pca_cluster_frames, umap_cluster_frames = await compute_embeddings_dim_reduction(video_path)
@@ -349,7 +348,7 @@ async def get_video_embeddings(filename: str):
     }
     
 @app.post("/videos/{filename}/search/image/")
-async def upload_png(filename: str, image_data: dict):
+async def upload_png(filename: str, image_data: dict) -> Dict[str, Any]:
     current_video_path = read_config()["videos_dir"] + "/" + filename
 
     data_url = image_data.get('image_data', '')
@@ -368,7 +367,7 @@ async def upload_png(filename: str, image_data: dict):
     }
 
 @app.post("/log/")
-async def write_log(log_data: dict):
+async def write_log(log_data: dict) -> None:
     if (read_config()["log_interaction"]):
         log_file = open(read_config()["log_file_name"], "a+")
         log_file.write(log_data.get("interaction_log", "") + "\n")

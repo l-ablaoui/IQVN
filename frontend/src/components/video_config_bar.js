@@ -83,7 +83,7 @@ const Video_config_bar = ({set_video_name, set_video_src, set_current_index, set
                 >
                     {(is_dark_mode)?
                     <Sun className={`h-100 ${(is_dark_mode)? "text-light" : "text-dark"}`} /> :
-                    <Moon className={`h-100 ${(is_dark_mode)? "text-light" : "text-dark"}`}/>}
+                    <Moon className={`h-100 ${(is_dark_mode)? "text-light" : "text-dark"}`} />}
                 </button>
                 <label className="col-7 form-label responsive-text">select video: </label>
             </div>

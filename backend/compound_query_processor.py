@@ -6,7 +6,7 @@ from typing import List, Literal, Optional, Union
 
 from pydantic import BaseModel
 
-from utilities import get_cropped_image, sigmoid, decode_data_url
+from utilities import get_cropped_image, sigmoid, decode_data_url, decode_audio_url
 
 # --------------------- Pydantic models ---------------------
 class CropQuery(BaseModel):
@@ -15,11 +15,15 @@ class CropQuery(BaseModel):
 
 class ImageQuery(BaseModel):
     image_data: str
+    
+class AudioQuery(BaseModel):
+    audio_data: str
 
 class QueryUnit(BaseModel):
     text_query: Optional[str] = None
     image_query: Optional[ImageQuery] = None
     crop_query: Optional[CropQuery] = None
+    audio_query: Optional[AudioQuery] = None
     logic: Optional[Literal["AND", "OR", "W/O"]] = None
 
 # --------------------- Main processor ----------------------
@@ -65,6 +69,13 @@ class CompoundQueryProcessor:
             crop_img = get_cropped_image(self.video_path, crop_box, crop.current_index, self.FPS)
             return self.model.get_image_features([crop_img])
 
+        if q.audio_query:
+            if not isinstance(q.audio_query, AudioQuery):
+                raise ValueError("audio_query has invalid format")
+
+            audio_data = decode_audio_url(q.audio_query.audio_data)
+            return self.model.get_audio_features([audio_data])
+        
         raise ValueError("QueryUnit has no valid query field")
 
     # ---------------- similarity helpers ---------------------

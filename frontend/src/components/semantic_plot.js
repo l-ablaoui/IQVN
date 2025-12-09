@@ -671,8 +671,8 @@ const Semantic_plot = ({video_ref, video_src, scores, points, set_points, curren
     };
 
     const reset_zoompan = (set_zoom_scale, set_translate) => {
-        set_zoom_scale(1.0);
-        set_translate({x: 0, y: 0});
+        set_SP_scale(1.0);
+        set_SP_translate({x: 0, y: 0});
     };
 
     return (
@@ -680,7 +680,8 @@ const Semantic_plot = ({video_ref, video_src, scores, points, set_points, curren
             <canvas 
                 className="row w-100 h-90" 
                 ref={semantic_plot_ref}
-                title="Right click to select, right click + CTRL to deselect, press SPACE to reset zoom"
+                title="Right click to select, right click + CTRL to deselect, press SPACE to reset zoom, 
+                    double click to recenter"
                 tabIndex={0}  //add focus on canvas and reception keyboard events
                 onWheel={handle_onwheel}
                 onMouseDown={handle_mousedown}
@@ -689,6 +690,7 @@ const Semantic_plot = ({video_ref, video_src, scores, points, set_points, curren
                 onClick={handle_onclick}
                 onKeyDown={handle_keydown}
                 onKeyUp={handle_keydown}
+                onDoubleClick={reset_zoompan}
                 onContextMenu={(e) => e.preventDefault()} //prevent right click menu on this specific component
             >    
             </canvas>

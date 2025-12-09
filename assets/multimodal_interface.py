@@ -46,7 +46,7 @@ class MultiModal:
     
         return self.model(inputs)[ModalityType.TEXT]
 
-    def get_sound_features(self, audios):
+    def get_audio_features(self, audios):
         inputs = {}
 
         if audios is not None:

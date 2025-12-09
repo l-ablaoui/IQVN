@@ -44,9 +44,17 @@ export const fetch_compound_query_scores = async (video_name, compound_query) =>
                     { "image_data": data_URL } 
                 };
             }
+
+            if (node.audio_query) {
+                const matched_file = node.audio_query;
+                const data_URL = await get_data_URL(matched_file); 
+                compound_query[i] = { "audio_query": 
+                    { "audio_data": data_URL } 
+                };
+            }
         }
         
-        const response = await fetch(`${BACKEND_SERVER_URL}videos/${video_name}/search/compound/`, 
+        const response = await fetch(`${BACKEND_SERVER_URL}videos/${video_name}/queries/compound/`, 
             {method: "POST", body: JSON.stringify(compound_query), 
             headers: {"Content-Type": "application/json"}});
         const body = await response.json();
@@ -65,7 +73,7 @@ export const fetch_compound_query_scores = async (video_name, compound_query) =>
 export const fetch_text_query_scores = async (video_name, query_input) => {
     try {
         console.log("video_name:", video_name, " query_input:", query_input);
-        const response = await fetch(`${BACKEND_SERVER_URL}videos/${video_name}/search/?query=${query_input}`);
+        const response = await fetch(`${BACKEND_SERVER_URL}videos/${video_name}/queries/?query=${query_input}`);
         const body = await response.json();
         console.log("fetch textual query scores result: ", body);
         return [
@@ -85,7 +93,7 @@ export const fetch_text_query_scores = async (video_name, query_input) => {
 export const fetch_image_scores = async (video_name, image_input) => {
     try {
         const data_URL = await get_data_URL(image_input); 
-        const response = await fetch(`${BACKEND_SERVER_URL}videos/${video_name}/search/image/`, 
+        const response = await fetch(`${BACKEND_SERVER_URL}videos/${video_name}/queries/image/`, 
             {method: "POST", body: JSON.stringify({image_data: data_URL}), 
             headers: {"Content-Type": "application/json"}});
         const body = await response.json();
@@ -106,7 +114,7 @@ export const fetch_image_scores = async (video_name, image_input) => {
  * @returns expected array of floats between 0 and 1 representing similarity scores */
 export const fetch_crop_scores = async (video_name, current_index, crop_box) => {
     try {
-        const response = await fetch(`${BACKEND_SERVER_URL}videos/${video_name}/search/crop/`, 
+        const response = await fetch(`${BACKEND_SERVER_URL}videos/${video_name}/queries/crop/`, 
             {method: "POST", body: JSON.stringify({ current_index: current_index, crop_box: crop_box }), 
             headers: {"Content-Type": "application/json"}});
         const body = await response.json();
@@ -170,7 +178,7 @@ export const post_audio_recording = async (video_name, audio_blob) => {
         const form_data = new FormData();
         form_data.append("audio_record_data", audio_blob, "recording.wav");
 
-        const response = await fetch(`${BACKEND_SERVER_URL}/videos/${video_name}/search/audio/record/`, {
+        const response = await fetch(`${BACKEND_SERVER_URL}videos/${video_name}/queries/audio/record/`, {
             method: "POST",
             body: form_data,
         });

@@ -23,7 +23,6 @@ from multimodal_interface import MultiModal
 #logs
 from tqdm import tqdm
 import os
-import time
 
 class VisionTransformer:
     video_path: str
@@ -41,7 +40,6 @@ class VisionTransformer:
         self,
         fps: Optional[int],
         video_path: str = "",
-        checkpoint: str = "openai/clip-vit-base-patch16",
         batch_size: int = 64,
         audio_chunk_duration: int = 10,
         audio_stride: int = 5
@@ -162,7 +160,7 @@ class VisionTransformer:
                 outputs["text"] = self.model.get_text_features(texts)
                 
             if audios is not None:
-                outputs["audio"] = self.model.get_sound_features(audios)
+                outputs["audio"] = self.model.get_audio_features(audios)
             
         return (
             outputs["vision"].detach().cpu().numpy() if images is not None else None, 
@@ -215,8 +213,6 @@ class VisionTransformer:
             for i in range(frame_count)
         ]
         self.video_embeddings = np.vstack(embeddings)
-
-    
 
     def load_audio_features(self, output_path, frame_count):
         if not os.path.exists(output_path+f"/embedding_audio_0.npy"):
@@ -335,6 +331,13 @@ class VisionTransformer:
             _, self.text_embeddings, self.audio_embeddings = self.get_features(texts=input_texts, audios=audio_path)
             video_text_cosine = self.cosine_similarity(self.video_embeddings, self.text_embeddings)
             audio_text_cosine = self.cosine_similarity(self.audio_embeddings, self.text_embeddings) if self.audio_embeddings is not None else None,
+            
+            #in case of silent segments, set audio scores to 0
+            if silent_segments is not None and self.audio_embeddings is not None:
+                for i, is_silent in enumerate(silent_segments):
+                    if is_silent:
+                        audio_text_cosine[i, :] = 0.0
+            
             if input_images is None:
                 self.video_scores = video_text_cosine 
                 self.audio_scores = audio_text_cosine

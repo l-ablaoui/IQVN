@@ -243,7 +243,7 @@ async def compute_depth_map(video_path, output_path) -> None:
     depth_estimator = DepthMapEstimation(FPS, video_path=video_path)
     depth_estimator(save_path=output_path)
 
-@app.get("/videos/{filename}/search/")
+@app.get("/videos/{filename}/queries/")
 async def search(filename: str, query: str) -> Dict[str, Any]:
     current_video_path = read_config()["videos_dir"] + "/" + filename
     print("current_video_path:", current_video_path, " query:", query)
@@ -255,7 +255,7 @@ async def search(filename: str, query: str) -> Dict[str, Any]:
         "audio_scores": audio_scores
     }
 
-@app.post("/videos/{filename}/search/compound/")
+@app.post("/videos/{filename}/queries/compound/")
 async def search(filename: str, queries: List[QueryUnit]) -> Dict[str, Any]:
     current_video_path: str = read_config()["videos_dir"] + "/" + filename
     output_path: str = current_video_path.replace(".mp4", "")
@@ -279,7 +279,7 @@ async def search(filename: str, queries: List[QueryUnit]) -> Dict[str, Any]:
         "scores": similarity_scores
     }
 
-@app.post("/videos/{filename}/search/crop/")
+@app.post("/videos/{filename}/queries/crop/")
 async def crop_search(filename: str, crop_data: dict) -> Dict[str, Any]:
     current_video_path: str = read_config()["videos_dir"] + "/" + filename
     current_index = crop_data.get("current_index", 0)
@@ -313,7 +313,7 @@ async def get_image(filename: str, imagename: str) -> FileResponse:
     img_path = os.path.join(read_config()["videos_dir"], f"{filename}").replace("\\","/")+f"/{imagename}"
     return FileResponse(img_path)
 
-@app.post("/videos/{filename}/search/audio/record/")
+@app.post("/videos/{filename}/queries/audio/record/")
 async def audio_record_search(filename: str, audio_record_data: UploadFile = File(...)):
     current_video_path: str = read_config()["videos_dir"] + "/" + filename
     try:
@@ -424,7 +424,7 @@ async def get_video_embeddings(filename: str) -> Dict[str, Any]:
         "umap_cluster_frames": umap_cluster_frames
     }
     
-@app.post("/videos/{filename}/search/image/")
+@app.post("/videos/{filename}/queries/image/")
 async def upload_png(filename: str, image_data: dict) -> Dict[str, Any]:
     current_video_path = read_config()["videos_dir"] + "/" + filename
 

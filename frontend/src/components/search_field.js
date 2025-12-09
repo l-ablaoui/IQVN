@@ -39,14 +39,17 @@ const Search_field = ({video_name, video_ref, current_index, set_scores, set_ima
     const image_file_input_ref = useRef(null);
     const sound_input_ref = useRef(null);
     const audio_record_ref = useRef(null);
+    const audio_file_input_ref = useRef(null);
     const crop_area_ref = useRef(null);
 
     /** reference to the cursor position in the editable div text input */
     const cursor_position_ref = useRef(null);
+
     const media_recorder_ref = useRef(null);
     const media_stream_ref = useRef(null);
     const recorded_chunks = useState([]);
     const [is_recording, set_recording] = useState(false);
+    const [audio_recording_name_counter, set_audio_recording_name_counter] = useState(0);
 
     const [selection_top_left, set_selection_top_left] = useState({x: 0, y: 0});
     const [selection_bot_right, set_selection_bot_right] = useState({x: 0, y: 0});
@@ -62,7 +65,7 @@ const Search_field = ({video_name, video_ref, current_index, set_scores, set_ima
     const [input_files, set_input_files] = useState([]);
 
     const separators = ['AND', 'OR', 'W/O'];
-    const regrouper_pairs = [['"', '"'], ["'", "'"], ['[', ']']];
+    const regrouper_pairs = [['"', '"'], ["'", "'"], ['[', ']'], ['*', '*']];
 
     //restore cursor position on query_value change
     useEffect(() => {
@@ -79,56 +82,6 @@ const Search_field = ({video_name, video_ref, current_index, set_scores, set_ima
         set_query_value("");
         set_input_files([]);
     }, [video_ref]);
-
-    const handle_audio_recording_click = () => {
-        if (is_recording) { 
-            set_recording(false);
-            media_recorder_ref.current.stop();
-            media_stream_ref.current.getTracks().forEach(track => track.stop());
-        }
-        else {
-            try {
-                set_recording(true);
-                navigator.mediaDevices.getUserMedia({ audio: true }).then((stream) => {
-                    media_stream_ref.current = stream;
-                    const media_recorder = new MediaRecorder(stream);
-                    recorded_chunks.current = [];
-
-                    media_recorder.ondataavailable = (event) => {
-                        if (event.data.size > 0) {
-                            recorded_chunks.current.push(event.data);
-                        }
-                    };
-
-                    media_recorder.onstop = () => {
-                        const audio_blob = new Blob(recorded_chunks.current, { type: 'audio/webm' });
-                        //TODO send or process the audio_blob here
-                        post_audio_recording(audio_blob).then((results) => {
-                            const images_s = results[0];
-                            const audio_s = results[1];
-                            set_image_scores(images_s);
-                            set_audio_scores(audio_s);
-                            if (audio_s?.length == images_s.length) {
-                                set_scores(images_s.map((image_s, i) => image_score_ratio 
-                                    * image_s + audio_score_ratio * audio_s[i]));
-                            }
-                            else {
-                                set_scores(images_s);
-                            }
-                        });
-                    };
-
-                    media_recorder_ref.current = media_recorder;
-                    media_recorder.start();
-                });
-            }
-            catch (error) {
-                set_recording(false);
-                console.log("error recording audio: ", error);
-                media_recorder_ref.current.stop();
-            }
-        }
-    };
  
     /** highjack click to the file input when clicking on the icon */
     const handle_image_upload_click = () => {
@@ -228,6 +181,95 @@ const Search_field = ({video_name, video_ref, current_index, set_scores, set_ima
             }
         });
     };
+
+    /** highjack click to the file input when clicking on the icon */
+    const handle_audio_upload_click = () => {
+        audio_file_input_ref.current.click();
+    };
+
+    /** on audio change, fetch the video x audio scores from the server
+     * @param {*} event expected file input change event */ 
+    const handle_audio_file_input_change = (event) => {
+        const files = event.target.files;
+        if (files.length > 0) {
+            set_query_value(query_value + ` *${files[0].name}*`);
+            set_input_files([...input_files, files[0]]);
+            post_audio_recording(video_name, files[0]).then((scores) => {
+                console.log(scores);
+                const [image_scores, audio_scores] = scores;
+                set_image_scores(image_scores);
+                set_audio_scores(audio_scores);
+                if (audio_scores?.length == image_scores?.length) {
+                    set_scores(image_scores.map((image_s, i) => image_score_ratio 
+                        * image_s + audio_score_ratio * audio_scores[i]));
+                }
+                else {
+                    set_scores(image_scores);
+                    set_image_ratio(1);
+                    set_audio_ratio(0);
+                }
+            });
+        }
+    };
+
+    const handle_audio_recording_click = () => {
+        if (is_recording) { 
+            set_recording(false);
+            media_recorder_ref.current.stop();
+            media_stream_ref.current.getTracks().forEach(track => track.stop());
+        }
+        else {
+            try {
+                set_recording(true);
+                navigator.mediaDevices.getUserMedia({ audio: true }).then((stream) => {
+                    media_stream_ref.current = stream;
+                    const media_recorder = new MediaRecorder(stream);
+                    recorded_chunks.current = [];
+
+                    media_recorder.ondataavailable = (event) => {
+                        if (event.data.size > 0) {
+                            recorded_chunks.current.push(event.data);
+                        }
+                    };
+
+                    media_recorder.onstop = () => {
+                        const audio_blob = new Blob(recorded_chunks.current, { type: 'audio/webm' });
+                        //save the recording with a unique name
+                        const recording_name = `recording_${audio_recording_name_counter}.webm`;
+                        const audio_file = new File([audio_blob], recording_name, { type: 'audio/webm' });
+
+                        set_audio_recording_name_counter(audio_recording_name_counter + 1);
+                        set_query_value(query_value + ` *${recording_name}*`);
+                        set_input_files([...input_files, audio_file]);
+
+                        post_audio_recording(video_name, audio_file).then((results) => {
+                            const images_s = results[0];
+                            const audio_s = results[1];
+                            set_image_scores(images_s);
+                            set_audio_scores(audio_s);
+                            if (audio_s?.length == images_s.length) {
+                                set_scores(images_s.map((image_s, i) => image_score_ratio 
+                                    * image_s + audio_score_ratio * audio_s[i]));
+                            }
+                            else {
+                                set_scores(images_s);
+                                set_image_ratio(1);
+                                set_audio_ratio(0);
+                            }
+                        });
+                    };
+
+                    media_recorder_ref.current = media_recorder;
+                    media_recorder.start();
+                });
+            }
+            catch (error) {
+                set_recording(false);
+                console.log("error recording audio: ", error);
+                media_recorder_ref.current.stop();
+            }
+        }
+    };
     
     /** triggers score acquisition for query from server end */
     const handle_search_click = () => {
@@ -306,6 +348,28 @@ const Search_field = ({video_name, video_ref, current_index, set_scores, set_ima
                         );
                         return;
                     }
+                    case regrouper_pairs[3][0]: { //asterisks
+                        const file_name = parsed_query[0].slice(1, -1).trim();
+                        const matched_file = input_files.find(file => file.name === file_name);
+                        if (matched_file) {
+                            post_audio_recording(video_name, matched_file).then((scores) => {
+                                if (scores?.length > 0) { 
+                                    const [image_scores, audio_scores] = scores;
+                                    set_image_scores(image_scores);
+                                    set_audio_scores(audio_scores);
+                                    if (audio_scores?.length == image_scores?.length) {
+                                        set_scores(image_scores.map((image_s, i) => image_score_ratio 
+                                            * image_s + audio_score_ratio * audio_scores[i]));
+                                    }
+                                    else {
+                                        set_scores(image_scores);
+                                        set_image_ratio(1);
+                                        set_audio_ratio(0);
+                                    }   
+                                }
+                            });
+                        }
+                    }    
                 }
             }
             //compound query search
@@ -333,6 +397,14 @@ const Search_field = ({video_name, video_ref, current_index, set_scores, set_ima
                                 "crop_box": [x_min, y_min, crop_width, crop_height]
                             }
                         });
+                        break;
+                    }
+                    case regrouper_pairs[3][0]: { //asterisks
+                        const file_name = query.slice(1, -1).trim();
+                        const matched_file = input_files.find(file => file.name === file_name);
+                        if (matched_file) {
+                            multimodal_query.push({ "audio_query": matched_file });
+                        }
                         break;
                     }
                     case separators[0][0]: { //AND
@@ -382,14 +454,17 @@ const Search_field = ({video_name, video_ref, current_index, set_scores, set_ima
         //highlight double quoted sections in blue
         html = html.replace(/"([^"]*)"/g, '<span class="text-primary">"$1"</span>');
 
-        //highlight logical keywords in red
-        html = html.replace(/\b(AND|OR|W\/O)\b/g, '<span class="text-danger">$1</span>');
+        //highlight logical keywords in gray
+        html = html.replace(/\b(AND|OR|W\/O)\b/g, '<span class="text-secondary">$1</span>');
         
         //highlight single quoted sections in green
         html = html.replace(/'([^']*)'/g, '<span class="text-success">\'$1\'</span>');
 
         //highlight braced values in orange
         html = html.replace(/\[([^\]]*)\]/g, '<span class="text-warning">[$1]</span>');
+
+        //highlight asterisked sections in red
+        html = html.replace(/\*([^*]*)\*/g, '<span class="text-danger">*$1*</span>');
 
         return html;
     };
@@ -457,12 +532,19 @@ const Search_field = ({video_name, video_ref, current_index, set_scores, set_ima
                 <Crop className={(is_dark_mode)? "h-100 text-light" : "h-100 text-dark"} />
             </button>
             <button
-                onClick={handle_audio_recording_click}
+                onClick={handle_audio_upload_click}
                 ref={sound_input_ref}
                 className="col-1 h-100 btn"
                 title="audio upload search"
             >
                 <Volume2 className={(is_dark_mode)? "h-100 text-light" : "h-100 text-dark"} />
+                <input 
+                    type="file" 
+                    class="d-none" 
+                    ref={audio_file_input_ref}
+                    onChange={handle_audio_file_input_change}
+                    accept="audio/*" 
+                />
             </button>
             <button
                 onClick={handle_audio_recording_click}

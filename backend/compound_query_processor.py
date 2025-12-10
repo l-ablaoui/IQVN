@@ -54,27 +54,27 @@ class CompoundQueryProcessor:
         Returns a (1, D) embedding.
         """
         if q.text_query:
-            return self.model.get_text_features([q.text_query])
+            return self.model.get_features(texts=[q.text_query])
 
         if q.image_query:
             if not isinstance(q.image_query, ImageQuery):
                 raise ValueError("image_query has invalid format")
 
             img = decode_data_url(q.image_query.image_data)
-            return self.model.get_image_features(img)
+            return self.model.get_features(images=[img])
 
         if q.crop_query:
             crop = q.crop_query
             crop_box = [int(v) for v in crop.crop_box]
             crop_img = get_cropped_image(self.video_path, crop_box, crop.current_index, self.FPS)
-            return self.model.get_image_features([crop_img])
+            return self.model.get_features(images=[crop_img])
 
         if q.audio_query:
             if not isinstance(q.audio_query, AudioQuery):
                 raise ValueError("audio_query has invalid format")
 
             audio_data = decode_audio_url(q.audio_query.audio_data)
-            return self.model.get_audio_features([audio_data])
+            return self.model.get_features(audios=[audio_data])
         
         raise ValueError("QueryUnit has no valid query field")
 

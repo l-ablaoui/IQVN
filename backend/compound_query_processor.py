@@ -49,7 +49,7 @@ class CompoundQueryProcessor:
         self.video_embeddings = self.model.video_embeddings  # (n_frames, D)
 
     # ---------------- embedding helpers ---------------------
-    def get_query_embedding(self, q: QueryUnit) -> NDArray[np.float32]:
+    def get_query_embedding(self, q: QueryUnit) -> NDArray[np.float32|np.float16]:
         """
         Returns a (1, D) embedding.
         """
@@ -79,46 +79,47 @@ class CompoundQueryProcessor:
         raise ValueError("QueryUnit has no valid query field")
 
     # ---------------- similarity helpers ---------------------
-    def video_similarity(self, query_emb: NDArray[np.float32]) -> NDArray[np.float32]:
-        return self.model.cosine_similarity(self.video_embeddings, query_emb)
+    def video_similarity(self, query_emb: NDArray[np.float32|np.float16]) -> NDArray[np.float32|np.float16]:
+        cosine_scores = self.model.cosine_similarity(self.video_embeddings, query_emb)
+        return sigmoid(cosine_scores)  # (n_frames,)
 
     def inter_query_similarity(
         self,
-        emb1: NDArray[np.float32],
-        emb2: NDArray[np.float32]
+        emb1: NDArray[np.float32|np.float16],
+        emb2: NDArray[np.float32|np.float16]
     ) -> float:
-        sim: NDArray[np.float32] = self.model.cosine_similarity(emb1, emb2)
-        return float(sim.squeeze())
+        sim: NDArray[np.float32|np.float16] = self.model.cosine_similarity(emb1, emb2)
+        return sigmoid(sim.squeeze())  
 
     # ---------------- composition primitives ---------------------
     def and_score(
         self,
-        sA: NDArray[np.float32],
-        sB: NDArray[np.float32],
+        sA: NDArray[np.float32|np.float16],
+        sB: NDArray[np.float32|np.float16],
         rho: float
-    ) -> NDArray[np.float32]:
+    ) -> NDArray[np.float32|np.float16]:
         return sA * sB * (1.0 - self.overlap_corrector * rho)
 
     def or_score(
         self,
-        sA: NDArray[np.float32],
-        sB: NDArray[np.float32],
-        inter_ab: NDArray[np.float32]
-    ) -> NDArray[np.float32]:
+        sA: NDArray[np.float32|np.float16],
+        sB: NDArray[np.float32|np.float16],
+        inter_ab: NDArray[np.float32|np.float16]
+    ) -> NDArray[np.float32|np.float16]:
         return sA + sB - inter_ab
 
     def wo_score(
         self,
-        sA: NDArray[np.float32],
-        sB: NDArray[np.float32],
+        sA: NDArray[np.float32|np.float16],
+        sB: NDArray[np.float32|np.float16],
         rho: float
-    ) -> NDArray[np.float32]:
+    ) -> NDArray[np.float32|np.float16]:
         return sA * (1.0 - sB * rho)
 
     # ---------------- main processor ---------------------
     def __call__(self, queries: List[QueryUnit]) -> List[float]:
-        embeddings: List[NDArray[np.float32]] = []
-        per_frame_scores: List[NDArray[np.float32]] = []
+        embeddings: List[NDArray[np.float32|np.float16]] = []
+        per_frame_scores: List[NDArray[np.float32|np.float16]] = []
         logics: List[str] = []
 
         # extract scores + ops
@@ -134,7 +135,7 @@ class CompoundQueryProcessor:
         if not per_frame_scores:
             return []
 
-        combined: NDArray[np.float32] = per_frame_scores[0]
+        combined: NDArray[np.float32|np.float16] = per_frame_scores[0]
         idx = 0
 
         for op in logics:
@@ -175,5 +176,5 @@ class CompoundQueryProcessor:
             del embeddings[idx + 1]
             del per_frame_scores[idx + 1]
 
-        final_scores: NDArray[np.float32] = per_frame_scores[0].squeeze()
+        final_scores: NDArray[np.float32|np.float16] = per_frame_scores[0].squeeze()
         return final_scores.tolist()

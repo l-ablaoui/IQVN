@@ -670,7 +670,7 @@ const Semantic_plot = ({video_ref, video_src, scores, points, set_points, curren
         return selected_points;
     };
 
-    const reset_zoompan = (set_zoom_scale, set_translate) => {
+    const reset_zoompan = () => {
         set_SP_scale(1.0);
         set_SP_translate({x: 0, y: 0});
     };

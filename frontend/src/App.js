@@ -116,6 +116,7 @@ function App () {
                     update_time={update_time}
                     max_index={max_index}
                     video_ref={video_ref}
+                    video_name={video_name}
                     video_src={video_src}
                     points={points}
                     set_points={set_points}

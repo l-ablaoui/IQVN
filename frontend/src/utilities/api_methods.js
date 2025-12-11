@@ -139,9 +139,7 @@ export const fetch_crop_scores = async (video_name, current_index, crop_box) => 
  * - tsne_cluster_frames: array of tuples containing the frame number and the URL of the cluster centroids */
 export const fetch_video_semantic_representation = async (video_name) => {
     try {
-        const name_decomposed = video_name.split("/");
-        const name_processed = name_decomposed[name_decomposed.length - 1];//.split(".")[0]; 
-        const embeds_response = await fetch(`${BACKEND_SERVER_URL}videos/${name_processed}/embeddings/`);
+        const embeds_response = await fetch(`${BACKEND_SERVER_URL}videos/${video_name}/embeddings/`);
         const body = await embeds_response.json();
         console.log("fetch semantic representation result: ", body);
 
@@ -150,7 +148,7 @@ export const fetch_video_semantic_representation = async (video_name) => {
         let tsne_cluster_frames = [];
 
         //fetching frames corresponding to each cluster's centroid fort-sne reduction algorithm
-        const name_processed_no_ext = name_processed.split(".")[0];
+        const name_processed_no_ext = video_name.split(".")[0];
         let cluster_frames = body['tsne_cluster_frames'];
         for (let i = 0;i < cluster_frames.length;++i) {
             const cf_response = await fetch(

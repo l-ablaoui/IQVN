@@ -48,7 +48,7 @@ import { useEffect, useRef, useState } from "react";
  * @param {*} selected_points expected empty array or array of positive integers, selected frame indices
  * @param {*} set_selected_points expected setter for selected_points
  * @param {*} is_dark_mode expected boolean, true if the dark mode is enabled */
-const Semantic_plot = ({video_ref, video_src, scores, points, set_points, current_index,
+const Semantic_plot = ({video_ref, video_name, video_src, scores, points, set_points, current_index,
     update_time, max_index, selected_points, set_selected_points, is_dark_mode}) => {
     const semantic_plot_ref = useRef(null);
 
@@ -103,17 +103,17 @@ const Semantic_plot = ({video_ref, video_src, scores, points, set_points, curren
     
     //fetch semantic representation from server effect
     useEffect(() => {
-        if (video_src != "") {
+        if (video_name != "") {
             set_points([]);
             set_clusters([]);
             set_cluster_frames([]);
-            fetch_video_semantic_representation(video_src).then((results) => {
+            fetch_video_semantic_representation(video_name).then((results) => {
                 set_points(results["tsne_reduction"]);
                 set_clusters(results["tsne_clusters"]);
                 set_cluster_frames(results["tsne_cluster_frames"]);
             });
         }
-    }, [video_src]);
+    }, [video_name]);
 
     /** onwheel zoom handler for the semantic plot
      * @param {*} event expected a wheel event */

@@ -35,7 +35,7 @@ const Video_config_bar = ({set_video_name, set_video_src, set_current_index, set
             if (fetched_video_names?.length > 0) {   
                 set_video_names(fetched_video_names);
                 set_video_name(fetched_video_names[0]);
-                set_video_src(`${BACKEND_SERVER_URL}videos/${fetched_video_names[0]}`);
+                set_video_src(`${BACKEND_SERVER_URL}videos/${fetched_video_names[0]}/`);
             }
         };
         load_video_list();
@@ -54,7 +54,7 @@ const Video_config_bar = ({set_video_name, set_video_src, set_current_index, set
         set_points([]);
         set_selected_points([]);
         set_video_name(current_video_name);
-        set_video_src(`${BACKEND_SERVER_URL}videos/${current_video_name}`);
+        set_video_src(`${BACKEND_SERVER_URL}videos/${current_video_name}/`);
     };
 
     /** wipe out current selection of frames */
@@ -90,8 +90,7 @@ const Video_config_bar = ({set_video_name, set_video_src, set_current_index, set
             <div className="col-5 h-100">
                 <select 
                     name="video_names"
-                    className={`h-100 bg-transparent responsive-text ${(is_dark_mode)? 
-                        "text-light form-select" : "text-dark form-select"}` 
+                    className={`h-100 bg-transparent responsive-text text-secondary form-select` 
                     }
                     onChange={handle_video_selector_change}>
                     {video_names.map((video_name) => (

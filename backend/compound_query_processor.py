@@ -6,7 +6,7 @@ from typing import List, Literal, Optional, Union
 
 from pydantic import BaseModel
 
-from utilities import get_cropped_image, sigmoid, decode_data_url
+from utilities import get_cropped_image, sigmoid, decode_data_url, decode_audio_url
 
 # --------------------- Pydantic models ---------------------
 class CropQuery(BaseModel):
@@ -16,28 +16,34 @@ class CropQuery(BaseModel):
 class ImageQuery(BaseModel):
     image_data: str
 
+class AudioQuery(BaseModel):
+    audio_data: str
+
 class QueryUnit(BaseModel):
     text_query: Optional[str] = None
     image_query: Optional[ImageQuery] = None
     crop_query: Optional[CropQuery] = None
-    logic: Optional[Literal["AND", "OR", "W/O"]] = None
+    audio_query: Optional[AudioQuery] = None
+    logic: Optional[str] = None  # could be OR, AND, NOT, etc.
+
+# --------------------- Expression Tree ---------------------
+class ExprNode:
+    def __init__(self, op: str, children: list):
+        self.op = op
+        self.children = children
+
 
 # --------------------- Main processor ----------------------
 class CompoundQueryProcessor:
-    """
-    Evaluates ordered QueryUnit objects against video embeddings.
-    """
     model: any
     video_path: str
     FPS: int
-    overlap_corrector: float
-    video_embeddings: NDArray[np.float32]
+    video_embeddings: NDArray[np.float32 | np.float16]
 
     def __init__(self, vit_model: any, video_path: str = "", FPS: int = 10) -> None:
         self.model = vit_model
         self.video_path = video_path
         self.FPS = FPS
-        self.overlap_corrector = 0.5
 
         if self.model.video_embeddings is None:
             self.model.video_embeddings = self.model.get_video_features()
@@ -45,124 +51,143 @@ class CompoundQueryProcessor:
         self.video_embeddings = self.model.video_embeddings  # (n_frames, D)
 
     # ---------------- embedding helpers ---------------------
-    def get_query_embedding(self, q: QueryUnit) -> NDArray[np.float32]:
-        """
-        Returns a (1, D) embedding.
-        """
+    def get_query_embedding(self, q: QueryUnit) -> NDArray:
         if q.text_query:
-            return self.model.get_text_features([q.text_query])
+            return self.model.get_text_features(texts=[q.text_query])
 
         if q.image_query:
-            if not isinstance(q.image_query, ImageQuery):
-                raise ValueError("image_query has invalid format")
-
             img = decode_data_url(q.image_query.image_data)
-            return self.model.get_image_features(img)
-
+            return self.model.get_image_features(images=[img])
+        
         if q.crop_query:
             crop = q.crop_query
             crop_box = [int(v) for v in crop.crop_box]
             crop_img = get_cropped_image(self.video_path, crop_box, crop.current_index, self.FPS)
-            return self.model.get_image_features([crop_img])
+            return self.model.get_image_features(images=[crop_img])
 
+        if q.audio_query:
+            audio = decode_audio_url(q.audio_query.audio_data)
+            return self.model.get_audio_features(audios=[audio])
         raise ValueError("QueryUnit has no valid query field")
 
-    # ---------------- similarity helpers ---------------------
-    def video_similarity(self, query_emb: NDArray[np.float32]) -> NDArray[np.float32]:
-        return self.model.cosine_similarity(self.video_embeddings, query_emb)
+    # ---------------- geometric operators ---------------------
+    def union_vec(self, a: NDArray, b: NDArray) -> NDArray:
+        return np.stack([a.reshape(-1), b.reshape(-1)], axis=1)  # d×2
 
-    def inter_query_similarity(
-        self,
-        emb1: NDArray[np.float32],
-        emb2: NDArray[np.float32]
-    ) -> float:
-        sim: NDArray[np.float32] = self.model.cosine_similarity(emb1, emb2)
-        return float(sim.squeeze())
+    def intersection_vec(self, a: NDArray, b: NDArray) -> NDArray:
+        bis = a.reshape(-1) + b.reshape(-1)
+        n = np.linalg.norm(bis)
+        return bis / n if n > 0 else bis
 
-    # ---------------- composition primitives ---------------------
-    def and_score(
-        self,
-        sA: NDArray[np.float32],
-        sB: NDArray[np.float32],
-        rho: float
-    ) -> NDArray[np.float32]:
-        return sA * sB * (1.0 - self.overlap_corrector * rho)
+    def negate_score(self, s: NDArray) -> NDArray:
+        return np.sqrt(np.maximum(0.0, 1 - s**2))
 
-    def or_score(
-        self,
-        sA: NDArray[np.float32],
-        sB: NDArray[np.float32],
-        inter_ab: NDArray[np.float32]
-    ) -> NDArray[np.float32]:
-        return sA + sB - inter_ab
+    # ---------------- evaluation primitives ---------------------
+    def eval_span(self, span: NDArray, V: NDArray) -> NDArray:
+        pinv = np.linalg.pinv(span)               # 2×d
+        proj = V @ pinv.T                         # (T,2)
+        recon = proj @ span.T                     # (T,d)
+        return np.linalg.norm(recon, axis=1) / np.linalg.norm(V, axis=1)
 
-    def wo_score(
-        self,
-        sA: NDArray[np.float32],
-        sB: NDArray[np.float32],
-        rho: float
-    ) -> NDArray[np.float32]:
-        return sA * (1.0 - sB * rho)
+    def eval_vec(self, vec: NDArray, V: NDArray) -> NDArray:
+        v = vec.reshape(1, -1)
+        cos = self.model.cosine_similarity(V, v)  # (T,)
+        return cos
 
-    # ---------------- main processor ---------------------
+    # ---------------- parse flat sequence into expression tree ---------------------
+    def build_expr_tree(self, queries: List[QueryUnit]) -> ExprNode:
+        """
+        Builds an expression tree from an *infix* sequence like:
+        [A, OR, B, AND, C]
+        using operator precedence: NOT > AND > OR / WO
+        This is a classic shunting-yard style parser.
+        """
+        # --- helper precedence ---
+        precedence = {
+            "NOT": 3,
+            "AND": 2,
+            "W/O": 2,
+            "WO": 2,
+            "OR": 1,
+        }
+
+        output_stack: List[ExprNode] = []
+        op_stack: List[str] = []
+
+        def pop_op():
+            op = op_stack.pop()
+            if op == "NOT":
+                child = output_stack.pop()
+                output_stack.append(ExprNode("NOT", [child]))
+            else:
+                right = output_stack.pop()
+                left = output_stack.pop()
+                output_stack.append(ExprNode(op, [left, right]))
+
+        for q in queries:
+            if q.logic is None:
+                output_stack.append(ExprNode("leaf", [q]))
+            else:
+                op = q.logic.upper()
+                while (
+                    op_stack
+                    and op_stack[-1] in precedence
+                    and precedence[op_stack[-1]] >= precedence[op]
+                ):
+                    pop_op()
+                op_stack.append(op)
+
+        while op_stack:
+            pop_op()
+
+        if len(output_stack) != 1:
+            raise ValueError("Invalid infix expression")
+
+        return output_stack[0]
+
+    # ---------------- recursively evaluate expression tree ---------------------
+
+    def eval_tree(self, node: ExprNode, V: NDArray):
+        if node.op == "leaf":
+            emb = self.get_query_embedding(node.children[0])  # (1,d)
+            return emb, self.eval_vec(emb, V)
+
+        if node.op == "NOT":
+            _, score = self.eval_tree(node.children[0], V)
+            return None, self.negate_score(score)
+
+        A_emb, A_score = self.eval_tree(node.children[0], V)
+        B_emb, B_score = self.eval_tree(node.children[1], V)
+
+        if A_emb is None or B_emb is None:
+            raise ValueError("Logical operator cannot combine pure scalar nodes.")
+
+        A_vec = A_emb.reshape(-1)
+        B_vec = B_emb.reshape(-1)
+
+        if node.op == "AND":
+            I_vec = self.intersection_vec(A_vec, B_vec)
+            score = self.eval_vec(I_vec, V)
+            return I_vec.reshape(1, -1), score
+
+        if node.op == "OR":
+            U_span = self.union_vec(A_vec, B_vec)
+            score = self.eval_span(U_span, V)
+            return U_span, score
+
+        if node.op in ("W/O", "WO"):
+            score = A_score * (1 - B_score)
+            weight_a = float(np.mean(A_score))
+            weight_b = float(1 - np.mean(B_score))
+            wsum = weight_a + weight_b if weight_a + weight_b > 0 else 1.0
+            new_vec = ((weight_a * A_vec) + (weight_b * B_vec)) / wsum
+            return new_vec.reshape(1, -1), score
+
+        raise ValueError(f"Unknown operator {node.op}")
+
+    # ---------------- main ---------------------
     def __call__(self, queries: List[QueryUnit]) -> List[float]:
-        embeddings: List[NDArray[np.float32]] = []
-        per_frame_scores: List[NDArray[np.float32]] = []
-        logics: List[str] = []
-
-        # extract scores + ops
-        for unit in queries:
-            if unit.logic:
-                logics.append(unit.logic)
-            else:
-                emb = self.get_query_embedding(unit)
-                embeddings.append(emb)
-                sim = self.video_similarity(emb)
-                per_frame_scores.append(sim)
-
-        if not per_frame_scores:
-            return []
-
-        combined: NDArray[np.float32] = per_frame_scores[0]
-        idx = 0
-
-        for op in logics:
-            sA = per_frame_scores[idx]
-            sB = per_frame_scores[idx + 1]
-            embA = embeddings[idx]
-            embB = embeddings[idx + 1]
-
-            rho = self.inter_query_similarity(embA, embB)
-
-            if op == "AND":
-                combined = self.and_score(sA, sB, rho)
-
-            elif op == "OR":
-                inter_ab = self.and_score(sA, sB, rho)
-                combined = self.or_score(sA, sB, inter_ab)
-
-            elif op in ("W/O", "WO", "W/O "):
-                combined = self.wo_score(sA, sB, rho)
-
-            else:
-                raise ValueError(f"Unknown operator {op}")
-
-            # update merged embedding (1, D)
-            embA_vec = embA.reshape(-1)
-            embB_vec = embB.reshape(-1)
-
-            weightA = float(np.mean(sA))
-            weightB = float(np.mean(sB))
-            wsum = weightA + weightB if (weightA + weightB) > 0 else 1.0
-
-            new_emb = ((weightA * embA_vec) + (weightB * embB_vec)) / wsum
-            new_emb = new_emb.reshape(1, -1).astype(np.float32)
-
-            embeddings[idx] = new_emb
-            per_frame_scores[idx] = combined
-
-            del embeddings[idx + 1]
-            del per_frame_scores[idx + 1]
-
-        final_scores: NDArray[np.float32] = per_frame_scores[0].squeeze()
-        return final_scores.tolist()
+        V = self.video_embeddings
+        tree = self.build_expr_tree(queries)
+        _, scores = self.eval_tree(tree, V)
+        return scores.tolist()

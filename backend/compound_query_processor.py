@@ -102,48 +102,57 @@ class CompoundQueryProcessor:
         using operator precedence: NOT > AND > OR / WO
         This is a classic shunting-yard style parser.
         """
-        # --- helper precedence ---
-        precedence = {
-            "NOT": 3,
-            "AND": 2,
-            "W/O": 2,
-            "WO": 2,
-            "OR": 1,
-        }
+        output: List[ExprNode] = []
+        ops: List[str] = []
 
-        output_stack: List[ExprNode] = []
-        op_stack: List[str] = []
-
-        def pop_op():
-            op = op_stack.pop()
+        def apply_op():
+            op = ops.pop()
             if op == "NOT":
-                child = output_stack.pop()
-                output_stack.append(ExprNode("NOT", [child]))
+                child = output.pop()
+                output.append(ExprNode("NOT", [child]))
             else:
-                right = output_stack.pop()
-                left = output_stack.pop()
-                output_stack.append(ExprNode(op, [left, right]))
+                right = output.pop()
+                left = output.pop()
+                output.append(ExprNode(op, [left, right]))
 
         for q in queries:
             if q.logic is None:
-                output_stack.append(ExprNode("leaf", [q]))
-            else:
-                op = q.logic.upper()
-                while (
-                    op_stack
-                    and op_stack[-1] in precedence
-                    and precedence[op_stack[-1]] >= precedence[op]
-                ):
-                    pop_op()
-                op_stack.append(op)
+                output.append(ExprNode("leaf", [q]))
+                continue
 
-        while op_stack:
-            pop_op()
+            op = q.logic.upper()
 
-        if len(output_stack) != 1:
-            raise ValueError("Invalid infix expression")
+            if op == "(":
+                ops.append(op)
+                continue
 
-        return output_stack[0]
+            if op == ")":
+                while ops and ops[-1] != "(":
+                    apply_op()
+                if not ops:
+                    raise ValueError("Mismatched parentheses")
+                ops.pop()  # remove "("
+                continue
+
+            # normal operator
+            while (
+                ops
+                and ops[-1] != "("
+                and precedence.get(ops[-1], 0) >= precedence.get(op, 0)
+            ):
+                apply_op()
+
+            ops.append(op)
+
+        while ops:
+            if ops[-1] == "(":
+                raise ValueError("Unclosed parenthesis")
+            apply_op()
+
+        if len(output) != 1:
+            raise ValueError("Invalid expression")
+
+        return output[0]
 
     # ---------------- recursively evaluate expression tree ---------------------
 

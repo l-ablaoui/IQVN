@@ -47,7 +47,7 @@ const Search_field = ({video_name, video_ref, current_index, set_scores, is_dark
     const [query_value, set_query_value] = useState("");
     const [input_files, set_input_files] = useState([]);
 
-    const separators = ['AND', 'OR', 'W/O'];
+    const separators = ['AND', 'OR', 'W/O', '(', ')'];
     const regrouper_pairs = [['"', '"'], ["'", "'"], ['[', ']']];
 
     //restore cursor position on query_value change
@@ -227,6 +227,14 @@ const Search_field = ({video_name, video_ref, current_index, set_scores, is_dark
                     }
                     case separators[2][0]: { //W/O
                         multimodal_query.push({ "logic": separators[2] });
+                        break;
+                    }
+                    case separators[3][0]:  { // left parenthese
+                        multimodal_query.push({ "logic": separators[3] });
+                        break;
+                    }
+                    case separators[4][0]: { // right parenthese
+                        multimodal_query.push({ "logic": separators[4] });
                         break;
                     }
                 }

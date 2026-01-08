@@ -16,7 +16,7 @@ The implementation is divided into a python-coded fastAPI backend server that pe
 ### Installation
 1. Clone this repository to your local machine:
 ```
-    git clone git@github.com:Marina2468/IQVN.git
+    git clone git@github.com:l-ablaoui/IQVN.git
 ```
 2. Navigate to the `backend` directory.
 ```

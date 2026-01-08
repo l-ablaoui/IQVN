@@ -25,6 +25,13 @@ export const parse_query = (input, regrouper_pairs, separators) => {
     //check if current position matches a separator
     const match_separator = () => {
         skip_white_spaces();
+
+        //parentheses
+        if (input[i] === "(" || input[i] === ")") {
+            i++;
+            return input[i - 1];
+        }
+
         for (const sep of separators) {
             if (input.substr(i, sep.length) === sep) {
                 //check it's a whole word (not part of another word)

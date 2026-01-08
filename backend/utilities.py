@@ -1,12 +1,11 @@
 import cv2
 import numpy as np
-from tqdm import tqdm
 
 import os
 import glob
 
-import asyncio
-import aiofiles
+from pathlib import Path
+import tempfile
 import base64
 from typing import List, Tuple, Dict, Optional, Iterable
 
@@ -125,8 +124,14 @@ def decode_data_url(data_url: str) -> np.ndarray:
     img = cv2.imdecode(image_array, cv2.IMREAD_COLOR)
     return np.array(img)
 
-def decode_audio_url(data_url: str) -> np.ndarray:
+def decode_audio_url(data_url: str) -> str:
     header, b64data = data_url.split(",", 1)
     audio_bytes = base64.b64decode(b64data)
-    audio_array = np.frombuffer(audio_bytes, dtype=np.uint8)
-    return audio_array
+
+    suffix = ".wav" if "wav" in header else ".mp4"
+
+    with tempfile.NamedTemporaryFile(delete=False, suffix=suffix) as tmp:
+        tmp.write(audio_bytes)
+        tmp.flush()
+        tmp.close()
+        return Path(tmp.name)

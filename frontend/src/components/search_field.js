@@ -429,6 +429,7 @@ const Search_field = ({video_name, video_ref, current_index, set_scores, set_ima
                     set_image_scores(image_scores);
                     set_audio_scores(audio_scores);
                     if (audio_scores?.length == image_scores?.length) {
+                        console.log("setting compound scores");
                         set_scores(image_scores.map((image_s, i) => image_score_ratio 
                             * image_s + audio_score_ratio * audio_scores[i]));
                     }

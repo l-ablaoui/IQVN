@@ -18,6 +18,7 @@ import time
 import base64
 from sklearn.preprocessing import LabelEncoder
 import pandas as pd
+from tqdm import tqdm
 
 from object_detection import ObjectDetector
 from vision_transformer import VisionTransformer
@@ -48,6 +49,7 @@ DURATION = 10
 STRIDE = 5
 CONFIG_FILE = "config.json"
 
+#----------------- Helper functions -----------------
 def read_config () -> Dict[str, Any]:
     with open(CONFIG_FILE, "r") as json_file:
         config = json.load(json_file)
@@ -243,6 +245,7 @@ async def compute_depth_map(video_path, output_path) -> None:
     depth_estimator = DepthMapEstimation(FPS, video_path=video_path)
     depth_estimator(save_path=output_path)
 
+#----------------- FastAPI endpoints -----------------
 @app.get("/videos/{filename}/queries/")
 async def search(filename: str, query: str) -> Dict[str, Any]:
     current_video_path = read_config()["videos_dir"] + "/" + filename
@@ -260,6 +263,8 @@ async def search(filename: str, queries: List[QueryUnit]) -> Dict[str, Any]:
     current_video_path: str = read_config()["videos_dir"] + "/" + filename
     output_path: str = current_video_path.replace(".mp4", "")
 
+    print("current_video_path:", current_video_path, " queries:", queries)
+
     vision_transformer: VisionTransformer = VisionTransformer(FPS, current_video_path, 64, DURATION, STRIDE)
 
     if not os.path.exists(f"{output_path}/embedding_0.npy"):
@@ -267,16 +272,43 @@ async def search(filename: str, queries: List[QueryUnit]) -> Dict[str, Any]:
 
     else:
         vid = cv2.VideoCapture(current_video_path)
-        frame_count: int = int(int(vid.get(cv2.CAP_PROP_FRAME_COUNT)) * FPS / int(vid.get(cv2.CAP_PROP_FPS)))
+        og_FPS = vid.get(cv2.CAP_PROP_FPS)
+        frame_count: int = int(int(vid.get(cv2.CAP_PROP_FRAME_COUNT)) * FPS / og_FPS)
         vision_transformer.load_video_features(output_path, frame_count)
         vid.release()
 
     processor: CompoundQueryProcessor = CompoundQueryProcessor(vision_transformer, current_video_path, FPS)
-    similarity_scores: List[List[Any]] = processor(queries)
-    
+    image_scores, audio_scores = processor(queries)
+
+    #adapting audio scores to match video frames
+    duration = DURATION
+    stride = STRIDE
+    print("DEBUG audio_scores[0]:", audio_scores[0], type(audio_scores[0]))
+    if audio_scores is not None:
+        adapted_audio_scores = []
+        for frame_idx in range(len(image_scores)):
+            frame_time = frame_idx / FPS
+            overlapping_similarities = []
+
+            for i in range(len(audio_scores)):
+                chunk_start = i * (duration - stride)
+                chunk_end = chunk_start + duration
+                if chunk_start <= frame_time < chunk_end:
+                    overlapping_similarities.append(audio_scores[i])
+
+            avg_sim = 0.0
+            if overlapping_similarities:
+                for j in range(len(overlapping_similarities)):
+                    avg_sim += overlapping_similarities[j] / len(overlapping_similarities)
+
+            adapted_audio_scores.append([frame_idx, avg_sim])
+        
+        audio_scores = adapted_audio_scores
+
     return {
         "query": queries, 
-        "scores": similarity_scores
+        "image_scores": image_scores,
+        "audio_scores": audio_scores
     }
 
 @app.post("/videos/{filename}/queries/crop/")

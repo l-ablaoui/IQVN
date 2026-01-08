@@ -207,6 +207,11 @@ class VisionTransformer:
         vid.release()
         return np.vstack(embeddings)
 
+    def get_audio_features(self):
+        audio_path, silent_segments = self.save_audio("videos/audio.wav", duration=self.duration, stride=self.stride)
+        _, _, self.audio_embeddings = self.get_features(audios=audio_path)
+        return self.audio_embeddings, silent_segments
+
     def load_video_features(self, output_path: str, frame_count: int) -> None:
         embeddings: List[np.ndarray] = [
             np.load(f"{output_path}/embedding_{i}.npy")
@@ -312,8 +317,7 @@ class VisionTransformer:
     ) -> None:
 
         self.video_embeddings = self.get_video_features()
-        audio_path, silent_segments = self.save_audio("videos/audio.wav", duration=self.duration, stride=self.stride)
-        _, _, self.audio_embeddings = self.get_features(audios=audio_path)
+        self.audio_embeddings, silent_segments = self.get_audio_features()
 
         video_image_cosine: Optional[np.ndarray] = None
         audio_image_cosine: Optional[np.ndarray] = None

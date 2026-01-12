@@ -59,8 +59,9 @@ export const fetch_compound_query_scores = async (video_name, compound_query) =>
             headers: {"Content-Type": "application/json"}});
         const body = await response.json();
         console.log("fetch compound query scores result: ", body);
-        const scores = body["scores"];
-        return scores;
+        return [
+            body['image_scores'], body['audio_scores']
+        ];
     }
     catch (error) {
         console.error("Error retrieving compound query scores for query", compound_query, " : ", error);

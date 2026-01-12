@@ -96,7 +96,7 @@ const Search_field = ({video_name, video_ref, current_index, set_scores, set_ima
             set_query_value(query_value + ` '${files[0].name}'`);
             set_input_files([...input_files, files[0]]);
             fetch_image_scores(video_name, files[0]).then((scores) => {
-                console.log(scores);
+                console.log("scores for image file query: ", scores);
                 const [image_scores, audio_scores] = scores;
                 set_image_scores(image_scores);
                 set_audio_scores(audio_scores);
@@ -195,7 +195,7 @@ const Search_field = ({video_name, video_ref, current_index, set_scores, set_ima
             set_query_value(query_value + ` *${files[0].name}*`);
             set_input_files([...input_files, files[0]]);
             post_audio_recording(video_name, files[0]).then((scores) => {
-                console.log(scores);
+                console.log("scores for audio file query: ", scores);
                 const [image_scores, audio_scores] = scores;
                 set_image_scores(image_scores);
                 set_audio_scores(audio_scores);
@@ -265,7 +265,7 @@ const Search_field = ({video_name, video_ref, current_index, set_scores, set_ima
             }
             catch (error) {
                 set_recording(false);
-                console.log("error recording audio: ", error);
+                console.error("error recording audio: ", error);
                 media_recorder_ref.current.stop();
             }
         }
@@ -284,18 +284,20 @@ const Search_field = ({video_name, video_ref, current_index, set_scores, set_ima
                     case regrouper_pairs[0][0]: { //double quotes
                         fetch_text_query_scores(video_name, parsed_query[0]).then((scores) => {
                             if (scores?.length > 0) {
-                                console.log(scores);
+                                console.log("scores for text query: ", scores);
                                 const [image_scores, audio_scores] = scores;
                                 set_image_scores(image_scores);
                                 set_audio_scores(audio_scores);
                                 if (audio_scores?.length == image_scores?.length) {
                                     set_scores(image_scores.map((image_s, i) => image_score_ratio 
                                         * image_s + audio_score_ratio * audio_scores[i]));
+                                    return;
                                 }
                                 else {
                                     set_scores(image_scores);
                                     set_image_ratio(1);
                                     set_audio_ratio(0);
+                                    return;
                                 }
                             }
                         });
@@ -313,11 +315,13 @@ const Search_field = ({video_name, video_ref, current_index, set_scores, set_ima
                                     if (audio_scores?.length == image_scores?.length) {
                                         set_scores(image_scores.map((image_s, i) => image_score_ratio 
                                             * image_s + audio_score_ratio * audio_scores[i]));
+                                        return;
                                     }
                                     else {
                                         set_scores(image_scores);
                                         set_image_ratio(1);
                                         set_audio_ratio(0);
+                                        return;
                                     } 
                                 }
                             });
@@ -330,18 +334,20 @@ const Search_field = ({video_name, video_ref, current_index, set_scores, set_ima
                         fetch_crop_scores(video_name, current_index, [x_min, y_min, crop_width, crop_height]).then(
                             (scores) => {
                                 if (scores?.length > 0) {
-                                    console.log(scores);
+                                    console.log("scores for crop query: ", scores);
                                     const [image_scores, audio_scores] = scores;
                                     set_image_scores(image_scores);
                                     set_audio_scores(audio_scores);
                                     if (audio_scores?.length == image_scores?.length) {
                                         set_scores(image_scores.map((image_s, i) => image_score_ratio 
                                             * image_s + audio_score_ratio * audio_scores[i]));
+                                        return;
                                     }
                                     else {
                                         set_scores(image_scores);
                                         set_image_ratio(1);
                                         set_audio_ratio(0);
+                                        return;
                                     }
                                 }
                             }
@@ -360,11 +366,13 @@ const Search_field = ({video_name, video_ref, current_index, set_scores, set_ima
                                     if (audio_scores?.length == image_scores?.length) {
                                         set_scores(image_scores.map((image_s, i) => image_score_ratio 
                                             * image_s + audio_score_ratio * audio_scores[i]));
+                                        return;
                                     }
                                     else {
                                         set_scores(image_scores);
                                         set_image_ratio(1);
                                         set_audio_ratio(0);
+                                        return;
                                     }   
                                 }
                             });
@@ -421,22 +429,23 @@ const Search_field = ({video_name, video_ref, current_index, set_scores, set_ima
                     }
                 }
             }
-            console.log(multimodal_query);
             fetch_compound_query_scores(video_name, multimodal_query).then((scores) => {
                 if (scores?.length > 0) {
-                    console.log(scores);
                     const [image_scores, audio_scores] = scores;
                     set_image_scores(image_scores);
                     set_audio_scores(audio_scores);
                     if (audio_scores?.length == image_scores?.length) {
-                        console.log("setting compound scores");
+                        console.log("setting compound scores by linear combination", scores);
                         set_scores(image_scores.map((image_s, i) => image_score_ratio 
                             * image_s + audio_score_ratio * audio_scores[i]));
+                        return;
                     }
                     else {
+                        console.log("no audio scores, setting image scores alone: ", image_scores);
                         set_scores(image_scores);
                         set_image_ratio(1);
                         set_audio_ratio(0);
+                        return;
                     }
                 }
             });

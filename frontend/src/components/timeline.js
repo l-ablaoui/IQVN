@@ -372,7 +372,10 @@ const Timeline = ({current_index, update_time, max_index, fps, selected_points,
     /** render scores as a curve on the given svg
      * @param {*} svg expected canvas element */
     const render_score_curve = (svg, selected_points, scores, offset_left, offset_right, offset_y) => {
-        if (!scores) { return; }
+        if (!scores) { 
+            console.warn("timeline: no scores to render");
+            return; 
+        }
 
         const plot_width = svg.offsetWidth;
         const plot_height = svg.offsetHeight;

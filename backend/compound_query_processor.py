@@ -164,5 +164,5 @@ class CompoundQueryProcessor:
 
         if a_final is None:
             return v_final.tolist(), None
-
+    
         return v_final.tolist(), a_final.tolist()

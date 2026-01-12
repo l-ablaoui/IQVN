@@ -260,56 +260,66 @@ async def search(filename: str, query: str) -> Dict[str, Any]:
 
 @app.post("/videos/{filename}/queries/compound/")
 async def search(filename: str, queries: List[QueryUnit]) -> Dict[str, Any]:
-    current_video_path: str = read_config()["videos_dir"] + "/" + filename
-    output_path: str = current_video_path.replace(".mp4", "")
+    try:
+        current_video_path: str = read_config()["videos_dir"] + "/" + filename
+        output_path: str = current_video_path.replace(".mp4", "")
 
-    print("current_video_path:", current_video_path, " queries:", queries)
+        print("current_video_path:", current_video_path, " queries:", queries)
 
-    vision_transformer: VisionTransformer = VisionTransformer(FPS, current_video_path, 64, DURATION, STRIDE)
+        vision_transformer: VisionTransformer = VisionTransformer(FPS, current_video_path, 64, DURATION, STRIDE)
 
-    if not os.path.exists(f"{output_path}/embedding_0.npy"):
-        save_embeddings(vision_transformer, current_video_path)
+        if not os.path.exists(f"{output_path}/embedding_0.npy"):
+            save_embeddings(vision_transformer, current_video_path)
 
-    else:
-        vid = cv2.VideoCapture(current_video_path)
-        og_FPS = vid.get(cv2.CAP_PROP_FPS)
-        frame_count: int = int(int(vid.get(cv2.CAP_PROP_FRAME_COUNT)) * FPS / og_FPS)
-        vision_transformer.load_video_features(output_path, frame_count)
-        vid.release()
+        else:
+            vid = cv2.VideoCapture(current_video_path)
+            og_FPS = vid.get(cv2.CAP_PROP_FPS)
+            frame_count: int = int(int(vid.get(cv2.CAP_PROP_FRAME_COUNT)) * FPS / og_FPS)
+            vision_transformer.load_video_features(output_path, frame_count)
+            vid.release()
 
-    processor: CompoundQueryProcessor = CompoundQueryProcessor(vision_transformer, current_video_path, FPS)
-    image_scores, audio_scores = processor(queries)
+        processor: CompoundQueryProcessor = CompoundQueryProcessor(vision_transformer, current_video_path, FPS)
+        image_scores, audio_scores = processor(queries)
 
-    #adapting audio scores to match video frames
-    duration = DURATION
-    stride = STRIDE
-    print("DEBUG audio_scores[0]:", audio_scores[0], type(audio_scores[0]))
-    if audio_scores is not None:
-        adapted_audio_scores = []
-        for frame_idx in range(len(image_scores)):
-            frame_time = frame_idx / FPS
-            overlapping_similarities = []
+        #adapting audio scores to match video frames
+        duration = DURATION
+        stride = STRIDE
+        print("DEBUG audio_scores[0]:", audio_scores[0], type(audio_scores[0]))
+        if audio_scores is not None:
+            adapted_audio_scores = []
+            for frame_idx in range(len(image_scores)):
+                frame_time = frame_idx / FPS
+                overlapping_similarities = []
 
-            for i in range(len(audio_scores)):
-                chunk_start = i * (duration - stride)
-                chunk_end = chunk_start + duration
-                if chunk_start <= frame_time < chunk_end:
-                    overlapping_similarities.append(audio_scores[i])
+                for i in range(len(audio_scores)):
+                    chunk_start = i * (duration - stride)
+                    chunk_end = chunk_start + duration
+                    if chunk_start <= frame_time < chunk_end:
+                        overlapping_similarities.append(audio_scores[i])
 
-            avg_sim = 0.0
-            if overlapping_similarities:
-                for j in range(len(overlapping_similarities)):
-                    avg_sim += overlapping_similarities[j] / len(overlapping_similarities)
+                avg_sim = 0.0
+                if overlapping_similarities:
+                    for j in range(len(overlapping_similarities)):
+                        avg_sim += overlapping_similarities[j] / len(overlapping_similarities)
 
-            adapted_audio_scores.append([frame_idx, avg_sim])
-        
-        audio_scores = adapted_audio_scores
+                adapted_audio_scores.append(avg_sim)
+            
+            audio_scores = adapted_audio_scores
 
-    return {
-        "query": queries, 
-        "image_scores": image_scores,
-        "audio_scores": audio_scores
-    }
+        return {
+            "query": queries, 
+            "image_scores": image_scores,
+            "audio_scores": audio_scores
+        }
+
+    except Exception as error:
+        print("error getting compound query scores: ", error)
+        return {
+            "query": "ERROR",
+            "image_scores": [],
+            "audio_scores": []
+        }
+
 
 @app.post("/videos/{filename}/queries/crop/")
 async def crop_search(filename: str, crop_data: dict) -> Dict[str, Any]:

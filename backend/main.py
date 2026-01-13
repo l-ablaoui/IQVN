@@ -25,7 +25,7 @@ from vision_transformer import VisionTransformer
 from depthmap import DepthMapEstimation
 
 from utilities import *
-from compound_query_processor import GeometricAlgebra, CompoundQueryProcessor, QueryUnit
+from compound_query_processor import GeometricAlgebra, CompoundQueryProcessor, ProbabilisticAlgebra, QueryUnit
 
 app = FastAPI()
 
@@ -278,6 +278,7 @@ async def search(filename: str, queries: List[QueryUnit]) -> Dict[str, Any]:
             vid.release()
 
         processor: CompoundQueryProcessor = CompoundQueryProcessor(vision_transformer, current_video_path, FPS, GeometricAlgebra(vision_transformer))
+        #processor: CompoundQueryProcessor = CompoundQueryProcessor(vision_transformer, current_video_path, FPS, ProbabilisticAlgebra(vision_transformer))
         image_scores, audio_scores = processor(queries)
 
         #adapting audio scores to match video frames

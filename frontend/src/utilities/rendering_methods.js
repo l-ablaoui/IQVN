@@ -60,7 +60,7 @@ export const plot_marker = (current_index, max, offset_left, offset_right, offse
  * @param {*} svg canvas element where the time is to be drawn
  * @param {*} offset_left space to be left on the left of the X axis
  * @param {*} offset_right space to be right on the left of the X axis */
-export const plot_current_timer = (current_index, max_index, fps, svg, offset_left, offset_right) => {
+export const plot_current_timer = (current_index, max_index, fps, svg, offset_left, offset_right, font_color) => {
     let plot_width = svg.width;
     let plot_height = svg.height;
 
@@ -72,7 +72,7 @@ export const plot_current_timer = (current_index, max_index, fps, svg, offset_le
 
     let x = offset_left + current_index / max_index * (plot_width - offset_left - offset_right);
     ctx.beginPath();
-    ctx.fillStyle = "black";
+    ctx.fillStyle = font_color;
     ctx.font = "10px arial";
     ctx.fillText(
         `${Math.trunc((timestamp) / 60)}:${Math.trunc((timestamp)) % 60}`,

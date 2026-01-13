@@ -358,11 +358,11 @@ const Timeline = ({current_index, update_time, max_index, fps, selected_points,
 
         if (!is_thresholding) {
             plot_marker_triangle(current_index, max_index, timeline_ref.current, 
-                offset_left, offset_right, offset_y, "red");
+                offset_left, offset_right, offset_y, "darkred");
             plot_current_timer(current_index, max_index, fps, timeline_ref.current, 
-                offset_left, offset_right);
+                offset_left, offset_right, "darkred");
             plot_marker(current_index, max_index, offset_left, offset_right, offset_y, 
-                "red", 0.7, timeline_ref.current);
+                "darkred", 0.7, timeline_ref.current);
         }
         else {
             draw_selector(threshold, offset_left, offset_right, offset_y, EMPHASIS_COLOR, timeline_ref.current);

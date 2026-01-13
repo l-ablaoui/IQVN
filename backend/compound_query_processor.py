@@ -1,5 +1,3 @@
-# Refactored compound query system with clean algebra separation
-
 from __future__ import annotations
 
 import numpy as np
@@ -35,7 +33,7 @@ class ExprNode:
         self.op = op
         self.children = children
 
-precedence = {"NOT": 3, "AND": 2, "OR": 1, "W/O": 1}
+precedence = {"NOT": 3, "AND": 2, "W/O": 2, "OR": 1}
 
 # ---------- Algebra abstraction ----------
 class AlgebraValue:
@@ -44,9 +42,8 @@ class AlgebraValue:
         self.score = score    # (T,) timeline
 
 class QueryAlgebra(ABC):
-    def __init__(self, model, overlap_corrector: float = 0.5):
+    def __init__(self, model):
         self.model = model
-        self.overlap_corrector = overlap_corrector
 
     @abstractmethod
     def leaf(self, emb: NDArray, V: NDArray) -> AlgebraValue:
@@ -108,6 +105,12 @@ class GeometricAlgebra(QueryAlgebra):
 
 # ---------- Pseudo-probabilistic algebra ----------
 class ProbabilisticAlgebra(QueryAlgebra):
+    overlap_corrector: float
+
+    def __init__(self, model, overlap_corrector: float = 0.5):
+        super(ProbabilisticAlgebra, self).__init__(model)
+        self.overlap_corrector = overlap_corrector
+
     def leaf(self, emb: NDArray, V: NDArray) -> AlgebraValue:
         score = sigmoid(self.model.cosine_similarity(V, emb))
         return AlgebraValue(None, score)
@@ -248,8 +251,7 @@ class CompoundQueryProcessor:
         scores = result.score  # (Tv + Ta,)
 
         # --- split back ---
-        video_scores = scores[:Tv].tolist()
-        audio_scores = scores[Tv:].tolist()
+        video_scores = scores[:Tv].flatten().tolist()
+        audio_scores = scores[Tv:].flatten().tolist()
 
         return video_scores, audio_scores
-

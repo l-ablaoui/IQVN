@@ -10,18 +10,22 @@ from fastapi.middleware.cors import CORSMiddleware
 
 import argparse
 import json
+import io
+import os
+import soundfile as sf
 
 import time
 import base64
 from sklearn.preprocessing import LabelEncoder
 import pandas as pd
+from tqdm import tqdm
 
 from object_detection import ObjectDetector
 from vision_transformer import VisionTransformer
 from depthmap import DepthMapEstimation
 
 from utilities import *
-from compound_query_processor import CompoundQueryProcessor, QueryUnit
+from compound_query_processor import GeometricAlgebra, CompoundQueryProcessor, QueryUnit
 
 app = FastAPI()
 
@@ -34,15 +38,17 @@ app.add_middleware(
 )
 
 IMAGES_DIR = "images"
-MODEL_NAME = "openai/clip-vit-base-patch16"
 IMAGE_CROP_QUERY = "<image-loaded>"
 OUTPUT_CROP_IMAGE = "images/search-image.png"
+AUDIO_RECORDING_QUERY = "<audio-loaded>"
+OUTPUT_RECORDED_AUDIO = "audio/recording.wav"
 MAX_NB_CLUSTERS = 20
-EMBEDDINGS_LENGTH = 512
-FPS=10
-
+FPS = 10
+DURATION = 10
+STRIDE = 5
 CONFIG_FILE = "config.json"
 
+#----------------- Helper functions -----------------
 def read_config () -> Dict[str, Any]:
     with open(CONFIG_FILE, "r") as json_file:
         config = json.load(json_file)
@@ -53,6 +59,33 @@ def write_config (config) -> None:
         json.dump(config, json_file)
         json_file.flush()
 
+async def save_embeddings(classifier: VisionTransformer, video_path: str) -> None:
+    output_path = video_path.replace(".mp4", "")
+    if not os.path.exists(f"{output_path}/embedding_0.npy"):
+        classifier()
+        video_embeddings = classifier.video_embeddings
+
+        with tqdm(total=video_embeddings.shape[0], desc="saving video embeddings: ") as pbar:
+            for i in range(video_embeddings.shape[0]):
+                np.save(output_path+f"/embedding_{i}.npy", video_embeddings[i])
+                pbar.update(1)
+        
+        audio_embeddings = classifier.audio_embeddings
+
+        if audio_embeddings is not None and not os.path.exists(f"{output_path}/embedding_audio_0.npy"):
+            with tqdm(total=audio_embeddings.shape[0], desc="saving audio embeddings: ") as pbar:
+                for i in range(audio_embeddings.shape[0]):
+                    np.save(output_path+f"/embedding_audio_{i}.npy", audio_embeddings[i])
+                    pbar.update(1)
+
+    else:
+        vid = cv2.VideoCapture(video_path)
+        og_FPS = vid.get(cv2.CAP_PROP_FPS)
+        frame_count = int(int(vid.get(cv2.CAP_PROP_FRAME_COUNT)) * FPS / og_FPS)
+        classifier.load_video_features(output_path, frame_count)
+        classifier.load_audio_features(output_path, frame_count)
+        vid.release()
+
 async def compute_embeddings_dim_reduction(video_path: str) -> \
     Tuple[np.ndarray, np.ndarray, np.ndarray, np.ndarray, np.ndarray, np.ndarray,\
     List[Dict[str, int]],List[Dict[str, int]], List[Dict[str, int]]]:  
@@ -60,42 +93,28 @@ async def compute_embeddings_dim_reduction(video_path: str) -> \
     if not os.path.exists(output_path):
         os.mkdir(output_path)
 
-    #getting video embeddings 
-    classifier = VisionTransformer(FPS, video_path, MODEL_NAME)
-
     print("output_path:", output_path)
     tic = time.time()
 
-    if not os.path.exists(f"{output_path}/embedding_0.npy"):
-        print("computing embeddings...")
-        classifier()
-        embeddings = classifier.video_embeddings
-
-        with tqdm(total=embeddings.shape[0], desc="saving embeddings: ") as pbar:
-            for i in range(embeddings.shape[0]):
-                np.save(output_path+f"/embedding_{i}.npy", embeddings[i])
-                pbar.update(1)
-    else:
-        vid = cv2.VideoCapture(video_path)
-        frameCount = int(int(vid.get(cv2.CAP_PROP_FRAME_COUNT)) * FPS / int(vid.get(cv2.CAP_PROP_FPS)))
-        classifier.load_video_features(output_path, frameCount)
-        vid.release()
+    #getting video embeddings 
+    classifier = VisionTransformer(FPS, video_path, 64, DURATION, STRIDE)
+    await save_embeddings(classifier, video_path)
         
     if not os.path.exists(f"{output_path}/tsne_reduction.npy"):
         if classifier.video_embeddings is None:
-            classifier()
+            classifier.video_embeddings = classifier.get_video_features()
         tsne = classifier.tsne_reduction(classifier.video_embeddings)
         np.save(output_path+f"/tsne_reduction.npy", tsne)
 
     if not os.path.exists(f"{output_path}/pca_reduction.npy"):
         if classifier.video_embeddings is None:
-            classifier()
+            classifier.video_embeddings = classifier.get_video_features()
         pca = classifier.pca_reduction(classifier.video_embeddings)
         np.save(output_path+f"/pca_reduction.npy", pca)
 
     if not os.path.exists(f"{output_path}/umap_reduction.npy"):
         if classifier.video_embeddings is None:
-            classifier()
+            classifier.video_embeddings = classifier.get_video_features()
         umap = classifier.umap_reduction(classifier.video_embeddings)
         np.save(output_path+f"/umap_reduction.npy", umap)
     
@@ -138,32 +157,26 @@ async def compute_cosine_similarity(video_path, query_text) -> List[List[Any]]:
     if not os.path.exists(output_path):
         os.mkdir(output_path)
 
-    classifier = VisionTransformer(FPS, video_path, MODEL_NAME)
+    print("output_path:", output_path)
     tic = time.time()
-
-    #save embeddings in file if not there already
-    if not os.path.exists(f"{output_path}/embedding_0.npy"):
-        print("computing embeddings...")
-        classifier(texts=query_text)
-        embeddings = classifier.video_embeddings
-
-        with tqdm(total=embeddings.shape[0], desc="saving embeddings: ") as pbar:
-            for i in range(embeddings.shape[0]):
-                np.save(output_path+f"/embedding_{i}.npy", embeddings[i])
-                pbar.update(1)
-        del embeddings
+    
+    classifier = VisionTransformer(FPS, video_path, 64, DURATION, STRIDE)
+    await save_embeddings(classifier, video_path)
 
     #query type (text/image)
     if query_text == IMAGE_CROP_QUERY:
         print("reading image and computing features")
-        query_img = cv2.imread(OUTPUT_CROP_IMAGE)
-        query_embedding = classifier.get_image_features(query_img)
+        query_img = cv2.cvtColor(cv2.imread(OUTPUT_CROP_IMAGE), cv2.COLOR_BGR2RGB)
+        query_embedding, _, _ = classifier.get_features(images=query_img)
     else:
-        query_embedding = classifier.get_text_features(query_text)
+        if query_text == AUDIO_RECORDING_QUERY:
+             _, _, query_embedding = classifier.get_features(audios=OUTPUT_RECORDED_AUDIO)
+        else:
+            _, query_embedding, _ = classifier.get_features(texts=query_text)
     print("query_shape:", query_embedding.shape)
 
-    #computing similarity scores and piling
-    similarity_scores = []
+    #computing similarity scores and piling for video data
+    image_scores = []
     index = 0
     while True:
         if not os.path.exists(f"{output_path}/embedding_{index}.npy"):
@@ -171,15 +184,54 @@ async def compute_cosine_similarity(video_path, query_text) -> List[List[Any]]:
         
         frame_features = np.load(f"{output_path}/embedding_{index}.npy")
         similarity = classifier.cosine_similarity(frame_features, query_embedding)
-        similarity_scores.append([index, similarity.item()])
-
+        image_scores.append([index, similarity.item() if type(similarity) is np.ndarray else similarity])
         index += 1
+    total_index = index
+
+    #computing similarity scores and piling for audio data
+    duration = DURATION
+    stride = STRIDE #duration and stride must match your chunking config
+
+    audio_scores = None
+    similarity = []
+    index = 0
+
+    silent_segment = None
+    if os.path.exists(f"{output_path}/embedding_audio_silence.npy"):
+        silent_segment = np.load(f"{output_path}/embedding_audio_silence.npy")
+    
+    while True:
+        if not os.path.exists(f"{output_path}/embedding_audio_{index}.npy"):
+            break
+        audio_features = np.load(f"{output_path}/embedding_audio_{index}.npy")
+        single_similarity = classifier.cosine_similarity(audio_features, query_embedding) if not silent_segment[index] else 0.0
+        similarity.append(single_similarity.item() if type(single_similarity) is np.ndarray else single_similarity)
+        index += 1
+    
+    if index > 0: #condition to know if there is audio in the video
+        audio_scores = []
+        for frame_idx in range(total_index):
+            frame_time = frame_idx / FPS
+            overlapping_similarities = []
+
+            for i in range(len(similarity)):
+                chunk_start = i * (duration - stride)
+                chunk_end = chunk_start + duration
+                if chunk_start <= frame_time < chunk_end:
+                    overlapping_similarities.append(similarity[i])
+
+            avg_sim = 0.0
+            if overlapping_similarities:
+                for j in range(len(overlapping_similarities)):
+                    avg_sim += overlapping_similarities[j] / len(overlapping_similarities)
+
+            audio_scores.append([frame_idx, avg_sim])
 
     toc = time.time() 
     print(f"done in {(toc-tic):.2f} seconds...")
 
-    del classifier, 
-    return similarity_scores
+    del classifier, similarity 
+    return image_scores, audio_scores
 
 async def perform_object_detection(video_path, output_path) -> ObjectDetector:
     detector = ObjectDetector(video_path=video_path, output_results=output_path+"-output.csv", model_name="yolov5s.pt", fps=FPS)
@@ -192,78 +244,145 @@ async def compute_depth_map(video_path, output_path) -> None:
     depth_estimator = DepthMapEstimation(FPS, video_path=video_path)
     depth_estimator(save_path=output_path)
 
-@app.get("/videos/{filename}/search/")
+#----------------- FastAPI endpoints -----------------
+@app.get("/videos/{filename}/queries/")
 async def search(filename: str, query: str) -> Dict[str, Any]:
     current_video_path = read_config()["videos_dir"] + "/" + filename
     print("current_video_path:", current_video_path, " query:", query)
-    similarity_scores = await compute_cosine_similarity(current_video_path, query)
+    image_scores, audio_scores = await compute_cosine_similarity(current_video_path, query)
 
     return {
         "query": query, 
-        "scores": similarity_scores
+        "image_scores": image_scores,
+        "audio_scores": audio_scores
     }
 
-@app.post("/videos/{filename}/search/compound/")
+@app.post("/videos/{filename}/queries/compound/")
 async def search(filename: str, queries: List[QueryUnit]) -> Dict[str, Any]:
-    current_video_path = read_config()["videos_dir"] + "/" + filename
-    output_path = current_video_path.replace(".mp4", "")
+    try:
+        current_video_path: str = read_config()["videos_dir"] + "/" + filename
+        output_path: str = current_video_path.replace(".mp4", "")
 
-    vision_transformer = VisionTransformer(FPS, current_video_path, MODEL_NAME)
+        print("current_video_path:", current_video_path, " queries:", queries)
 
-    if not os.path.exists(f"{output_path}/embedding_0.npy"):
-        print("computing embeddings...")
-        vision_transformer()
-        embeddings = vision_transformer.video_embeddings
+        vision_transformer: VisionTransformer = VisionTransformer(FPS, current_video_path, 64, DURATION, STRIDE)
 
-        with tqdm(total=embeddings.shape[0], desc="saving embeddings: ") as pbar:
-            for i in range(embeddings.shape[0]):
-                np.save(output_path+f"/embedding_{i}.npy", embeddings[i])
-                pbar.update(1)
-    else:
-        vid = cv2.VideoCapture(current_video_path)
-        frameCount = int(int(vid.get(cv2.CAP_PROP_FRAME_COUNT)) * FPS / int(vid.get(cv2.CAP_PROP_FPS)))
-        vision_transformer.load_video_features(output_path, frameCount)
-        vid.release()
+        if not os.path.exists(f"{output_path}/embedding_0.npy"):
+            save_embeddings(vision_transformer, current_video_path)
 
-    processor = CompoundQueryProcessor(vision_transformer, current_video_path, FPS)
-    similarity_scores = processor(queries)
-    
-    return {
-        "query": queries, 
-        "scores": similarity_scores
-    }
+        else:
+            vid = cv2.VideoCapture(current_video_path)
+            og_FPS = vid.get(cv2.CAP_PROP_FPS)
+            frame_count: int = int(int(vid.get(cv2.CAP_PROP_FRAME_COUNT)) * FPS / og_FPS)
+            vision_transformer.load_video_features(output_path, frame_count)
+            vid.release()
 
-@app.post("/videos/{filename}/search/crop/")
+        processor: CompoundQueryProcessor = CompoundQueryProcessor(vision_transformer, current_video_path, FPS, GeometricAlgebra(vision_transformer))
+        image_scores, audio_scores = processor(queries)
+
+        #adapting audio scores to match video frames
+        duration = DURATION
+        stride = STRIDE
+        print("DEBUG audio_scores[0]:", audio_scores[0], type(audio_scores[0]))
+        if audio_scores is not None:
+            adapted_audio_scores = []
+            for frame_idx in range(len(image_scores)):
+                frame_time = frame_idx / FPS
+                overlapping_similarities = []
+
+                for i in range(len(audio_scores)):
+                    chunk_start = i * (duration - stride)
+                    chunk_end = chunk_start + duration
+                    if chunk_start <= frame_time < chunk_end:
+                        overlapping_similarities.append(audio_scores[i])
+
+                avg_sim = 0.0
+                if overlapping_similarities:
+                    for j in range(len(overlapping_similarities)):
+                        avg_sim += overlapping_similarities[j] / len(overlapping_similarities)
+
+                adapted_audio_scores.append(avg_sim)
+            
+            audio_scores = adapted_audio_scores
+
+        return {
+            "query": queries, 
+            "image_scores": image_scores,
+            "audio_scores": audio_scores
+        }
+
+    except Exception as error:
+        print("error getting compound query scores: ", error)
+        return {
+            "query": "ERROR",
+            "image_scores": [],
+            "audio_scores": []
+        }
+
+
+@app.post("/videos/{filename}/queries/crop/")
 async def crop_search(filename: str, crop_data: dict) -> Dict[str, Any]:
-    current_video_path = read_config()["videos_dir"] + "/" + filename
-
+    current_video_path: str = read_config()["videos_dir"] + "/" + filename
     current_index = crop_data.get("current_index", 0)
     crop_box = crop_data.get("crop_box", (0, 0, 0, 0))
     crop_img = get_cropped_image(current_video_path, crop_box, current_index, FPS)
 
-    if crop_img is None: 
-        return { 
-            "query": "ERROR",
-            "scores": []
-        }
-
     if not os.path.exists("images/"):
         os.mkdir("images")
 
-    async with aiofiles.open(OUTPUT_CROP_IMAGE, mode='wb') as file:
-        await file.write(cv2.imencode('.png', crop_img)[1].tobytes())
+    try:
+        async with aiofiles.open(OUTPUT_CROP_IMAGE, mode='wb') as file:
+            await file.write(cv2.imencode('.png', crop_img)[1].tobytes())
 
-    similarity_scores = await compute_cosine_similarity(current_video_path, IMAGE_CROP_QUERY)
-    
-    return {
-        "query": IMAGE_CROP_QUERY, 
-        "scores": similarity_scores
-    }
-    
+        image_scores, audio_scores = await compute_cosine_similarity(current_video_path, IMAGE_CROP_QUERY)
+        return {
+            "query": IMAGE_CROP_QUERY, 
+            "image_scores": image_scores,
+            "audio_scores": audio_scores
+        }
+
+    except Exception as error:
+        print("error getting cropped image scores: ", error)
+        return {
+            "query": "ERROR",
+            "image_scores": [],
+            "audio_scores": []
+        }
+
 @app.get("/videos/{filename}/images/{imagename}/")
 async def get_image(filename: str, imagename: str) -> FileResponse:
     img_path = os.path.join(read_config()["videos_dir"], f"{filename}").replace("\\","/")+f"/{imagename}"
     return FileResponse(img_path)
+
+@app.post("/videos/{filename}/queries/audio/record/")
+async def audio_record_search(filename: str, audio_record_data: UploadFile = File(...)):
+    current_video_path: str = read_config()["videos_dir"] + "/" + filename
+    try:
+        #read the uploaded audio into memory
+        audio_bytes = await audio_record_data.read()
+        audio_buffer = io.BytesIO(audio_bytes)
+        data, samplerate = sf.read(audio_buffer)
+
+        #save to backend path
+        if not os.path.exists("audio/"):
+            os.mkdir("audio")
+        sf.write(OUTPUT_RECORDED_AUDIO, data, samplerate)
+
+        #compute cosine similarity
+        image_scores, audio_scores = await compute_cosine_similarity(current_video_path, AUDIO_RECORDING_QUERY)
+        return {
+            "query": AUDIO_RECORDING_QUERY, 
+            "image_scores": image_scores,
+            "audio_scores": audio_scores
+        }
+
+    except Exception as error:
+        print("error getting audio record scores: ", error)
+        return {
+            "query": "ERROR",
+            "image_scores": [],
+            "audio_scores": []
+        }
 
 @app.get("/videos/")
 async def get_video_names() -> List[str]:
@@ -282,28 +401,27 @@ async def get_video(video_name: str) -> FileResponse:
 
 @app.get("/videos/{filename}/metadata/")
 async def get_video_metadata(filename: str) -> Dict[str, Any]:
-    current_video_path = read_config()["videos_dir"] + "/" + filename
+    current_video_path: str = read_config()["videos_dir"] + "/" + filename
 
     vid = cv2.VideoCapture(current_video_path)
     if vid.isOpened:
-        output_path = current_video_path.replace(".mp4", "")
+        output_path: str = current_video_path.replace(".mp4", "")
         if not os.path.exists(output_path):
             os.mkdir(output_path)
 
-        frameCount = int(vid.get(cv2.CAP_PROP_FRAME_COUNT))
-        originalFps = int(vid.get(cv2.CAP_PROP_FPS))
-        frameCount = int(frameCount * FPS / originalFps)
+        og_FPS: float = vid.get(cv2.CAP_PROP_FPS)
+        frame_count: int = int(int(vid.get(cv2.CAP_PROP_FRAME_COUNT)) * FPS / og_FPS)
 
         return { 
-            "frame_count": frameCount, 
+            "frame_count": frame_count, 
             "fps": FPS #int(vid.get(cv2.CAP_PROP_FPS))
         }
 
 @app.get("/videos/{filename}/objects/")
 async def get_objects_in_video(filename: str) -> Dict[str, Any]:
-    video_path = os.path.join(read_config()["videos_dir"], filename).replace("\\","/")
-    name = filename.split(".")[0]
-    output_path = os.path.join(read_config()["videos_dir"], f"{name}").replace("\\","/")
+    video_path: str = os.path.join(read_config()["videos_dir"], filename).replace("\\","/")
+    name: str = filename.split(".")[0]
+    output_path: str = os.path.join(read_config()["videos_dir"], f"{name}").replace("\\","/")
 
     if not os.path.exists(output_path+"-output.csv"):
         await perform_object_detection(video_path, output_path)
@@ -347,7 +465,7 @@ async def get_video_embeddings(filename: str) -> Dict[str, Any]:
         "umap_cluster_frames": umap_cluster_frames
     }
     
-@app.post("/videos/{filename}/search/image/")
+@app.post("/videos/{filename}/queries/image/")
 async def upload_png(filename: str, image_data: dict) -> Dict[str, Any]:
     current_video_path = read_config()["videos_dir"] + "/" + filename
 
@@ -359,11 +477,12 @@ async def upload_png(filename: str, image_data: dict) -> Dict[str, Any]:
     async with aiofiles.open(OUTPUT_CROP_IMAGE, mode='wb') as file:
         await file.write(cv2.imencode('.png', img)[1].tobytes())
 
-    similarity_scores = await compute_cosine_similarity(current_video_path, IMAGE_CROP_QUERY)
+    image_scores, audio_scores = await compute_cosine_similarity(current_video_path, IMAGE_CROP_QUERY)
     
     return {
         "query": IMAGE_CROP_QUERY, 
-        "scores": similarity_scores
+        "image_scores": image_scores,
+        "audio_scores": audio_scores
     }
 
 @app.post("/log/")

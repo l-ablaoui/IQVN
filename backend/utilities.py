@@ -1,103 +1,46 @@
 import cv2
 import numpy as np
-from tqdm import tqdm
 
 import os
 import glob
 
-import asyncio
-import aiofiles
+from pathlib import Path
+import tempfile
 import base64
 from typing import List, Tuple, Dict, Optional, Iterable
 
 from sklearn.cluster import DBSCAN
 from sklearn.neighbors import NearestNeighbors
-
-# save video as individual frames in the folder to facilitate fetching
-async def video2images(video_path: str, FPS: int) -> None:
-    output_path = video_path.replace(".mp4", "")
-    vid = cv2.VideoCapture(video_path)
-
-    if not vid.isOpened():
-        raise Exception("Error loading video")
-
-    width: int = int(vid.get(cv2.CAP_PROP_FRAME_WIDTH))
-    height: int = int(vid.get(cv2.CAP_PROP_FRAME_HEIGHT))
-    total_count: int = int(vid.get(cv2.CAP_PROP_FRAME_COUNT))
-    fps: int = int(vid.get(cv2.CAP_PROP_FPS))
-
-    skip_ahead: int = 0
-    if fps > FPS:
-        skip_ahead = int(fps / FPS)
-        total_count = int(total_count * FPS / fps)
-
-    frame_count: int = 0
-    with tqdm(total=total_count, desc="saving original frames: ") as pbar:
-        while vid.isOpened():
-            for _ in range(skip_ahead - 1):
-                okay, frame = vid.read()
-                if not okay:
-                    break
-            okay, frame = vid.read()
-            if not okay:
-                break
-
-            frame_to_save = cv2.resize(frame, (width, height))
-            frame_path: str = f"{output_path}/{frame_count}.png"
-            async with aiofiles.open(frame_path, mode='wb') as img_file:
-                await img_file.write(cv2.imencode('.png', frame_to_save)[1].tobytes())
-
-            frame_count += 1
-            pbar.update(1)
-
-    vid.release()
-
-# save a single image frame from a video given its number 
-def save_frame_from_video(
-    video_path: str,
-    output_path: str,
-    frame_number: int,
-    fps: int
-) -> None:
-    print("Saving frame ", frame_number, " from video ", video_path, " to ", output_path)
-    vid = cv2.VideoCapture(video_path)
-    original_fps: int = int(vid.get(cv2.CAP_PROP_FPS))
-    frame_number = int(frame_number * original_fps / fps)
-    if frame_number >= int(vid.get(cv2.CAP_PROP_FRAME_COUNT)):
-        raise Exception(
-            f"Frame number {frame_number} exceeds total frames in video "
-            f"{int(vid.get(cv2.CAP_PROP_FRAME_COUNT))}"
-        )
-    vid.set(cv2.CAP_PROP_POS_FRAMES, frame_number)
-    okay, frame = vid.read()
-    if not okay:
-        raise Exception("Error loading video")
-    cv2.imwrite(output_path, frame)
-    vid.release()
-
-# list all mp4 files in a folder
+ 
+def save_frame_from_video(video_path: str, output_path: str, frame_number: int, fps: int) -> None:
+    try:
+        vid = cv2.VideoCapture(video_path)
+        frame_count = vid.get(cv2.CAP_PROP_FRAME_COUNT)
+        og_FPS = int(vid.get(cv2.CAP_PROP_FPS))
+        skip_ahead = int(og_FPS / fps)
+        frame_number = max(0, min(int(frame_number / skip_ahead), frame_count - 1))
+        vid.set(cv2.CAP_PROP_POS_FRAMES, frame_number)
+        _, frame = vid.read()
+        cv2.imwrite(output_path, frame)
+        vid.release()
+    except Exception as error:
+        raise Exception(f"Error saving frame {frame_number} in video {video_path}: {error}")
+    
 def find_mp4_files(relative_path: str) -> List[str]:
-    abs_path: str = os.path.abspath(relative_path)
-    mp4_files: List[str] = glob.glob(os.path.join(abs_path, '*.mp4'))
-    mp4_file_names: List[str] = [os.path.basename(file) for file in mp4_files]
+    abs_path = os.path.abspath(relative_path) #get the absolute path of the directory
+    mp4_files = glob.glob(os.path.join(abs_path, '*.mp4'))  #use glob to find all .mp4 files in the directory
+    mp4_file_names = [os.path.basename(file) for file in mp4_files] #extract the file names from the full paths
     return mp4_file_names
 
-# calculate the centroid
-def calculate_centroid(indices: Iterable[int], vectors: np.ndarray) -> np.ndarray:
-    cluster_vectors = vectors[list(indices)]
+def calculate_centroid(indices: List[int], vectors: np.ndarray) -> np.ndarray:
+    cluster_vectors = vectors[indices]
     centroid = np.mean(cluster_vectors, axis=0)
     return centroid
 
-# find the index of the vector closest to the centroid
-def closest_vector_index(
-    centroid: np.ndarray,
-    indices: Iterable[int],
-    vectors: np.ndarray
-) -> int:
-    idx_list = list(indices)
-    cluster_vectors = vectors[idx_list]
+def closest_vector_index(centroid: np.ndarray, indices: List[int], vectors: np.ndarray) -> int:
+    cluster_vectors = vectors[indices]
     distances = np.linalg.norm(cluster_vectors - centroid, axis=1)
-    closest_index = idx_list[int(np.argmin(distances))]
+    closest_index = indices[int(np.argmin(distances))]
     return closest_index
 
 def choose_eps(vectors: np.ndarray, k: int = 4, percentile: float = 90) -> float:
@@ -181,8 +124,14 @@ def decode_data_url(data_url: str) -> np.ndarray:
     img = cv2.imdecode(image_array, cv2.IMREAD_COLOR)
     return np.array(img)
 
-def decode_audio_url(data_url: str) -> np.ndarray:
+def decode_audio_url(data_url: str) -> str:
     header, b64data = data_url.split(",", 1)
     audio_bytes = base64.b64decode(b64data)
-    audio_array = np.frombuffer(audio_bytes, dtype=np.uint8)
-    return audio_array
+
+    suffix = ".wav" if "wav" in header else ".mp4"
+
+    with tempfile.NamedTemporaryFile(delete=False, suffix=suffix) as tmp:
+        tmp.write(audio_bytes)
+        tmp.flush()
+        tmp.close()
+        return Path(tmp.name)

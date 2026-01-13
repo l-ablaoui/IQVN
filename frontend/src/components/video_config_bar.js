@@ -10,15 +10,21 @@ import { Sun, Moon } from "lucide-react";
  * @param {*} set_video_name expected setter of the string video name
  * @param {*} set_video_src expected setter of the string video source
  * @param {*} set_current_index expected setter of the integer current frame index
- * @param {*} set_scores expected setter of the array of floats representing similarity scores
+ * @param {*} set_scores expected setter of the array of floats representing final similarity scores
+ * @param {*} set_image_scores expected setter of the array of floats representing visual similarity scores
+ * @param {*} set_image_ratio
+ * @param {*} set_audio_scores expected setter of the array of floats representing audio similarity scores
+ * @param {*} set_audio_ratio
+ * @param {*} set_points expected setter of the array of float point objects representing embeddings after 2D reduction
  * @param {*} selected_points expected array of integers representing selected frames' indices
  * @param {*} set_selected_points expected setter of the array of integers representing selected frames
  * @param {*} max_index expected non-zero positive integer, maximum frame index in the video
  * @param {*} fps expected positive integer, frames per second ratio in the video
  * @param {*} is_dark_mode expected boolean, true if dark mode is enabled
  * @param {*} set_dark_mode expected setter of the boolean dark mode */
-const Video_config_bar = ({set_video_name, set_video_src, set_current_index, set_scores, selected_points, 
-    set_selected_points, max_index, fps, is_dark_mode, set_dark_mode}) => {
+const Video_config_bar = ({set_video_name, set_video_src, set_current_index, set_scores, set_image_scores, 
+    set_image_ratio, set_audio_scores, set_audio_ratio, set_points, selected_points, set_selected_points, 
+    max_index, fps, is_dark_mode, set_dark_mode}) => {
     const [video_names, set_video_names] = useState([]);
     
     //fetch available video list from server on component mount
@@ -29,7 +35,7 @@ const Video_config_bar = ({set_video_name, set_video_src, set_current_index, set
             if (fetched_video_names?.length > 0) {   
                 set_video_names(fetched_video_names);
                 set_video_name(fetched_video_names[0]);
-                set_video_src(`${BACKEND_SERVER_URL}videos/${fetched_video_names[0]}`);
+                set_video_src(`${BACKEND_SERVER_URL}videos/${fetched_video_names[0]}/`);
             }
         };
         load_video_list();
@@ -41,8 +47,14 @@ const Video_config_bar = ({set_video_name, set_video_src, set_current_index, set
         if (!current_video_name) return;
         set_current_index(0);
         set_scores([]);
+        set_image_scores([]);
+        set_image_ratio(0.6);
+        set_audio_scores([]);
+        set_audio_ratio(0.4);
+        set_points([]);
+        set_selected_points([]);
         set_video_name(current_video_name);
-        set_video_src(`${BACKEND_SERVER_URL}videos/${current_video_name}`);
+        set_video_src(`${BACKEND_SERVER_URL}videos/${current_video_name}/`);
     };
 
     /** wipe out current selection of frames */
@@ -67,18 +79,18 @@ const Video_config_bar = ({set_video_name, set_video_src, set_current_index, set
                 <button 
                     className="col-5 h-100 btn"
                     onClick={(is_dark_mode)? () => set_dark_mode(false) : () => set_dark_mode(true)} 
+                    title={(is_dark_mode)? "disable dark mode" : "enable dark mode"}
                 >
                     {(is_dark_mode)?
                     <Sun className={`h-100 ${(is_dark_mode)? "text-light" : "text-dark"}`} /> :
-                    <Moon className={`h-100 ${(is_dark_mode)? "text-light" : "text-dark"}`}/>}
+                    <Moon className={`h-100 ${(is_dark_mode)? "text-light" : "text-dark"}`} />}
                 </button>
                 <label className="col-7 form-label responsive-text">select video: </label>
             </div>
             <div className="col-5 h-100">
                 <select 
                     name="video_names"
-                    className={`h-100 bg-transparent responsive-text ${(is_dark_mode)? 
-                        "text-light form-select" : "text-dark form-select"}` 
+                    className={`h-100 bg-transparent responsive-text text-secondary form-select` 
                     }
                     onChange={handle_video_selector_change}>
                     {video_names.map((video_name) => (
@@ -97,6 +109,7 @@ const Video_config_bar = ({set_video_name, set_video_src, set_current_index, set
             <input 
                 type="button" 
                 value="copy selection" 
+                title="copy timestamps as 00:SS-00:MM"
                 className="col-2 btn h-100 btn-outline-primary responsive-text"
                 onClick={handle_copy_selection}
             />

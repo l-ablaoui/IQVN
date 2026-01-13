@@ -44,15 +44,24 @@ export const fetch_compound_query_scores = async (video_name, compound_query) =>
                     { "image_data": data_URL } 
                 };
             }
+
+            if (node.audio_query) {
+                const matched_file = node.audio_query;
+                const data_URL = await get_data_URL(matched_file); 
+                compound_query[i] = { "audio_query": 
+                    { "audio_data": data_URL } 
+                };
+            }
         }
         
-        const response = await fetch(`${BACKEND_SERVER_URL}videos/${video_name}/search/compound/`, 
+        const response = await fetch(`${BACKEND_SERVER_URL}videos/${video_name}/queries/compound/`, 
             {method: "POST", body: JSON.stringify(compound_query), 
             headers: {"Content-Type": "application/json"}});
         const body = await response.json();
         console.log("fetch compound query scores result: ", body);
-        const scores = body["scores"];
-        return scores;
+        return [
+            body['image_scores'], body['audio_scores']
+        ];
     }
     catch (error) {
         console.error("Error retrieving compound query scores for query", compound_query, " : ", error);
@@ -65,10 +74,13 @@ export const fetch_compound_query_scores = async (video_name, compound_query) =>
 export const fetch_text_query_scores = async (video_name, query_input) => {
     try {
         console.log("video_name:", video_name, " query_input:", query_input);
-        const response = await fetch(`${BACKEND_SERVER_URL}videos/${video_name}/search/?query=${query_input}`);
+        const response = await fetch(`${BACKEND_SERVER_URL}videos/${video_name}/queries/?query=${query_input}`);
         const body = await response.json();
-        console.log("fetch query scores result: ", body);
-        return body['scores'].map(function(value, _) { return value[1]; });
+        console.log("fetch textual query scores result: ", body);
+        return [
+            body['image_scores'].map(function(value, _) { return value[1]; }),
+            body['audio_scores']?.map(function(value, _) { return value[1]; })
+        ];
     }
     catch (error) {
         console.error("Error retrieving query scores for query", query_input, " : ", error);
@@ -82,12 +94,15 @@ export const fetch_text_query_scores = async (video_name, query_input) => {
 export const fetch_image_scores = async (video_name, image_input) => {
     try {
         const data_URL = await get_data_URL(image_input); 
-        const response = await fetch(`${BACKEND_SERVER_URL}videos/${video_name}/search/image/`, 
+        const response = await fetch(`${BACKEND_SERVER_URL}videos/${video_name}/queries/image/`, 
             {method: "POST", body: JSON.stringify({image_data: data_URL}), 
             headers: {"Content-Type": "application/json"}});
         const body = await response.json();
-        const scores = body["scores"].map(function(value, _) { return value[1]; });
-        return scores;
+        console.log("fetch image query scores result: ", body);
+        return [
+            body['image_scores'].map(function(value, _) { return value[1]; }),
+            body['audio_scores']?.map(function(value, _) { return value[1]; })
+        ];
     }
     catch (error) {
         console.error("Error retrieving image scores : ", error);
@@ -100,15 +115,17 @@ export const fetch_image_scores = async (video_name, image_input) => {
  * @returns expected array of floats between 0 and 1 representing similarity scores */
 export const fetch_crop_scores = async (video_name, current_index, crop_box) => {
     try {
-        const response = await fetch(`${BACKEND_SERVER_URL}videos/${video_name}/search/crop/`, 
+        const response = await fetch(`${BACKEND_SERVER_URL}videos/${video_name}/queries/crop/`, 
             {method: "POST", body: JSON.stringify({ current_index: current_index, crop_box: crop_box }), 
             headers: {"Content-Type": "application/json"}});
         const body = await response.json();
         if (body["query"] == "ERROR") {
             console.error("Error retrieving crop scores for frame ", current_index, " : ", body["error"]);
         }
-        const scores = body["scores"].map(function(value, _) { return value[1]; });
-        return scores;
+        return [
+            body['image_scores'].map(function(value, _) { return value[1]; }),
+            body['audio_scores']?.map(function(value, _) { return value[1]; })
+        ];
     }
     catch (error) {
         console.error("Error retrieving crop scores for frame ", current_index, " : ", error);
@@ -123,9 +140,7 @@ export const fetch_crop_scores = async (video_name, current_index, crop_box) => 
  * - tsne_cluster_frames: array of tuples containing the frame number and the URL of the cluster centroids */
 export const fetch_video_semantic_representation = async (video_name) => {
     try {
-        const name_decomposed = video_name.split("/");
-        const name_processed = name_decomposed[name_decomposed.length - 1];//.split(".")[0]; 
-        const embeds_response = await fetch(`${BACKEND_SERVER_URL}videos/${name_processed}/embeddings/`);
+        const embeds_response = await fetch(`${BACKEND_SERVER_URL}videos/${video_name}/embeddings/`);
         const body = await embeds_response.json();
         console.log("fetch semantic representation result: ", body);
 
@@ -134,7 +149,7 @@ export const fetch_video_semantic_representation = async (video_name) => {
         let tsne_cluster_frames = [];
 
         //fetching frames corresponding to each cluster's centroid fort-sne reduction algorithm
-        const name_processed_no_ext = name_processed.split(".")[0];
+        const name_processed_no_ext = video_name.split(".")[0];
         let cluster_frames = body['tsne_cluster_frames'];
         for (let i = 0;i < cluster_frames.length;++i) {
             const cf_response = await fetch(
@@ -154,6 +169,26 @@ export const fetch_video_semantic_representation = async (video_name) => {
     }
     catch(error) {
         console.error("Error fetching 2D reduced embeddings: ", error);
+    }
+};
+
+export const post_audio_recording = async (video_name, audio_blob) => {
+    try {
+        const form_data = new FormData();
+        form_data.append("audio_record_data", audio_blob, "recording.wav");
+
+        const response = await fetch(`${BACKEND_SERVER_URL}videos/${video_name}/queries/audio/record/`, {
+            method: "POST",
+            body: form_data,
+        });
+        const body = await response.json();
+        return [
+            body['image_scores'].map(function(value, _) { return value[1]; }),
+            body['audio_scores']?.map(function(value, _) { return value[1]; })
+        ];
+    }
+    catch (error) {
+        console.error("Error getting audio recording score: ", error);
     }
 };
 

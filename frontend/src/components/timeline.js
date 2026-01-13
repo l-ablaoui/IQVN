@@ -1,5 +1,6 @@
 import { EMPHASIS_COLOR, SELECTION_COLOR } from "../utilities/constants";
 import { 
+    focus_onclick,
     generate_selected_points_color_map,
     get_integer_interval,
     get_scores_above_threshold,
@@ -28,7 +29,8 @@ import { useState, useRef, useEffect } from "react";
  * @param {*} selected_points expected empty array or array of integers, IDs of selected points
  * @param {*} set_selected_points expected setter for selected_points
  * @param {*} scores expected empty array or array of floats between 0/1 */
-const Timeline = ({current_index, update_time, max_index, fps, selected_points, set_selected_points, scores}) => {
+const Timeline = ({current_index, update_time, max_index, fps, selected_points, 
+    set_selected_points, scores, image_scores, audio_scores}) => {
     const [is_timeline_dragging, set_timeline_dragging] = useState(false);
 
     const [interval_start, set_interval_start] = useState(-1);
@@ -48,19 +50,7 @@ const Timeline = ({current_index, update_time, max_index, fps, selected_points, 
 
     const timeline_ref = useRef(null);
 
-    // prevent right click menu on this specific component
-    useEffect(() => {
-        function handle_context_menu(e) {
-            e.preventDefault(); // prevents the default right-click menu from appearing
-        }
-        timeline_ref.current.addEventListener("contextmenu", handle_context_menu);
-
-        return () => {
-            timeline_ref.current.removeEventListener("contextmenu", handle_context_menu);
-        };
-    }, []);
-
-    // re-rendering effect
+    //re-rendering effect
     useEffect(() => {
         if (timeline_ref.current) {
             timeline_ref.current.width = timeline_ref.current.offsetWidth;
@@ -72,17 +62,19 @@ const Timeline = ({current_index, update_time, max_index, fps, selected_points, 
     /** mousedown handles cursor mouvement/video frame update and frames selection
      * @param {*} event expected onMouseDown event with access to clientX/Y */
     const handle_timeline_mousedown = (event) => { 
+        event.preventDefault(); //prevent right click button
+        if (timeline_ref.current) { focus_onclick(timeline_ref.current); } 
         if (event.nativeEvent.button == 0) {
-            // mouvement of the cursor when user clicks or drags
+            //mouvement of the cursor when user clicks or drags
             set_timeline_dragging(true); 
 
-            // handling of selection when the CTRL is pressed
+            //handling of selection when the CTRL is pressed
             handle_timeline_selection_mousedown(timeline_ref.current, offset_left, 
                 offset_right, offset_y, max_index, event);
             set_selection_dragging(true);
         }
         else if (event.nativeEvent.button == 2 && scores?.length > 0) {
-            // thresholding
+            //thresholding
             set_thresholding(true);
             handle_thresholding(event);
         }
@@ -91,31 +83,33 @@ const Timeline = ({current_index, update_time, max_index, fps, selected_points, 
     /** mousemove handles cursor mouvement/video frame update and frames selection
      * @param {*} event expected onMouseMove event with access to clientX/Y */
     const handle_timeline_mousemove = (event) => { 
-        // mouvement of the cursor when user clicks or drags
+        event.preventDefault(); //prevent right click button
+        //mouvement of the cursor when user clicks or drags
         is_timeline_dragging && update_time_onclick(offset_left, offset_right, offset_y, max_index, event); 
 
-        // handling of selection when the CTRL is pressed
+        //handling of selection when the CTRL is pressed
         is_selection_dragging && handle_timeline_selection_mousemove(timeline_ref.current, 
             offset_left, offset_right, offset_y, max_index, selected_points, event);
 
-        // thresholding
+        //thresholding
         is_thresholding && handle_thresholding(event);
     };
 
     /** mouseup handles cursor mouvement/video frame update and frames selection
      * @param {*} event expected onMouseUp event with access to clientX/Y */
     const handle_timeline_mouseup = (event) => {
+        event.preventDefault(); //prevent right click button
         if (event.nativeEvent.button == 0) {
-            // mouvement of the cursor when user clicks or drags
+            //mouvement of the cursor when user clicks or drags
             is_timeline_dragging && update_time_onclick(offset_left, offset_right, offset_y, max_index, event);
             set_timeline_dragging(false);
 
-            // handling of selection when the CTRL is pressed
+            //handling of selection when the CTRL is pressed
             is_selection_dragging && handle_timeline_selection_mousemove(timeline_ref.current, 
                 offset_left, offset_right, offset_y, max_index, selected_points, event);
             set_selection_dragging(false);
         } 
-        // thresholding
+        //thresholding
         else if (is_thresholding) {
             handle_thresholding(event);
             set_thresholding(false);
@@ -125,10 +119,10 @@ const Timeline = ({current_index, update_time, max_index, fps, selected_points, 
     /** mouseout handles cursor mouvement/video frame update and frames selection
      * @param {*} event expected onMouseOut event with access to clientX/Y */
     const handle_timeline_mouseout = (event) => { 
-        // mouvement of the cursor when user clicks or drags
+        //mouvement of the cursor when user clicks or drags
         set_timeline_dragging(false); 
 
-        // handling of selection when the CTRL is pressed
+        //handling of selection when the CTRL is pressed
         is_selection_dragging && handle_timeline_selection_mousemove(timeline_ref.current, 
             offset_left, offset_right, offset_y, max_index, selected_points, event);
         set_selection_dragging(false);
@@ -137,7 +131,7 @@ const Timeline = ({current_index, update_time, max_index, fps, selected_points, 
     /** keydown handles left/right mouvement of the cursor and selection of frames
      * @param {*} event expected onKeyDown event with access to key */
     const handle_timeline_keydown = (event) => {
-        // handle current_index mouvement
+        //handle current_index mouvement
         if (event.key == "ArrowRight") {
             update_time(Math.min(current_index + 1, max_index));
         }
@@ -145,7 +139,7 @@ const Timeline = ({current_index, update_time, max_index, fps, selected_points, 
             update_time(Math.max(current_index - 1, 0));
         }
 
-        // handle selection with keys
+        //handle selection with keys
         handle_timeline_selection_keychange(event);
         handle_timeline_selection_left_right_keydown(event, current_index, selected_points);
     };
@@ -174,14 +168,14 @@ const Timeline = ({current_index, update_time, max_index, fps, selected_points, 
         //ctrl aint pressed, skip
         if (!ctrl_pressed) { return; }
 
-        // the first time a key is pressed while ctrl is pressed, init intervals
-        // the beginning of the interval is always the current index (frozen when selecting intervals)
+        //the first time a key is pressed while ctrl is pressed, init intervals
+        //the beginning of the interval is always the current index (frozen when selecting intervals)
         if (!is_selection_clicking) {
             set_selection_clicking(true);
             set_interval_start(current_index);
             set_interval_end(current_index);
         }
-        // update intervals and selection depending on the key pressed (left/right)
+        //update intervals and selection depending on the key pressed (left/right)
         else {
             //update intervals
             if (event.key == "ArrowRight") {
@@ -192,10 +186,9 @@ const Timeline = ({current_index, update_time, max_index, fps, selected_points, 
             }
 
             //update selection
-
             let new_selected_points = [];
             
-            // checking if the intervals got inverted
+            //checking if the intervals got inverted
             if (interval_end > interval_start) {
                 new_selected_points = get_integer_interval(interval_start, interval_end);
             }
@@ -210,7 +203,7 @@ const Timeline = ({current_index, update_time, max_index, fps, selected_points, 
                 new_selected_points = union(selected_points, new_selected_points);
             }
             
-            // Update the passed array (no duplicates union)
+            //update the passed array (no duplicates union)
             set_selected_points(new_selected_points);
         }
     };
@@ -275,13 +268,13 @@ const Timeline = ({current_index, update_time, max_index, fps, selected_points, 
         const frame_index = Math.trunc((mouse_x - offset_left) / (plot_width - offset_right - offset_left) 
             * (max_index - 1));
 
-        // Update the start and end of the interval based on the mouse position
+        //update the start and end of the interval based on the mouse position
         set_interval_start(Math.min(interval_start, frame_index));
         set_interval_end(Math.max(interval_end, frame_index));
         
         let new_selected_points = get_integer_interval(interval_start, interval_end);
 
-        // Combine interval with selected points depending on pressed keys
+        //combine interval with selected points depending on pressed keys
         if (shift_pressed) {
             new_selected_points = difference(selected_points, new_selected_points);
         } 
@@ -289,7 +282,7 @@ const Timeline = ({current_index, update_time, max_index, fps, selected_points, 
             new_selected_points = union(selected_points, new_selected_points);
         }
 
-        // Update the passed array (no duplicates union)
+        //update the passed array (no duplicates union)
         set_selected_points(new_selected_points);
     };
 
@@ -360,7 +353,7 @@ const Timeline = ({current_index, update_time, max_index, fps, selected_points, 
         }
 
         plot_axes(offset_left, offset_right, offset_y, timeline_ref.current);
-        render_score_curve(timeline_ref.current);
+        render_score_curve(timeline_ref.current, selected_points, scores, offset_left, offset_right, offset_y);
         plot_timestamps(max_index, fps, timeline_ref.current);
 
         if (!is_thresholding) {
@@ -378,8 +371,11 @@ const Timeline = ({current_index, update_time, max_index, fps, selected_points, 
 
     /** render scores as a curve on the given svg
      * @param {*} svg expected canvas element */
-    const render_score_curve = (svg) => {
-        if (!scores) { return; }
+    const render_score_curve = (svg, selected_points, scores, offset_left, offset_right, offset_y) => {
+        if (!scores) { 
+            console.warn("timeline: no scores to render");
+            return; 
+        }
 
         const plot_width = svg.offsetWidth;
         const plot_height = svg.offsetHeight;
@@ -403,7 +399,7 @@ const Timeline = ({current_index, update_time, max_index, fps, selected_points, 
             let y = plot_height - offset_y - scaled_scores[i] * 
                 (plot_height - 2 * offset_y);
 
-            // Start a new path segment with the new color
+            //start a new path segment with the new color
             let current_path = new Path2D();
             current_path.moveTo(previous_x, previous_y);
             current_path.lineTo(x, y);
@@ -420,7 +416,10 @@ const Timeline = ({current_index, update_time, max_index, fps, selected_points, 
         <canvas
             ref={timeline_ref}
             key={scores}
-            className="w-100 h-25 border border-secondary "
+            title={`Click+CTRL to select, click+CTRL+MAJ to deselect${(scores?.length > 0)? 
+                ", right click to toggle threshold" : ""}`}
+            className={`${(image_scores?.length > 0 && audio_scores?.length == image_scores?.length)? 
+                "col-11" : ""} h-100 border border-secondary p-0`}
             tabIndex={0}
             onMouseDown={handle_timeline_mousedown}
             onMouseMove={handle_timeline_mousemove}
@@ -428,6 +427,7 @@ const Timeline = ({current_index, update_time, max_index, fps, selected_points, 
             onMouseOut={handle_timeline_mouseout}
             onKeyDown={handle_timeline_keydown}
             onKeyUp={handle_timeline_keyup}
+            onContextMenu={(e) => e.preventDefault()} //prevent right click menu on this specific component
         >
         </canvas>
     );
